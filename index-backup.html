@@ -1,0 +1,3615 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Генератор постов (Кроссплатформа)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alice&family=Amatic+SC:wght@700&family=Bad+Script&family=Bebas+Neue&family=Caveat&family=Comfortaa&family=Cormorant+Garamond&family=Exo+2&family=Inter&family=Kelly+Slab&family=Lora&family=Marck+Script&family=Merriweather&family=Montserrat&family=Neucha&family=Nunito&family=Open+Sans&family=Oranienbaum&family=Oswald&family=PT+Serif&family=Pacifico&family=Philosopher&family=Playfair+Display&family=Raleway&family=Roboto&family=Rubik&family=Russo+One&family=Tenor+Sans&family=Ubuntu&family=Yeseva+One&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+
+* { box-sizing: border-box; }
+body { margin: 0; background: #0f1115; color: #e8e8e8; display: flex; height: 100vh; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; }
+.panel { width: 380px; padding: 20px; background: #171a21; overflow-y: auto; height: 100vh; border-right: 1px solid #2a2f3a; flex-shrink: 0; position: sticky; top: 0; }
+h1 { font-size: 18px; margin: 0 0 16px; }
+label { display: block; font-size: 12px; color: #9aa4b2; margin: 14px 0 6px; font-weight: bold;}
+input, select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #2a2f3a; background: #0f1115; color: #e8e8e8; font-size: 14px; outline: none; }
+select { cursor: pointer; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; }
+.row > button { flex: 1 1 30%; }
+button { cursor: pointer; border: none; border-radius: 8px; padding: 10px; font-size: 13px; font-weight: 600; transition: 0.2s; }
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+.preset { background: #2a2f3a; color: #e8e8e8; }
+.preset.active { background: #3d7eff; }
+.primary { background: #3d7eff; color: #fff; width: 100%; margin-top: 15px; padding: 14px; font-size: 15px;}
+.primary:hover { background: #2b66d9; }
+.danger { background: rgba(255, 77, 77, 0.1); color: #ff4d4d; border: 1px solid #ff4d4d; width: 100%; margin-top: 10px; padding: 12px;}
+.danger:hover { background: #ff4d4d; color: #fff; }
+
+input[type=range] { padding: 0; cursor: pointer; width: 100%; }
+input[type=color] { height: 40px; padding: 0; cursor: pointer; border-radius: 6px; border: 1px solid #2a2f3a; background: #0f1115; overflow: hidden; }
+input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+input[type="color"]::-webkit-color-swatch { border: none; }
+
+.toolbar { display: flex; flex-wrap: wrap; gap: 6px; background: #0f1115; padding: 10px; border-radius: 8px; border: 1px solid #2a2f3a; align-items: center; }
+.toolbar button { flex: none; min-width: 32px; height: 32px; padding: 0 6px; background: #2a2f3a; color: white; display: flex; align-items: center; justify-content: center; font-size: 14px; border-radius: 6px; }
+.toolbar button:hover:not(:disabled) { background: #3d7eff; }
+.toolbar input[type=color] { width: 32px; height: 32px; padding: 0; border: none; border-radius: 6px; cursor: pointer; overflow: hidden; }
+.toolbar .toolbar-divider { width: 1px; height: 24px; background: #4a5568; margin: 0 2px; }
+.emoji-section-title { font-size: 11px; color: #9aa4b2; margin: 10px 0 4px; font-weight: bold; }
+.emoji-bar { display: flex; flex-wrap: wrap; gap: 2px; }
+.emoji-bar span { cursor: pointer; font-size: 20px; padding: 3px; border-radius: 6px; user-select: none; }
+.emoji-bar span:hover { background: #2a2f3a; }
+.emoji-wrap { max-height: 220px; overflow-y: auto; background: #0f1115; border: 1px solid #2a2f3a; border-radius: 8px; padding: 8px; margin-top: 8px; }
+.ratio-box { margin-top: 20px; padding: 14px; border-radius: 10px; border: 2px solid #4ade80; background: rgba(74, 222, 128, 0.08); transition: 0.3s; }
+.ratio-box.warn { border-color: #fbbf24; background: rgba(251, 191, 36, 0.08); }
+.ratio-box.danger { border-color: #ff4d4d; background: rgba(255, 77, 77, 0.1); }
+.ratio-title { font-size: 13px; font-weight: bold; margin-bottom: 8px; }
+.ratio-title.ok { color: #4ade80; }
+.ratio-title.warn { color: #fbbf24; }
+.ratio-title.danger { color: #ff4d4d; }
+.ratio-info { font-size: 12px; color: #9aa4b2; }
+.ratio-bar-track { height: 8px; background: #2a2f3a; border-radius: 4px; margin: 8px 0; overflow: hidden; }
+.ratio-bar-fill { height: 100%; width: 0%; border-radius: 4px; transition: width 0.3s, background 0.3s; }
+.stats-box { background: #0f1115; border: 1px solid #2a2f3a; padding: 10px; border-radius: 8px; margin-top: 12px; font-size: 12px; color: #9aa4b2; }
+.stats-row { display: flex; justify-content: space-between; }
+
+/* ===== ХОЛСТ ===== */
+.stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 30px; overflow: hidden; background-color: #748eaa; transition: background 0.3s; cursor: grab; position: relative; }
+.stage.panning { cursor: grabbing; }
+#zoom-wrapper { transition: transform 0.15s ease; transform-origin: top center; -webkit-user-select: text; user-select: text; }
+#zoom-wrapper.dragging { transition: none; }
+
+#export-node { --bg-color: #ffffff; --text-color: #000000; background: var(--bg-color); color: var(--text-color); padding: 32px 40px; border-radius: 24px 24px 24px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.15); width: 800px; position: relative; margin: auto; transition: width 0.3s, border-radius 0.3s, background 0.3s, color 0.3s; -webkit-user-select: text; user-select: text; }
+#export-node::before { content: ''; position: absolute; bottom: 0; left: -16px; width: 16px; height: 32px; background: radial-gradient(circle at 0 0, transparent 16px, var(--bg-color) 16px); }
+#export-node.no-tail::before { display: none; }
+
+#editor {
+outline: none; font-size: 32px; line-height: 1.2; white-space: pre-wrap;
+word-break: normal; overflow-wrap: break-word; -webkit-hyphens: none; hyphens: none;
+min-height: 100px; text-align: justify; text-align-last: left; transition: font-size 0.2s; display: flow-root;
+cursor: text; -webkit-user-select: text; user-select: text; -webkit-touch-callout: default;
+caret-color: #000000;
+font-weight: 400;
+-webkit-font-smoothing: antialiased;
+}
+#editor, #editor * { caret-color: #000000 !important; }
+#editor[placeholder]:empty:before { content: attr(placeholder); opacity: 0.5; }
+#editor code { background: rgba(128,128,128,0.2); padding: 4px 8px; border-radius: 6px; font-family: monospace; }
+#editor a { color: #3d7eff; text-decoration: underline; cursor: pointer; }
+.img-box { position: relative; float: left; margin: 8px 20px 8px 0; width: 50%; max-width: 95%; cursor: grab; user-select: none; -webkit-user-select: none; border-radius: 12px; }
+.img-box.align-right { float: right; margin: 8px 0 8px 20px; }
+.img-box.align-center { float: none; display: block; margin: 10px auto; clear: both; }
+.img-spacer-left { float: left; height: 10px; width: var(--side-space, 0px); }
+.img-spacer-right { float: right; height: 10px; width: var(--side-space, 0px); }
+.img-box:active { cursor: grabbing; }
+.img-box img { display: block; width: 100%; border-radius: 12px; pointer-events: none; }
+.img-box.selected { outline: 3px solid #3d7eff; outline-offset: 3px; }
+.img-resizer { position: absolute; right: 0; bottom: 0; width: 28px; height: 28px; cursor: nwse-resize; z-index: 10; display: none; }
+.img-resizer::after { content: ''; position: absolute; right: 4px; bottom: 4px; width: 14px; height: 14px; border-right: 3px solid #fff; border-bottom: 3px solid #fff; border-radius: 2px; filter: drop-shadow(0 0 3px rgba(0,0,0,0.8)); }
+.img-box.selected .img-resizer { display: block; }
+
+/* ===== ЭТАП 1: улучшенные картинки ===== */
+.img-box { transition: box-shadow .2s, border-radius .2s; }
+.img-box img { transition: border-radius .2s, box-shadow .2s; }
+.img-box { --img-radius: 12px; --img-border: 0px; --img-border-color: #000000; }
+.img-box img { border-radius: var(--img-radius); box-shadow: 0 0 0 var(--img-border) var(--img-border-color); }
+.img-box .img-rotor { display: block; transition: transform .12s linear; transform: rotate(var(--img-rot, 0deg)); transform-origin: center; }
+.img-box .img-rotor img { border-radius: var(--img-radius); box-shadow: 0 0 0 var(--img-border) var(--img-border-color) !important; }
+
+/* ===== ЭТАП 2: ТЕКСТОВЫЕ ПЛАШКИ (ТЕКСТ-БЛОКИ) ===== */
+.text-box {
+  position: absolute; left: 40px; top: 40px;
+  min-width: 60px; max-width: 90%;
+  z-index: 20;
+  box-sizing: border-box;
+  user-select: none; -webkit-user-select: none;
+}
+.text-box.selected { outline: 3px solid #10b981; outline-offset: 4px; border-radius: 12px; }
+
+.text-box .tb-content {
+  padding: 10px 14px;
+  background: rgba(0,0,0,0.55); color: #ffffff;
+  border-radius: 10px; font-size: 24px; line-height: 1.25;
+  text-align: center;
+  word-break: break-word; overflow-wrap: break-word;
+  -webkit-user-select: text; user-select: text;
+  outline: none; cursor: text;
+  min-height: 1.25em;
+}
+.text-box .tb-content:empty:before {
+  content: attr(data-ph); opacity: 0.6; font-style: italic;
+}
+  /* Режим ЛЕНТА: фон обтекает строки по ширине букв */
+.text-box.mode-ribbon .tb-content {
+  background: transparent !important;
+  padding: 0;
+}
+.text-box.mode-ribbon .tb-content .tb-ribbon {
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  padding: var(--ribbon-pad-v, 0.25em) var(--ribbon-pad-h, 0.3em);
+  border-radius: var(--ribbon-radius, 6px);
+  background: var(--ribbon-bg, rgba(0,0,0,0.85));
+  line-height: 1.0;
+}
+  /* ЭТАП 3: картинка внутри плашки */
+.text-box .tb-content img.tb-img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 4px auto;
+  border-radius: 6px;
+  pointer-events: none;
+  -webkit-user-select: none; user-select: none;
+}
+
+.text-box .tb-drag-frame {
+  position: absolute; inset: -3px; z-index: 2;
+  display: none; pointer-events: none;
+}
+.text-box.selected .tb-drag-frame { display: block; }
+.text-box .tb-edge { position: absolute; pointer-events: auto; cursor: move; touch-action: none; }
+.text-box .tb-edge.top    { top: -3px; left: -3px; right: -3px; height: 12px; }
+.text-box .tb-edge.bottom { bottom: -3px; left: -3px; right: -3px; height: 12px; }
+.text-box .tb-edge.left   { left: -3px; top: -3px; bottom: -3px; width: 12px; }
+.text-box .tb-edge.right  { right: -3px; top: -3px; bottom: -3px; width: 12px; }
+
+/* Хваталка перемещения (правый верхний угол) */
+.text-box .tb-handle {
+  position: absolute; top: -14px; right: -14px;
+  width: 30px; height: 30px; z-index: 30;
+  display: none; align-items: center; justify-content: center;
+  background: #10b981; color: #fff; border-radius: 50%;
+  font-size: 16px; line-height: 1; cursor: move;
+  box-shadow: 0 2px 6px rgba(0,0,0,.5);
+  touch-action: none; user-select: none; -webkit-user-select: none;
+  pointer-events: auto;
+}
+.text-box.selected .tb-handle { display: flex; }
+  /* Кнопка дублирования (сверху, слева от поворота) */
+.text-box .tb-copy {
+  position: absolute; top: -40px; left: 50%;
+  transform: translateX(-50%) translateX(-34px);
+  width: 26px; height: 26px; z-index: 31;
+  display: none; align-items: center; justify-content: center;
+  background: #3b82f6; color: #fff; border-radius: 50%;
+  font-size: 13px; line-height: 1; cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,.5);
+  user-select: none; -webkit-user-select: none;
+  pointer-events: auto;
+}
+.text-box.selected .tb-copy { display: flex; }
+
+/* ❌ Крестик удаления (левый верхний угол) */
+.text-box .tb-delete {
+  position: absolute; top: -14px; left: -14px;
+  width: 30px; height: 30px; z-index: 30;
+  display: none; align-items: center; justify-content: center;
+  background: #ef4444; color: #fff; border-radius: 50%;
+  font-size: 16px; line-height: 1; cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,.5);
+  user-select: none; -webkit-user-select: none;
+  pointer-events: auto;
+}
+.text-box.selected .tb-delete { display: flex; }
+
+/* ЭТАП 5: уголок изменения ширины плашки */
+.text-box .tb-resize {
+  position: absolute; right: -6px; bottom: -6px;
+  width: 24px; height: 24px; z-index: 30;
+  display: none; cursor: nwse-resize;
+  touch-action: none; pointer-events: auto;
+}
+.text-box .tb-resize::after {
+  content: ''; position: absolute; right: 4px; bottom: 4px;
+  width: 12px; height: 12px;
+  border-right: 3px solid #10b981;
+  border-bottom: 3px solid #10b981;
+  border-radius: 2px;
+  filter: drop-shadow(0 0 2px rgba(0,0,0,.6));
+}
+.text-box.selected .tb-resize { display: block; }
+  /* ЭТАП 6: ручка вращения плашки */
+.text-box .tb-rotate {
+  position: absolute; top: -40px; left: 50%;
+  transform: translateX(-50%);
+  width: 26px; height: 26px; z-index: 31;
+  display: none; align-items: center; justify-content: center;
+  background: #3b82f6; color: #fff; border-radius: 50%;
+  font-size: 14px; line-height: 1; cursor: grab;
+  box-shadow: 0 2px 6px rgba(0,0,0,.5);
+  touch-action: none; user-select: none; -webkit-user-select: none;
+  pointer-events: auto;
+}
+.text-box.selected .tb-rotate { display: flex; }
+
+#imgMiniBar {
+  position: fixed; z-index: 5000; display: none;
+  background: #171a21; border: 1px solid #3d7eff; border-radius: 10px;
+  padding: 6px; gap: 4px; box-shadow: 0 6px 20px rgba(0,0,0,.5);
+  flex-wrap: nowrap; align-items: center;
+}
+#imgMiniBar.visible { display: flex; }
+#imgMiniBar button {
+  min-width: 34px; height: 34px; padding: 0 6px; margin: 0;
+  background: #2a2f3a; color: #fff; border-radius: 7px; font-size: 15px;
+  display: flex; align-items: center; justify-content: center;
+}
+#imgMiniBar button:hover { background: #3d7eff; }
+#imgMiniBar .mb-div { width: 1px; height: 22px; background: #4a5568; margin: 0 2px; }
+
+#imgSettings { display: none; background: #2a2f3a50; padding: 12px; border-radius: 8px; margin-top: 12px; }
+#imgSettings.visible { display: block; }
+#imgSettings label { color: #cdd5df; }
+#imgSettings .is-row { display: flex; align-items: center; gap: 8px; }
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; align-items: center; justify-content: center; z-index: 1000; }
+.modal { background: #171a21; width: 500px; padding: 20px; border-radius: 12px; border: 1px solid #2a2f3a; max-height: 90vh; overflow-y: auto; }
+.modal h2 { margin: 0 0 10px 0; font-size: 18px; color: #fff; }
+.modal textarea { width: 100%; height: 120px; background: #0f1115; color: #e8e8e8; border: 1px solid #2a2f3a; border-radius: 8px; padding: 10px; font-family: monospace; font-size: 14px; resize: none; margin-bottom: 10px; }
+#previewImage { width: 100%; max-height: 250px; object-fit: contain; border-radius: 8px; border: 1px solid #2a2f3a; margin-bottom: 10px; background: #0f1115; display: none; }
+
+#zoomControls {
+position: fixed; bottom: 20px; right: 20px; z-index: 400;
+display: flex; align-items: center; gap: 6px;
+background: rgba(23, 26, 33, 0.95); padding: 8px 10px;
+border-radius: 12px; border: 1px solid #2a2f3a; box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+#zoomControls button {
+width: 40px; height: 40px; background: #2a2f3a; color: #fff;
+font-size: 18px; padding: 0; display: flex; align-items: center; justify-content: center;
+}
+#zoomControls button:hover { background: #3d7eff; }
+#zoomLabel {
+min-width: 52px; text-align: center; font-size: 14px; font-weight: bold; color: #e8e8e8; user-select: none;
+}
+
+#panelHandle, #mobileToolsBtn { display: none; }
+
+/* Плавающие Undo/Redo — на ПК сразу справа от панели, на холсте */
+#floatUndoRedo {
+  position: fixed; top: 12px; left: 392px; z-index: 4500;
+  display: flex; gap: 6px;
+}
+#floatUndoRedo button {
+  width: 40px; height: 40px; padding: 0;
+  background: rgba(23, 26, 33, 0.95); color: #fff;
+  border: 1px solid #2a2f3a; border-radius: 10px;
+  font-size: 17px; display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+#floatUndoRedo button:hover:not(:disabled) { background: #3d7eff; }
+#floatUndoRedo button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+@media (max-width: 820px) {
+body { display: block; height: 100vh; overflow: hidden; }
+  /* Телефон: ползунки размера и интервала — друг под другом на всю ширину */
+.dual-slider-row {
+  flex-direction: column !important;
+  gap: 4px !important;
+}
+.dual-slider-row > div {
+  width: 100% !important;
+  flex: 1 1 100% !important;
+}
+.dual-slider-row input[type=range] {
+  width: 100% !important;
+  height: 32px;
+}
+.stage { position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 15px; }
+
+#floatUndoRedo { left: 10px !important; }
+
+#mobileToolsBtn {
+display: flex; align-items: center; justify-content: center;
+position: absolute; top: 60px; left: 10px; z-index: 1000;
+background: #171a21; color: #fff; border: 1px solid #2a2f3a;
+padding: 0 10px; height: 36px; border-radius: 10px; font-size: 12px; font-weight: bold;
+box-shadow: 0 4px 10px rgba(0,0,0,0.3); cursor: pointer;
+}
+#mobileToolsBtn:active { background: #2a2f3a; }
+
+.panel {
+position: fixed; top: 0; left: -320px; width: 320px; height: 100%;
+z-index: 2000; transition: left 0.3s ease; box-shadow: 5px 0 20px rgba(0,0,0,0.8);
+padding: 15px; border-right: none;
+background: rgba(23, 26, 33, 0.55) !important;
+-webkit-backdrop-filter: none !important;
+backdrop-filter: none !important;
+}
+.panel.open { left: 0; }
+#panelHandle {
+display: flex; align-items: center; justify-content: center;
+position: fixed; top: 30%; left: 0; transform: translateY(-50%);
+width: 34px; height: 70px; z-index: 2001;
+background: #171a21; border: 2px solid #3d7eff; border-left: none;
+border-radius: 0 12px 12px 0; color: #3d7eff;
+font-size: 22px; font-weight: bold; padding: 0;
+box-shadow: 3px 0 8px rgba(0,0,0,0.4);
+transition: left 0.3s ease;
+}
+#panelHandle.open { left: 320px; }
+.panel h1 { display: none; }
+.toolbar button { min-width: 34px; height: 34px; font-size: 15px; }
+.emoji-bar span { font-size: 24px; padding: 5px; }
+#zoomControls { display: none !important; }
+.modal { width: 92%; max-width: 500px; }
+.emoji-wrap, label[style*="😀 Эмодзи"] { display: none !important; }
+#imgMiniBar { display: none !important; }
+
+/* ЭТАП 2: на телефоне плашки не создаём и не управляем */
+.tb-hide-mobile { display: none !important; }
+.text-box .tb-handle,
+.text-box .tb-delete,
+.text-box .tb-drag-frame,
+.text-box .tb-resize,
+.text-box .tb-rotate { display: none !important; }
+  
+/* iPhone: разрешить курсор внутрь слова */
+#editor { word-break: break-word; }
+}
+
+#quickBar {
+display: none; position: fixed; left: 0; bottom: 0; width: 100%; z-index: 99999;
+background: #1c2129; border-top: 2px solid #3d7eff; padding: 6px; gap: 6px;
+overflow-x: auto; -webkit-overflow-scrolling: touch; scroll-behavior: smooth; box-sizing: border-box;
+}
+#quickBar.visible { display: flex; flex-wrap: nowrap; align-items: center; }
+#quickBar button {
+flex: 0 0 auto; min-width: 42px; height: 42px; margin: 0; padding: 0;
+font-size: 18px; border-radius: 10px; background: #2a2f3a; color: #e6ebf2;
+border: 1px solid #3a4150; display: flex; align-items: center; justify-content: center;
+}
+#quickBar button:active { background: #3d7eff; }
+
+#quickBar input[type=color] {
+flex: 0 0 auto; width: 42px; height: 42px; margin: 0; padding: 2px;
+border-radius: 10px; background: #2a2f3a; border: 1px solid #3a4150;
+cursor: pointer; overflow: hidden;
+}
+
+.stage.hand-mode #editor { cursor: grab; }
+.stage.hand-mode.panning #editor { cursor: grabbing; }
+#modeBtn.active { background: #10b981 !important; }
+
+/* ===== ТЕЛЕФОННАЯ ПЛАВАЮЩАЯ МЕНЮ КАРТИНКИ ===== */
+#imgMobilePanel {
+  position: fixed; z-index: 6000; display: none;
+  width: 270px; max-width: 90vw;
+  background: rgba(23, 26, 33, 0.78);
+  border: 1px solid #3d7eff; border-radius: 14px;
+  box-shadow: 0 8px 30px rgba(0,0,0,.6);
+  padding: 0 12px 12px; color: #e8e8e8;
+  touch-action: none;
+}
+#imgMobilePanel.visible { display: block; }
+#imgMobilePanel .imp-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 0 8px; cursor: grab; user-select: none; touch-action: none;
+  border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 8px;
+}
+#imgMobilePanel .imp-head.grabbing { cursor: grabbing; }
+#imgMobilePanel .imp-title { font-size: 13px; font-weight: bold; color: #4ade80; }
+#imgMobilePanel .imp-close {
+  width: 26px; height: 26px; border-radius: 6px; background: #2a2f3a; color: #fff;
+  font-size: 15px; display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+#imgMobilePanel label { color: #cdd5df; font-size: 11px; margin: 8px 0 3px; font-weight: bold; display: block; }
+#imgMobilePanel input[type=range] { width: 100%; margin: 0; }
+#imgMobilePanel input[type=color] { width: 100%; height: 32px; border-radius: 6px; }
+#imgMobilePanel .imp-btns { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+#imgMobilePanel .imp-btns button {
+  flex: 0 0 auto; min-width: 34px; height: 34px; padding: 0 6px; margin: 0;
+  background: #2a2f3a; color: #fff; border-radius: 7px; font-size: 15px;
+  display: flex; align-items: center; justify-content: center;
+}
+#imgMobilePanel .imp-btns button:active { background: #3d7eff; }
+#imgMobilePanel .imp-rot-row { display: flex; gap: 6px; align-items: center; }
+#imgMobilePanel .imp-rot-row button { flex: 0 0 auto; width: 34px; height: 32px; background:#2a2f3a; color:#fff; }
+
+/* ЭТАП 2: тост-подсказка для плашек на телефоне */
+#tbToast {
+  position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%) translateY(20px);
+  background: rgba(23,26,33,0.96); color: #fff; border: 1px solid #10b981;
+  padding: 12px 18px; border-radius: 12px; font-size: 14px; font-weight: 600;
+  box-shadow: 0 6px 24px rgba(0,0,0,.5); z-index: 100000;
+  opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s;
+  max-width: 80vw; text-align: center;
+}
+#tbToast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ПРИВЯЗКА: направляющие линии центра холста */
+.snap-guide {
+  position: absolute; z-index: 40; pointer-events: none;
+  background: #ff2d95; opacity: 0; transition: opacity .08s;
+}
+.snap-guide.visible { opacity: 0.9; }
+.snap-guide.vertical { width: 2px; top: 0; bottom: 0; }
+.snap-guide.horizontal { height: 2px; left: 0; right: 0; }
+</style>
+</head>
+<body>
+
+<div class="panel">
+<h1>🎨 Текстер PRO</h1>
+<label>📏 Платформа (Размер холста)</label>
+<div class="row" style="margin-bottom: 10px;">
+<button class="preset active" onclick="setPreset('telegram', this)" style="flex: 1 1 60%;">💬 Редактор MAX / Telegram</button>
+<button class="preset" onclick="setPreset('custom', this)" style="flex: 1 1 30%;">⚙️ Свой размер PNG-пост</button>
+</div>
+<div id="widthControl" style="display: none; background: #2a2f3a50; padding: 10px; border-radius: 8px; margin-top: 10px;">
+<label>Своя ширина: <span id="wLabel">800</span> px</label>
+<input type="range" id="width" min="300" max="2000" value="800" oninput="updateCustomWidth()">
+</div>
+<hr style="border-color: #2a2f3a; margin: 15px 0;">
+
+<div style="display: flex; gap: 10px; margin-bottom: 15px;">
+<div style="flex: 1;">
+<label style="color: #fff; margin-top: 0;">🎨 Фон поста</label>
+<input type="color" value="#ffffff" oninput="updateBgColor(this.value)">
+</div>
+<div style="flex: 1;">
+<label style="color: #fff; margin-top: 0;">✍️ Текст (общий)</label>
+<input type="color" value="#000000" oninput="updateMainTextColor(this.value)">
+</div>
+</div>
+
+<div style="margin-bottom: 15px;">
+<label style="color: #fff; margin-top: 0;">🔤 Основной шрифт всего поста</label>
+<select id="fontFamilySelector" onchange="updateFontFamily(this.value)">
+<option value="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif">📱 Системный (Стандарт)</option>
+<option value="'Times New Roman', Times, serif" style="font-family: 'Times New Roman', Times, serif">🏛️ Классический: Times New Roman</option>
+<option value="'Roboto', sans-serif" style="font-family: 'Roboto', sans-serif">🤖 Современный: Roboto</option>
+<option value="'Open Sans', sans-serif" style="font-family: 'Open Sans', sans-serif">📖 Открытый: Open Sans</option>
+<option value="'Montserrat', sans-serif" style="font-family: 'Montserrat', sans-serif">💎 Стильный: Montserrat</option>
+<option value="'Inter', sans-serif" style="font-family: 'Inter', sans-serif">✨ Чистый: Inter</option>
+<option value="'Oswald', sans-serif" style="font-family: 'Oswald', sans-serif">📏 Узкий: Oswald</option>
+<option value="'Raleway', sans-serif" style="font-family: 'Raleway', sans-serif">⚜️ Элегантный: Raleway</option>
+<option value="'Ubuntu', sans-serif" style="font-family: 'Ubuntu', sans-serif">🟢 Округлый: Ubuntu</option>
+<option value="'Nunito', sans-serif" style="font-family: 'Nunito', sans-serif">☁️ Мягкий: Nunito</option>
+<option value="'Rubik', sans-serif" style="font-family: 'Rubik', sans-serif">🟥 Плотный: Rubik</option>
+<option value="'Exo 2', sans-serif" style="font-family: 'Exo 2', sans-serif">⚡ Техно: Exo 2</option>
+<option value="'Merriweather', serif" style="font-family: 'Merriweather', serif">📚 Книжный: Merriweather</option>
+<option value="'Playfair Display', serif" style="font-family: 'Playfair Display', serif">📰 Журнальный: Playfair Display</option>
+<option value="'Lora', serif" style="font-family: 'Lora', serif">🪶 Поэтичный: Lora</option>
+<option value="'PT Serif', serif" style="font-family: 'PT Serif', serif">🏢 Официальный: PT Serif</option>
+<option value="'Cormorant Garamond', serif" style="font-family: 'Cormorant Garamond', serif">👑 Премиум: Cormorant Garamond</option>
+<option value="'Tenor Sans', sans-serif" style="font-family: 'Tenor Sans', sans-serif">🎨 Гротеск: Tenor Sans</option>
+<option value="'Alice', serif" style="font-family: 'Alice', serif">📜 Винтаж: Alice</option>
+<option value="'Comfortaa', cursive" style="font-family: 'Comfortaa', cursive">🎈 Пузырьковый: Comfortaa</option>
+<option value="'Caveat', cursive" style="font-family: 'Caveat', cursive">🖋️ Рукописный: Caveat</option>
+<option value="'Bebas Neue', sans-serif" style="font-family: 'Bebas Neue', sans-serif">📢 ТИТУЛ: Bebas Neue</option>
+<option value="'Russo One', sans-serif" style="font-family: 'Russo One', sans-serif">🔥 Мощный: Russo One</option>
+<option value="'Pacifico', cursive" style="font-family: 'Pacifico', cursive">🌊 Летний: Pacifico</option>
+<option value="'Kelly Slab', cursive" style="font-family: 'Kelly Slab', cursive">💻 Киберпанк: Kelly Slab</option>
+<option value="'Neucha', cursive" style="font-family: 'Neucha', cursive">✍️ Маркер: Neucha</option>
+<option value="'Amatic SC', cursive" style="font-family: 'Amatic SC', cursive">🎬 Кино: Amatic SC</option>
+<option value="'Marck Script', cursive" style="font-family: 'Marck Script', cursive">☕ Кофейня: Marck Script</option>
+<option value="'Bad Script', cursive" style="font-family: 'Bad Script', cursive">📝 Записки: Bad Script</option>
+<option value="'Yeseva One', serif" style="font-family: 'Yeseva One', serif">🌸 Салон: Yeseva One</option>
+<option value="'Philosopher', sans-serif" style="font-family: 'Philosopher', sans-serif">🕊️ Изящный: Philosopher</option>
+<option value="'Oranienbaum', serif" style="font-family: 'Oranienbaum', serif">🏛️ Антиква: Oranienbaum</option>
+</select>
+</div>
+
+<div class="dual-slider-row" style="display: flex; gap: 10px; margin-bottom: 15px;">
+<div style="flex: 1;">
+<label style="color: #fff; margin-top: 0;">🔠 Размер: <span id="baseFontSizeLabel">32</span> px</label>
+<input type="range" id="baseFontSlider" min="16" max="64" value="32" oninput="updateBaseFontSize(this.value)">
+</div>
+<div style="flex: 1;">
+<label style="color: #fff; margin-top: 0;">↕️ Интервал: <span id="lineHeightLabel">1.2</span></label>
+<input type="range" id="lineHeightSlider" min="0.8" max="2.5" step="0.05" value="1.2" oninput="updateLineHeight(this.value)">
+</div>
+</div>
+
+<div class="toolbar">
+<button id="btnUndo" onclick="undoAction()" title="Шаг назад (Ctrl+Z)" disabled>↩️</button>
+<button id="btnRedo" onclick="redoAction()" title="Шаг вперед (Ctrl+Y)" disabled>↪️</button>
+<div class="toolbar-divider"></div>
+<button onclick="format('bold')" title="Жирный"><b>Ж</b></button>
+<button onclick="format('italic')" title="Курсив"><i>К</i></button>
+<button onclick="format('underline')" title="Подчеркнутый"><u>Ч</u></button>
+<button onclick="format('strikeThrough')" title="Зачеркнутый"><s>S</s></button>
+<button onclick="formatCode()" title="Код"><code>&lt;/&gt;</code></button>
+<div class="toolbar-divider"></div>
+<button onclick="format('justifyLeft')" title="По левому краю">|≡</button>
+<button onclick="format('justifyCenter')" title="По центру">≡</button>
+<button onclick="format('justifyRight')" title="По правому краю">≡|</button>
+<button onclick="format('justifyFull')" title="По ширине">≡≡</button>
+<div class="toolbar-divider"></div>
+<button onclick="insertLink()" title="Ссылка">🔗</button>
+<input type="color" id="wordColor" value="#ff0000" oninput="applyTextColor(this.value)" title="Цвет выделенного текста">
+<button onclick="changeWordSize(1.2)" title="Увеличить выделенное">A+</button>
+<button onclick="changeWordSize(0.85)" title="Уменьшить выделенное">A-</button>
+<select onmousedown="saveSelectionBeforeAction()" onchange="applyWordFont(this.value); this.selectedIndex=0;" title="Шрифт выделенного слова" style="width:auto; min-width:65px; height:32px; padding:0 4px; font-size:12px; background:#2a2f3a; color:#e8e8e8; border:1px solid #2a2f3a; border-radius:6px; outline:none;">
+<option value="">🔤 Слово</option>
+<option value="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif">📱 Системный (Стандарт)</option>
+<option value="'Times New Roman', Times, serif" style="font-family: 'Times New Roman', Times, serif">🏛️ Классический: Times New Roman</option>
+<option value="'Roboto', sans-serif" style="font-family: 'Roboto', sans-serif">🤖 Современный: Roboto</option>
+<option value="'Open Sans', sans-serif" style="font-family: 'Open Sans', sans-serif">📖 Открытый: Open Sans</option>
+<option value="'Montserrat', sans-serif" style="font-family: 'Montserrat', sans-serif">💎 Стильный: Montserrat</option>
+<option value="'Inter', sans-serif" style="font-family: 'Inter', sans-serif">✨ Чистый: Inter</option>
+<option value="'Oswald', sans-serif" style="font-family: 'Oswald', sans-serif">📏 Узкий: Oswald</option>
+<option value="'Raleway', sans-serif" style="font-family: 'Raleway', sans-serif">⚜️ Элегантный: Raleway</option>
+<option value="'Ubuntu', sans-serif" style="font-family: 'Ubuntu', sans-serif">🟢 Округлый: Ubuntu</option>
+<option value="'Nunito', sans-serif" style="font-family: 'Nunito', sans-serif">☁️ Мягкий: Nunito</option>
+<option value="'Rubik', sans-serif" style="font-family: 'Rubik', sans-serif">🟥 Плотный: Rubik</option>
+<option value="'Exo 2', sans-serif" style="font-family: 'Exo 2', sans-serif">⚡ Техно: Exo 2</option>
+<option value="'Merriweather', serif" style="font-family: 'Merriweather', serif">📚 Книжный: Merriweather</option>
+<option value="'Playfair Display', serif" style="font-family: 'Playfair Display', serif">📰 Журнальный: Playfair Display</option>
+<option value="'Lora', serif" style="font-family: 'Lora', serif">🪶 Поэтичный: Lora</option>
+<option value="'PT Serif', serif" style="font-family: 'PT Serif', serif">🏢 Официальный: PT Serif</option>
+<option value="'Cormorant Garamond', serif" style="font-family: 'Cormorant Garamond', serif">👑 Премиум: Cormorant Garamond</option>
+<option value="'Tenor Sans', sans-serif" style="font-family: 'Tenor Sans', sans-serif">🎨 Гротеск: Tenor Sans</option>
+<option value="'Alice', serif" style="font-family: 'Alice', serif">📜 Винтаж: Alice</option>
+<option value="'Comfortaa', cursive" style="font-family: 'Comfortaa', cursive">🎈 Пузырьковый: Comfortaa</option>
+<option value="'Caveat', cursive" style="font-family: 'Caveat', cursive">🖋️ Рукописный: Caveat</option>
+<option value="'Bebas Neue', sans-serif" style="font-family: 'Bebas Neue', sans-serif">📢 ТИТУЛ: Bebas Neue</option>
+<option value="'Russo One', sans-serif" style="font-family: 'Russo One', sans-serif">🔥 Мощный: Russo One</option>
+<option value="'Pacifico', cursive" style="font-family: 'Pacifico', cursive">🌊 Летний: Pacifico</option>
+<option value="'Kelly Slab', cursive" style="font-family: 'Kelly Slab', cursive">💻 Киберпанк: Kelly Slab</option>
+<option value="'Neucha', cursive" style="font-family: 'Neucha', cursive">✍️ Маркер: Neucha</option>
+<option value="'Amatic SC', cursive" style="font-family: 'Amatic SC', cursive">🎬 Кино: Amatic SC</option>
+<option value="'Marck Script', cursive" style="font-family: 'Marck Script', cursive">☕ Кофейня: Marck Script</option>
+<option value="'Bad Script', cursive" style="font-family: 'Bad Script', cursive">📝 Записки: Bad Script</option>
+<option value="'Yeseva One', serif" style="font-family: 'Yeseva One', serif">🌸 Салон: Yeseva One</option>
+<option value="'Philosopher', sans-serif" style="font-family: 'Philosopher', sans-serif">🕊️ Изящный: Philosopher</option>
+<option value="'Oranienbaum', serif" style="font-family: 'Oranienbaum', serif">🏛️ Антиква: Oranienbaum</option>
+</select>
+<button onclick="deleteSelection()" title="Удалить выделенное">❌</button>
+<button onclick="cleanFormat()" title="Сбросить стили выделенного (Метёлка)">🧹</button>
+</div>
+
+<label style="color: #fff;">😀 Эмодзи для постов</label>
+<div class="emoji-wrap" id="emojiWrap"></div>
+
+<hr style="border-color: #2a2f3a; margin: 15px 0;">
+
+<div style="background: #2a2f3a50; padding: 15px; border-radius: 8px;">
+<label style="color: #4ade80;">🖼️ КАРТИНКИ</label>
+<input type="file" accept="image/*" multiple onchange="insertMultipleImages(event)">
+<div style="font-size: 11px; color: #9aa4b2; margin-top: 6px;">
+<b>Мультивыбор:</b> можешь выбрать сразу несколько картинок.<br>
+<b>Размер:</b> кликни и потяни за правый нижний угол ⇲.
+</div>
+<button id="btnDeleteImg" class="danger" onclick="deleteSelectedImage()" style="margin-top: 12px; padding: 8px; display: block;">🗑️ Удалить выбранную картинку</button>
+<button class="primary tb-hide-mobile" onclick="addTextBox()" style="margin-top: 12px; padding: 10px; background:#10b981;">➕ Добавить надпись (плашку)</button>
+  <div id="tbSettings" class="tb-hide-mobile" style="display:none; background:#10b98120; padding:12px; border-radius:8px; margin-top:12px; border:1px solid #10b981;">
+   <label style="color:#10b981; margin-top:0;">🎨 Настройки выбранной надписи</label>
+
+  <label>🔠 Размер текста: <span id="tbFontSizeLabel">24</span> px</label>
+  <input type="range" id="tbFontSize" min="10" max="120" value="24" oninput="setTbFontSize(this.value)">
+
+  <label>🎨 Цвет фона плашки</label>
+  <input type="color" id="tbBgColor" value="#000000" oninput="setTbBgColor(this.value)">
+    <label>👻 Прозрачность фона: <span id="tbBgOpacityLabel">55</span>%</label>
+  <input type="range" id="tbBgOpacity" min="0" max="100" value="55" oninput="setTbBgOpacity(this.value)">
+    <label>↕️ Интервал строк: <span id="tbLineHeightLabel">1.25</span></label>
+  <input type="range" id="tbLineHeight" min="0.8" max="2.5" step="0.05" value="1.25" oninput="setTbLineHeight(this.value)">
+
+  <button type="button" onclick="document.getElementById('tbImageInput').click()" style="width:100%; margin-top:10px; background:#10b981; color:#fff; padding:10px;">🖼️ Вставить картинку в плашку</button>
+  <input type="file" id="tbImageInput" accept="image/*" style="display:none;" onchange="insertImageIntoTextBox(event)">
+
+  <button type="button" id="tbRibbonToggle" onclick="toggleRibbonMode()" style="width:100%; margin-top:10px; background:#8b5cf6; color:#fff; padding:10px;">🎀 Добавить подложку для текста</button>
+
+  <div id="tbRibbonSettings" style="display:none; background:#8b5cf620; padding:12px; border-radius:8px; margin-top:10px; border:1px solid #8b5cf6;">
+    <label style="color:#a78bfa; margin-top:0;">🎀 Настройки подложки (лент)</label>
+    <label>🎨 Цвет подложки</label>
+    <input type="color" id="tbRibbonColor" value="#000000" oninput="setTbRibbonColor(this.value)">
+    <label>👻 Прозрачность подложки: <span id="tbRibbonOpacityLabel">85</span>%</label>
+    <input type="range" id="tbRibbonOpacity" min="0" max="100" value="85" oninput="setTbRibbonOpacity(this.value)">
+    <label>⬜ Скругление: <span id="tbRibbonRadiusLabel">6</span> px</label>
+    <input type="range" id="tbRibbonRadius" min="0" max="30" value="6" oninput="setTbRibbonRadius(this.value)">
+    <label>↔️ Плотность (ширина): <span id="tbRibbonPadHLabel">0.3</span> em</label>
+    <input type="range" id="tbRibbonPadH" min="0" max="1.5" step="0.05" value="0.3" oninput="setTbRibbonPadH(this.value)">
+    <label>↕️ Высота подложки: <span id="tbRibbonPadVLabel">0.25</span></label>
+    <input type="range" id="tbRibbonPadV" min="0" max="0.5" step="0.01" value="0.25" oninput="setTbRibbonPadV(this.value)"> 
+  </div>
+</div>
+<div id="imgSettings">
+  <label style="color:#4ade80; margin-top:0;">🎛️ Настройки выбранной картинки</label>
+  <label>↔️ Отступ текста: <span id="imgGapLabel">20</span> px</label>
+  <input type="range" id="imgGapRange" min="0" max="60" value="20" oninput="setImgGap(this.value)">
+  <label>⬜ Скругление углов: <span id="imgRadiusLabel">12</span> px</label>
+  <input type="range" id="imgRadiusRange" min="0" max="60" value="12" oninput="setImgRadius(this.value)">
+  <label>🖼️ Рамка: <span id="imgBorderLabel">0</span> px</label>
+  <input type="range" id="imgBorderRange" min="0" max="12" value="0" oninput="setImgBorder(this.value)">
+  <label>🎨 Цвет рамки</label>
+  <input type="color" id="imgBorderColor" value="#000000" oninput="setImgBorderColor(this.value)">
+  <label>🔄 Поворот: <span id="imgRotLabel">0</span>°</label>
+  <div style="display:flex; gap:6px; align-items:center; margin-top:4px;">
+    <button type="button" onclick="miniRotate(-90)" style="flex:0 0 auto; width:38px; height:34px; background:#2a2f3a; color:#fff;">↺</button>
+    <input type="range" id="imgRotRange" min="-180" max="180" value="0" step="1" oninput="setImgRot(this.value)" style="flex:1;">
+    <button type="button" onclick="miniRotate(90)" style="flex:0 0 auto; width:38px; height:34px; background:#2a2f3a; color:#fff;">↻</button>
+  </div>
+  <button type="button" onclick="setImgRot(0)" style="width:100%; margin-top:6px; background:#2a2f3a; color:#fff; padding:6px;">⟲ Сбросить поворот</button>
+</div></div>
+
+<div class="ratio-box" id="ratioBox">
+<div class="ratio-title ok" id="ratioTitle">🟢 Идеальные пропорции для ленты (PNG)</div>
+<div class="ratio-bar-track"><div class="ratio-bar-fill" id="ratioFill"></div></div>
+<div class="ratio-info">
+<div class="stats-row">
+<span>Размер: <b id="ratioSize">800 × 100</b></span>
+<span>1 : <b id="ratioValue">0.1</b></span>
+</div>
+</div>
+</div>
+
+<div class="stats-box">
+<div class="stats-row">
+<span>Символы: <span id="charCount">0</span></span>
+<span>Фото: <span id="imgCount">0</span>/10</span>
+</div>
+</div>
+
+<button class="primary" id="exportBtn" onclick="processExport()">⬇️ Скачать PNG-пост</button>
+
+<div style="display: flex; gap: 8px; margin-top: 10px; flex-direction: column;">
+<button class="primary" id="copyTgBtn" onclick="copyForTelegram()" style="background:#2481cc; margin-top: 0; padding: 12px; font-size: 14px;">⧉ Скопировать для MAX / Telegram</button>
+</div>
+
+<button class="danger" onclick="clearEditor()">🗑️ Очистить холст</button>
+</div>
+
+<button id="panelHandle" onclick="togglePanel()">›</button>
+
+<div class="stage" id="stageArea">
+<div id="floatUndoRedo">
+<button id="floatUndo" onclick="undoAction()" title="Отменить">↩️</button>
+<button id="floatRedo" onclick="redoAction()" title="Повторить">↪️</button>
+</div>
+<button id="mobileToolsBtn" onclick="onMobileToolsClick()">⚙️ Инструменты</button>
+
+<div id="zoomControls">
+<button id="modeBtn" onclick="toggleMode()" title="Режим: Текст / Рука" style="min-width:auto; padding:0 8px; width:auto;">✍️</button>
+<div class="toolbar-divider" style="height:24px;"></div>
+<button onclick="zoomStep(-0.1)" title="Отдалить">➖</button>
+<span id="zoomLabel">100%</span>
+<button onclick="zoomStep(0.1)" title="Приблизить">➕</button>
+<button onclick="zoomFit()" title="По размеру экрана">⛶</button>
+</div>
+
+<div id="zoom-wrapper">
+<div id="export-node" class="no-tail" style="border-radius: 16px;">
+<div id="editor" contenteditable="true" placeholder="Начни писать статью здесь..."></div>
+</div>
+</div>
+</div>
+
+<div class="modal-overlay" id="textModal">
+<div class="modal">
+<h2>Твоя картинка и текст</h2>
+<img id="previewImage" src="" alt="Готовый пост">
+<p style="font-size: 12px; color: #9aa4b2; margin-top: 10px;">Вставь это под картинкой:</p>
+<textarea id="markdownOutput" readonly></textarea>
+<div style="display: flex; gap: 8px; flex-direction: column;">
+<div style="display: flex; gap: 8px;">
+<button class="primary" style="margin-top:0; background:#2481cc; padding: 12px; flex: 1; font-size: 13px; line-height: 1.2;" onclick="copyForTelegram()">⧉ Скопировать<br>для MAX / Telegram</button>
+</div>
+<button class="danger" style="margin-top:0; padding: 10px; font-size: 14px;" onclick="document.getElementById('textModal').style.display='none'">Закрыть</button>
+</div>
+</div>
+</div>
+
+<!-- МИНИ-ПАНЕЛЬ КАРТИНКИ (Компьютер) -->
+<div id="imgMiniBar">
+  <button onmousedown="event.preventDefault()" onclick="miniDuplicate()" title="Дублировать">🗐</button>
+  <div class="mb-div"></div>
+  <button onmousedown="event.preventDefault()" onclick="miniAlign('left')" title="Слева">◀</button>
+  <button onmousedown="event.preventDefault()" onclick="miniAlign('center')" title="По центру">▲</button>
+  <button onmousedown="event.preventDefault()" onclick="miniAlign('right')" title="Справа">▶</button>
+  <div class="mb-div"></div>
+  <button onmousedown="event.preventDefault()" onclick="miniRotate(-90)" title="Повернуть влево">↺</button>
+  <input type="range" id="miniRotSlider" min="-180" max="180" value="0" step="1" oninput="setImgRot(this.value)" onmousedown="event.stopPropagation()" style="width:70px; height:20px; margin:0 2px;" title="Плавный поворот">
+  <button onmousedown="event.preventDefault()" onclick="miniRotate(90)" title="Повернуть вправо">↻</button>
+  <div class="mb-div"></div>
+  <button onmousedown="event.preventDefault()" onclick="miniToTop()" title="В начало поста">⬆️</button>
+  <button onmousedown="event.preventDefault()" onclick="miniToBottom()" title="В конец поста">⬇️</button>
+  <div class="mb-div"></div>
+  <button onmousedown="event.preventDefault()" onclick="miniDelete()" title="Удалить">🗑️</button>
+</div>
+
+<!-- ТЕЛЕФОННАЯ ПЛАВАЮЩАЯ МЕНЮ КАРТИНКИ -->
+<div id="imgMobilePanel">
+  <div class="imp-head" id="impHead">
+    <span class="imp-title">🎛️ Картинка</span>
+    <span class="imp-close" onclick="closeImgMobilePanel()">✕</span>
+  </div>
+  <label>↔️ Отступ текста: <span id="impGapLabel">20</span> px</label>
+  <input type="range" id="impGapRange" min="0" max="60" value="20" oninput="setImgGap(this.value)">
+  <label>⬜ Скругление: <span id="impRadiusLabel">12</span> px</label>
+  <input type="range" id="impRadiusRange" min="0" max="60" value="12" oninput="setImgRadius(this.value)">
+  <label>🖼️ Рамка: <span id="impBorderLabel">0</span> px</label>
+  <input type="range" id="impBorderRange" min="0" max="12" value="0" oninput="setImgBorder(this.value)">
+  <label>🎨 Цвет рамки</label>
+  <input type="color" id="impBorderColor" value="#000000" oninput="setImgBorderColor(this.value)">
+  <label>🔄 Поворот: <span id="impRotLabel">0</span>°</label>
+  <div class="imp-rot-row">
+    <button onclick="miniRotate(-90)">↺</button>
+    <button id="impRotLock" onclick="toggleRotLock()" title="Включить/выключить плавный поворот" style="flex:0 0 auto; width:34px; height:32px; background:#2a2f3a; color:#fff;">🔒</button>
+    <input type="range" id="impRotRange" min="-180" max="180" value="0" step="1" oninput="setImgRot(this.value)" style="flex:1; opacity:0.4; pointer-events:none;">
+    <button onclick="miniRotate(90)">↻</button>
+  </div>
+  <div class="imp-btns">
+    <button onclick="miniDuplicate()" title="Дублировать">🗐</button>
+    <button onclick="miniAlign('left')" title="Слева">◀</button>
+    <button onclick="miniAlign('center')" title="Центр">▲</button>
+    <button onclick="miniAlign('right')" title="Справа">▶</button>
+    <button onclick="miniToTop()" title="В начало">⬆️</button>
+    <button onclick="miniToBottom()" title="В конец">⬇️</button>
+    <button onclick="miniDelete()" title="Удалить">🗑️</button>
+  </div>
+</div>
+
+<!-- QUICKBAR -->
+<div id="quickBar">
+<button onmousedown="undoAction(event)">↩️</button>
+<button onmousedown="redoAction(event)">↪️</button>
+<button onmousedown="qb(event,'bold')"><b>Ж</b></button>
+<button onmousedown="qb(event,'italic')"><i>К</i></button>
+<button onmousedown="qb(event,'underline')"><u>Ч</u></button>
+<button onmousedown="qbSize(event,1.2)">A+</button>
+<button onmousedown="qbSize(event,0.85)">A-</button>
+<input type="color" id="qbWordColor" value="#ff0000" oninput="applyTextColor(this.value)" onchange="applyTextColor(this.value)" title="Цвет выделенного текста">
+<button onmousedown="qbLink(event)">🔗</button>
+<button onmousedown="qbClean(event)" title="Сбросить стили">🧹</button>
+<button onmousedown="qbImage(event)" title="Добавить картинку">🖼️</button>
+<select id="qbFontSelect" ontouchstart="freezeSelectionForFont(); event.stopPropagation();" onmousedown="freezeSelectionForFont(); event.stopPropagation();" onchange="qbFont(this.value); this.selectedIndex=0;" title="Шрифт выделенного слова" style="flex:0 0 auto; width:auto; min-width:90px; height:42px; padding:0 6px; border-radius:10px; background:#2a2f3a; color:#e6ebf2; border:1px solid #3a4150; font-size:13px;">
+<option value="">🔤 Шрифт</option>
+<option value="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif">📱 Системный (Стандарт)</option>
+<option value="'Times New Roman', Times, serif" style="font-family: 'Times New Roman', Times, serif">🏛️ Классический: Times New Roman</option>
+<option value="'Roboto', sans-serif" style="font-family: 'Roboto', sans-serif">🤖 Современный: Roboto</option>
+<option value="'Open Sans', sans-serif" style="font-family: 'Open Sans', sans-serif">📖 Открытый: Open Sans</option>
+<option value="'Montserrat', sans-serif" style="font-family: 'Montserrat', sans-serif">💎 Стильный: Montserrat</option>
+<option value="'Inter', sans-serif" style="font-family: 'Inter', sans-serif">✨ Чистый: Inter</option>
+<option value="'Oswald', sans-serif" style="font-family: 'Oswald', sans-serif">📏 Узкий: Oswald</option>
+<option value="'Raleway', sans-serif" style="font-family: 'Raleway', sans-serif">⚜️ Элегантный: Raleway</option>
+<option value="'Ubuntu', sans-serif" style="font-family: 'Ubuntu', sans-serif">🟢 Округлый: Ubuntu</option>
+<option value="'Nunito', sans-serif" style="font-family: 'Nunito', sans-serif">☁️ Мягкий: Nunito</option>
+<option value="'Rubik', sans-serif" style="font-family: 'Rubik', sans-serif">🟥 Плотный: Rubik</option>
+<option value="'Exo 2', sans-serif" style="font-family: 'Exo 2', sans-serif">⚡ Техно: Exo 2</option>
+<option value="'Merriweather', serif" style="font-family: 'Merriweather', serif">📚 Книжный: Merriweather</option>
+<option value="'Playfair Display', serif" style="font-family: 'Playfair Display', serif">📰 Журнальный: Playfair Display</option>
+<option value="'Lora', serif" style="font-family: 'Lora', serif">🪶 Поэтичный: Lora</option>
+<option value="'PT Serif', serif" style="font-family: 'PT Serif', serif">🏢 Официальный: PT Serif</option>
+<option value="'Cormorant Garamond', serif" style="font-family: 'Cormorant Garamond', serif">👑 Премиум: Cormorant Garamond</option>
+<option value="'Tenor Sans', sans-serif" style="font-family: 'Tenor Sans', sans-serif">🎨 Гротеск: Tenor Sans</option>
+<option value="'Alice', serif" style="font-family: 'Alice', serif">📜 Винтаж: Alice</option>
+<option value="'Comfortaa', cursive" style="font-family: 'Comfortaa', cursive">🎈 Пузырьковый: Comfortaa</option>
+<option value="'Caveat', cursive" style="font-family: 'Caveat', cursive">🖋️ Рукописный: Caveat</option>
+<option value="'Bebas Neue', sans-serif" style="font-family: 'Bebas Neue', sans-serif">📢 ТИТУЛ: Bebas Neue</option>
+<option value="'Russo One', sans-serif" style="font-family: 'Russo One', sans-serif">🔥 Мощный: Russo One</option>
+<option value="'Pacifico', cursive" style="font-family: 'Pacifico', cursive">🌊 Летний: Pacifico</option>
+<option value="'Kelly Slab', cursive" style="font-family: 'Kelly Slab', cursive">💻 Киберпанк: Kelly Slab</option>
+<option value="'Neucha', cursive" style="font-family: 'Neucha', cursive">✍️ Маркер: Neucha</option>
+<option value="'Amatic SC', cursive" style="font-family: 'Amatic SC', cursive">🎬 Кино: Amatic SC</option>
+<option value="'Marck Script', cursive" style="font-family: 'Marck Script', cursive">☕ Кофейня: Marck Script</option>
+<option value="'Bad Script', cursive" style="font-family: 'Bad Script', cursive">📝 Записки: Bad Script</option>
+<option value="'Yeseva One', serif" style="font-family: 'Yeseva One', serif">🌸 Салон: Yeseva One</option>
+<option value="'Philosopher', sans-serif" style="font-family: 'Philosopher', sans-serif">🕊️ Изящный: Philosopher</option>
+<option value="'Oranienbaum', serif" style="font-family: 'Oranienbaum', serif">🏛️ Антиква: Oranienbaum</option>
+</select>
+<button class="tb-hide-mobile" onmousedown="event.preventDefault(); addTextBox();" title="Добавить надпись">📝</button>
+<input type="file" id="qbImageInput" accept="image/*" multiple style="display:none;" onchange="insertMultipleImages(event)">
+</div>
+
+<script>
+const editor = document.getElementById('editor');
+const exportNode = document.getElementById('export-node');
+const stageArea = document.getElementById('stageArea');
+const zoomWrapper = document.getElementById('zoom-wrapper');
+const baseFontSlider = document.getElementById('baseFontSlider');
+const lineHeightSlider = document.getElementById('lineHeightSlider');
+const fontFamilySelector = document.getElementById('fontFamilySelector');
+let savedSelectionForFont = null;
+let savedSelection = null;
+let currentImgBox = null;
+let historyStack = [];
+let historyIndex = -1;
+
+function isMobile() { return window.innerWidth <= 820; }
+function focusEditor() { if (!isMobile()) editor.focus(); }
+
+function setRealVH() {
+const vh = window.innerHeight * 0.01;
+document.documentElement.style.setProperty('--vh', vh + 'px');
+autoScreenFit();
+}
+window.addEventListener('resize', setRealVH);
+window.addEventListener('orientationchange', function(){ setTimeout(setRealVH, 200); });
+
+function updateUndoRedoButtons() {
+document.getElementById('btnUndo').disabled = (historyIndex <= 0);
+document.getElementById('btnRedo').disabled = (historyIndex >= historyStack.length - 1);
+const fU = document.getElementById('floatUndo');
+const fR = document.getElementById('floatRedo');
+if (fU) fU.disabled = (historyIndex <= 0);
+if (fR) fR.disabled = (historyIndex >= historyStack.length - 1);
+}
+
+function saveHistory() {
+const textBoxesData = Array.from(exportNode.querySelectorAll('.text-box')).map(b => {
+  const contentEl = b.querySelector('.tb-content');
+   return {
+    html: contentEl ? contentEl.innerHTML : '',
+    left: b.style.left,
+    top: b.style.top,
+    width: b.style.width || '',
+    height: (contentEl && contentEl.style.height) ? contentEl.style.height : '',
+    bgColor: b.dataset.bgColor || '#000000',
+    bgOpacity: (b.dataset.bgOpacity !== undefined) ? b.dataset.bgOpacity : '55',
+        lineHeight: b.dataset.lineHeight || '1.25',
+    fontSize: b.dataset.fontSize || '',
+    mode: b.dataset.mode || 'plate',
+    ribbonColor: b.dataset.ribbonColor || '#000000',
+    ribbonOpacity: (b.dataset.ribbonOpacity !== undefined) ? b.dataset.ribbonOpacity : '85',
+    ribbonRadius: b.dataset.ribbonRadius || '6',
+    ribbonPadH: b.dataset.ribbonPadH || '0.3',
+    ribbonPadV: b.dataset.ribbonPadV || '0.25',
+    rot: b.dataset.rot || '0'
+  };
+});
+const snapshot = { 
+  html: editor.innerHTML, 
+  textBoxes: textBoxesData,
+  fontSize: baseFontSlider.value, 
+  lineHeight: lineHeightSlider.value, 
+  fontFamily: fontFamilySelector.value 
+};
+if (historyIndex >= 0) {
+const last = historyStack[historyIndex];
+if (last.html === snapshot.html && JSON.stringify(last.textBoxes) === JSON.stringify(snapshot.textBoxes) && last.fontSize === snapshot.fontSize && last.lineHeight === snapshot.lineHeight && last.fontFamily === snapshot.fontFamily) return;
+}
+if (historyIndex < historyStack.length - 1) historyStack = historyStack.slice(0, historyIndex + 1);
+historyStack.push(snapshot);
+if (historyStack.length > 50) historyStack.shift(); else historyIndex++;
+updateUndoRedoButtons();
+}
+
+function applySnapshot(snapshot) {
+editor.innerHTML = snapshot.html;
+baseFontSlider.value = snapshot.fontSize;
+document.getElementById('baseFontSizeLabel').textContent = snapshot.fontSize;
+editor.style.fontSize = snapshot.fontSize + 'px';
+lineHeightSlider.value = snapshot.lineHeight;
+document.getElementById('lineHeightLabel').textContent = snapshot.lineHeight;
+editor.style.lineHeight = snapshot.lineHeight;
+fontFamilySelector.value = snapshot.fontFamily;
+editor.style.fontFamily = snapshot.fontFamily;
+
+exportNode.querySelectorAll('.text-box').forEach(b => b.remove());
+if (snapshot.textBoxes && Array.isArray(snapshot.textBoxes)) {
+  snapshot.textBoxes.forEach(tb => {
+    const box = document.createElement('div');
+    box.className = 'text-box';
+      box.style.left = tb.left;
+    box.style.top = tb.top;
+    if (tb.width) box.style.width = tb.width;
+    if (tb.bgColor) box.dataset.bgColor = tb.bgColor;
+    if (tb.bgOpacity !== undefined) box.dataset.bgOpacity = tb.bgOpacity;
+        if (tb.lineHeight !== undefined) box.dataset.lineHeight = tb.lineHeight;
+    if (tb.fontSize) box.dataset.fontSize = tb.fontSize;
+    if (tb.mode !== undefined) box.dataset.mode = tb.mode;
+    if (tb.ribbonColor !== undefined) box.dataset.ribbonColor = tb.ribbonColor;
+    if (tb.ribbonOpacity !== undefined) box.dataset.ribbonOpacity = tb.ribbonOpacity;
+    if (tb.ribbonRadius !== undefined) box.dataset.ribbonRadius = tb.ribbonRadius;
+    if (tb.ribbonPadH !== undefined) box.dataset.ribbonPadH = tb.ribbonPadH;
+    if (tb.ribbonPadV !== undefined) box.dataset.ribbonPadV = tb.ribbonPadV;
+    if (tb.rot !== undefined) box.dataset.rot = tb.rot;
+    
+    const content = document.createElement('div');
+    content.className = 'tb-content';
+    content.contentEditable = 'true';
+    content.setAttribute('data-ph', 'Твой текст…');
+    content.innerHTML = tb.html;
+    if (tb.lineHeight) content.style.lineHeight = tb.lineHeight;
+    if (tb.fontSize) content.style.fontSize = tb.fontSize + 'px';
+    if (tb.height) content.style.height = tb.height;
+    box.appendChild(content);
+
+    exportNode.appendChild(box);
+    applyTbBg(box);
+    bindTextBox(box);
+  });
+}
+}
+
+function undoAction(e) {
+if(e && e.preventDefault) e.preventDefault();
+if (historyIndex > 0) { historyIndex--; applySnapshot(historyStack[historyIndex]); restoreAfterHistoryChange(); }
+}
+function redoAction(e) {
+if(e && e.preventDefault) e.preventDefault();
+if (historyIndex < historyStack.length - 1) { historyIndex++; applySnapshot(historyStack[historyIndex]); restoreAfterHistoryChange(); }
+}
+
+function restoreAfterHistoryChange() {
+rebindImages();
+ensureAnchorBeforeImages();
+updateImgCounter();
+document.getElementById('charCount').textContent = editor.innerText.replace(/\u200B/g, '').trim().length;
+updateRatio();
+updateUndoRedoButtons();
+currentImgBox = null;
+focusEditor();
+}
+
+function rebindImages() {
+editor.querySelectorAll('.img-box').forEach(function(box) {
+box.setAttribute('draggable', 'true');
+box.contentEditable = 'false';
+box.onclick = function(e) { e.stopPropagation(); selectImgBox(box); };
+let resizer = box.querySelector('.img-resizer');
+if (!resizer) {
+resizer = document.createElement('span');
+resizer.className = 'img-resizer';
+resizer.contentEditable = 'false';
+box.appendChild(resizer);
+}
+ensureRotor(box);
+applyImgStyles(box);
+bindResizer(box);
+});
+}
+
+function ensureAnchorBeforeImages() {
+editor.querySelectorAll('.img-box').forEach(function(box) {
+const prev = box.previousSibling;
+const needAnchor = !prev || (prev.nodeType === Node.ELEMENT_NODE && prev.tagName === 'BR');
+
+const isFloat = !box.classList.contains('align-center');
+const isFirstInEditor = !prev;
+
+if (isFirstInEditor && isFloat) {
+let p = box.previousSibling;
+if (p && p.nodeType === Node.TEXT_NODE && p.textContent === '\u200B') p.remove();
+const after = box.nextSibling;
+if (!after || after.nodeType !== Node.TEXT_NODE || after.textContent !== '\u200B') {
+box.parentNode.insertBefore(document.createTextNode('\u200B'), box.nextSibling);
+}
+return;
+}
+
+if (needAnchor) {
+box.parentNode.insertBefore(document.createTextNode('\u200B'), box);
+}
+});
+}
+
+function snapImageToLineStart(box) {
+  if (!box) return;
+  let prev = box.previousSibling;
+  while (prev) {
+    if (prev.nodeType === Node.ELEMENT_NODE && prev.tagName === 'BR') break;
+    if (prev.nodeType === Node.TEXT_NODE && prev.textContent === '\u200B') { prev = prev.previousSibling; continue; }
+    if (prev.nodeType === Node.TEXT_NODE) {
+      box.parentNode.insertBefore(box, prev);
+      prev = box.previousSibling;
+      continue;
+    }
+    break;
+  }
+}
+
+const SAFE_RATIO = 1.25;
+const WARN_RATIO = 1.60;
+
+let currentZoom = 1;
+let userZoomed = false;
+let panX = 0;
+let panY = 0;
+let handMode = false;
+
+function toggleMode() {
+handMode = !handMode;
+const btn = document.getElementById('modeBtn');
+if (handMode) {
+stageArea.classList.add('hand-mode');
+btn.textContent = '✋';
+btn.classList.add('active');
+editor.setAttribute('contenteditable', 'false');
+editor.blur();
+if (document.activeElement) document.activeElement.blur();
+} else {
+stageArea.classList.remove('hand-mode');
+btn.textContent = '✍️';
+btn.classList.remove('active');
+editor.setAttribute('contenteditable', 'true');
+editor.focus();
+}
+}
+
+function applyZoom() {
+if (currentZoom < 0.1) currentZoom = 0.1;
+if (currentZoom > 3) currentZoom = 3;
+zoomWrapper.style.transform = 'translate(' + panX + 'px, ' + panY + 'px) scale(' + currentZoom + ')';
+const label = document.getElementById('zoomLabel');
+if (label) label.textContent = Math.round(currentZoom * 100) + '%';
+}
+
+function autoScreenFit() {
+if (userZoomed) { applyZoom(); return; }
+const availW = stageArea.clientWidth - 40;
+const availH = stageArea.clientHeight - 40;
+const nodeW = exportNode.offsetWidth;
+const nodeH = exportNode.offsetHeight;
+let scale = Math.min(availW / nodeW, availH / nodeH, 1);
+if (scale < 0.1) scale = 0.1;
+currentZoom = scale;
+panX = 0; panY = 0;
+applyZoom();
+}
+
+function zoomStep(delta) {
+userZoomed = true;
+currentZoom = Math.round((currentZoom + delta) * 100) / 100;
+applyZoom();
+}
+
+function zoomFit() {
+userZoomed = false;
+panX = 0; panY = 0;
+if (handMode) toggleMode();
+autoScreenFit();
+}
+
+function canPan(target) {
+if (target.closest('#zoomControls')) return false;
+if (target.closest('.text-box')) return false;
+if (target.closest('.img-box')) return false;
+if (handMode) return true;
+if (target.closest('#editor')) return false;
+return true;
+}
+
+stageArea.addEventListener('wheel', function(e) {
+e.preventDefault();
+userZoomed = true;
+if (e.ctrlKey || e.metaKey) {
+currentZoom += (e.deltaY < 0 ? 0.1 : -0.1);
+} else {
+if (e.shiftKey) {
+panX -= e.deltaY;
+} else {
+panX -= e.deltaX;
+panY -= e.deltaY;
+}
+}
+applyZoom();
+}, { passive: false });
+
+let isPanning = false, panStartX = 0, panStartY = 0, panOrigX = 0, panOrigY = 0;
+stageArea.addEventListener('mousedown', function(e) {
+if (!canPan(e.target)) return;
+isPanning = true;
+userZoomed = true;
+stageArea.classList.add('panning');
+zoomWrapper.classList.add('dragging');
+panStartX = e.clientX; panStartY = e.clientY;
+panOrigX = panX; panOrigY = panY;
+});
+document.addEventListener('mousemove', function(e) {
+if (!isPanning) return;
+panX = panOrigX + (e.clientX - panStartX);
+panY = panOrigY + (e.clientY - panStartY);
+applyZoom();
+});
+document.addEventListener('mouseup', function() {
+if (!isPanning) return;
+isPanning = false;
+stageArea.classList.remove('panning');
+zoomWrapper.classList.remove('dragging');
+});
+
+let pinchStartDist = 0, pinchStartZoom = 1;
+let touchPanStartX = 0, touchPanStartY = 0, touchPanOrigX = 0, touchPanOrigY = 0;
+let touchMode = null;
+
+stageArea.addEventListener('touchstart', function(e) {
+if (e.touches.length === 1) {
+if (!canPan(e.target)) { touchMode = null; return; }
+touchMode = 'pan';
+userZoomed = true;
+stageArea.classList.add('panning');
+zoomWrapper.classList.add('dragging');
+touchPanStartX = e.touches[0].clientX;
+touchPanStartY = e.touches[0].clientY;
+touchPanOrigX = panX;
+touchPanOrigY = panY;
+} else if (e.touches.length === 2) {
+touchMode = 'pinch';
+zoomWrapper.classList.add('dragging');
+pinchStartDist = Math.hypot(
+e.touches[0].clientX - e.touches[1].clientX,
+e.touches[0].clientY - e.touches[1].clientY
+);
+pinchStartZoom = currentZoom;
+}
+}, { passive: false });
+
+stageArea.addEventListener('touchmove', function(e) {
+if (touchMode === 'pan' && e.touches.length === 1) {
+e.preventDefault();
+panX = touchPanOrigX + (e.touches[0].clientX - touchPanStartX);
+panY = touchPanOrigY + (e.touches[0].clientY - touchPanStartY);
+applyZoom();
+} else if (touchMode === 'pinch' && e.touches.length === 2) {
+e.preventDefault();
+userZoomed = true;
+const dist = Math.hypot(
+e.touches[0].clientX - e.touches[1].clientX,
+e.touches[0].clientY - e.touches[1].clientY
+);
+currentZoom = pinchStartZoom * (dist / pinchStartDist);
+applyZoom();
+}
+}, { passive: false });
+
+stageArea.addEventListener('touchend', function(e) {
+if (e.touches.length === 0) {
+touchMode = null;
+stageArea.classList.remove('panning');
+zoomWrapper.classList.remove('dragging');
+}
+}, { passive: false });
+
+window.onload = () => { saveHistory(); focusEditor(); setRealVH(); updateRatio(); autoScreenFit(); };
+
+function updateBgColor(color) { exportNode.style.setProperty('--bg-color', color); }
+function updateMainTextColor(color) { exportNode.style.setProperty('--text-color', color); }
+function updateFontFamily(font) { editor.style.fontFamily = font; updateRatio(); saveHistory(); }
+
+  let _fitTimer = null;
+function scheduleScreenFit() {
+  clearTimeout(_fitTimer);
+  _fitTimer = setTimeout(autoScreenFit, 250);
+}
+function updateRatio() {
+const w = exportNode.offsetWidth;
+const h = exportNode.offsetHeight;
+const ratio = h / w;
+const box = document.getElementById('ratioBox');
+const title = document.getElementById('ratioTitle');
+const fill = document.getElementById('ratioFill');
+document.getElementById('ratioSize').textContent = w + ' × ' + h;
+document.getElementById('ratioValue').textContent = ratio.toFixed(2);
+let percent = Math.min((ratio / WARN_RATIO) * 100, 100);
+fill.style.width = percent + '%';
+box.classList.remove('warn', 'danger');
+if (ratio <= SAFE_RATIO) {
+title.className = 'ratio-title ok';
+title.textContent = '🟢 Идеальные пропорции для ленты (PNG)';
+fill.style.background = '#4ade80';
+} else if (ratio <= WARN_RATIO) {
+box.classList.add('warn');
+title.className = 'ratio-title warn';
+title.textContent = '🟡 PNG вытягивается (в чате будет казаться уже)';
+fill.style.background = '#fbbf24';
+} else {
+box.classList.add('danger');
+title.className = 'ratio-title danger';
+title.textContent = '🔴 Очень высокий PNG! В чате он станет совсем узким';
+fill.style.background = '#ff4d4d';
+}
+scheduleScreenFit();
+}
+
+function updateLineHeight(val) {
+document.getElementById('lineHeightLabel').textContent = val;
+editor.style.lineHeight = val;
+updateRatio();
+clearTimeout(typeTimer);
+typeTimer = setTimeout(saveHistory, 400);
+}
+
+function applyBase(base) {
+baseFontSlider.value = base;
+document.getElementById('baseFontSizeLabel').textContent = base;
+editor.style.fontSize = base + 'px';
+editor.querySelectorAll('*').forEach(el => {
+if (!el.getAttribute('data-custom-size') && el.tagName !== 'CODE' && !el.classList.contains('img-box') && !el.classList.contains('img-resizer')) {
+el.style.fontSize = '';
+}
+});
+}
+
+function updateBaseFontSize(size) { applyBase(size); updateRatio(); clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400); }
+
+let typeTimer = null;
+editor.addEventListener('input', function() {
+document.getElementById('charCount').textContent = editor.innerText.replace(/\u200B/g, '').trim().length;
+updateImgCounter();
+updateRatio();
+clearTimeout(typeTimer);
+typeTimer = setTimeout(saveHistory, 400);
+});
+
+editor.addEventListener('paste', function(e) {
+e.preventDefault();
+const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+document.execCommand('insertText', false, text);
+updateRatio();
+saveHistory();
+});
+
+function clearEditor() {
+editor.innerHTML = '';
+exportNode.querySelectorAll('.text-box').forEach(b => b.remove());
+updateImgCounter();
+document.getElementById('charCount').textContent = '0';
+updateRatio();
+currentImgBox = null;
+currentTextBox = null;
+saveHistory();
+focusEditor();
+}
+
+function setPreset(mode, btn) {
+document.querySelectorAll('.preset').forEach(function(b) { b.classList.remove('active'); });
+btn.classList.add('active');
+const widthControl = document.getElementById('widthControl');
+exportNode.classList.remove('no-tail');
+widthControl.style.display = 'none';
+if (mode === 'telegram') {
+exportNode.style.width = '800px';
+exportNode.classList.add('no-tail');
+exportNode.style.borderRadius = '16px';
+stageArea.style.backgroundColor = '#748eaa';
+} else if (mode === 'custom') {
+widthControl.style.display = 'block';
+exportNode.classList.add('no-tail');
+exportNode.style.borderRadius = '16px';
+stageArea.style.backgroundColor = '#2a2f3a';
+updateCustomWidth();
+}
+setTimeout(updateRatio, 100);
+}
+
+function updateCustomWidth() {
+const w = document.getElementById('width').value;
+document.getElementById('wLabel').textContent = w;
+exportNode.style.width = w + 'px';
+updateRatio();
+}
+
+function saveSelectionBeforeAction() {
+const sel = window.getSelection();
+if (sel && sel.rangeCount > 0) {
+  const anchor = sel.anchorNode;
+  const inEditor = editor.contains(anchor);
+  const inBox = currentTextBox && currentTextBox.contains(anchor);
+  if (inEditor || inBox) {
+    const range = sel.getRangeAt(0);
+    savedSelection = range.cloneRange();
+  }
+}
+}
+
+document.addEventListener('selectionchange', saveSelectionBeforeAction);
+
+function freezeSelectionForFont() {
+  const sel = window.getSelection();
+  if (sel && sel.rangeCount > 0) {
+    const anchor = sel.anchorNode;
+    const inEditor = editor.contains(anchor);
+    const inBox = currentTextBox && currentTextBox.contains(anchor);
+    if ((inEditor || inBox) && !sel.isCollapsed && sel.toString().trim().length > 0) {
+      savedSelectionForFont = sel.getRangeAt(0).cloneRange();
+    } else {
+      savedSelectionForFont = null;
+    }
+  } else {
+    savedSelectionForFont = null;
+  }
+}
+
+editor.addEventListener('keyup', saveSelectionBeforeAction);
+editor.addEventListener('mouseup', saveSelectionBeforeAction);
+editor.addEventListener('touchend', saveSelectionBeforeAction);
+
+function restoreSelection() {
+if (currentTextBox && exportNode.contains(currentTextBox)) {
+  currentTextBox.focus();
+  if (savedSelection && currentTextBox.contains(savedSelection.commonAncestorContainer)) {
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(savedSelection);
+  }
+} else {
+  editor.focus();
+  if (savedSelection && editor.contains(savedSelection.commonAncestorContainer)) {
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(savedSelection);
+  }
+}
+}
+
+function getStyledInlineParent(node) {
+let curr = (node.nodeType === Node.TEXT_NODE) ? node.parentNode : node;
+while (curr && curr !== editor && (!currentTextBox || curr !== currentTextBox)) {
+const tag = curr.tagName;
+if (tag === 'SPAN' || tag === 'FONT' || tag === 'B' || tag === 'STRONG' ||
+tag === 'I' || tag === 'EM' || tag === 'U' || tag === 'S' || tag === 'STRIKE' || tag === 'CODE') {
+return curr;
+}
+curr = curr.parentNode;
+}
+return null;
+}
+
+function exitSelectionFromFormatting() {
+const sel = window.getSelection();
+if (!sel || !sel.rangeCount) return;
+const range = sel.getRangeAt(0);
+let endNode = range.endContainer;
+let styledParent = getStyledInlineParent(endNode);
+
+if (styledParent) {
+let next = styledParent.nextSibling;
+if (!next || next.nodeType !== Node.TEXT_NODE) {
+const zwsp = document.createTextNode('\u200B');
+styledParent.parentNode.insertBefore(zwsp, styledParent.nextSibling);
+next = zwsp;
+}
+const newRange = document.createRange();
+newRange.setStartAfter(next);
+newRange.collapse(true);
+sel.removeAllRanges();
+sel.addRange(newRange);
+}
+}
+
+function applyTextColor(color) {
+restoreSelection();
+document.execCommand('foreColor', false, color);
+if (!currentTextBox) {
+  exitSelectionFromFormatting();
+  focusEditor();
+} else {
+  currentTextBox.focus();
+}
+saveHistory();
+}
+
+function format(command, value) {
+if (currentImgBox) {
+if (command === 'justifyLeft') { currentImgBox.classList.remove('align-right', 'align-center'); saveHistory(); return; }
+else if (command === 'justifyCenter') { currentImgBox.classList.remove('align-right'); currentImgBox.classList.add('align-center'); saveHistory(); return; }
+else if (command === 'justifyRight') { currentImgBox.classList.remove('align-center'); currentImgBox.classList.add('align-right'); saveHistory(); return; }
+else if (command === 'justifyFull') { currentImgBox.classList.remove('align-right', 'align-center'); saveHistory(); return; }
+}
+restoreSelection();
+document.execCommand(command, false, value || null);
+if (!currentTextBox) {
+  exitSelectionFromFormatting();
+  focusEditor();
+} else {
+  currentTextBox.focus();
+}
+saveHistory();
+}
+
+function cleanFormat() {
+restoreSelection();
+const sel = window.getSelection();
+if (!sel || !sel.rangeCount || sel.toString().length === 0) return;
+document.execCommand('removeFormat', false, null);
+saveHistory();
+if (!currentTextBox) focusEditor(); else currentTextBox.focus();
+}
+
+function formatCode() {
+const sel = window.getSelection();
+if (sel && sel.rangeCount > 0 && sel.toString().length > 0) {
+const range = sel.getRangeAt(0);
+const codeNode = document.createElement('code');
+codeNode.textContent = sel.toString();
+range.deleteContents();
+range.insertNode(codeNode);
+if (!currentTextBox) exitSelectionFromFormatting();
+saveHistory();
+if (!currentTextBox) focusEditor(); else currentTextBox.focus();
+}
+}
+
+function changeWordSize(factor) {
+restoreSelection();
+const sel = window.getSelection();
+if (!sel || !sel.rangeCount || sel.toString().length === 0) return;
+const range = sel.getRangeAt(0);
+const wrapper = document.createElement('span');
+try { range.surroundContents(wrapper); } catch (e) { wrapper.appendChild(range.extractContents()); range.insertNode(wrapper); }
+const container = currentTextBox || editor;
+const baseSize = parseFloat(getComputedStyle(container).fontSize) || (currentTextBox ? 24 : 32);
+function scaleEl(el) {
+let current = parseFloat(el.style.fontSize);
+if (!current) current = parseFloat(getComputedStyle(el).fontSize) || baseSize;
+let next = Math.round(current * factor);
+if (next < 8) next = 8;
+if (next > 200) next = 200;
+el.style.fontSize = next + 'px';
+el.setAttribute('data-custom-size', 'true');
+}
+scaleEl(wrapper);
+wrapper.querySelectorAll('*').forEach(function(child) { if (child.style && child.style.fontSize) scaleEl(child); });
+if (!currentTextBox) {
+  exitSelectionFromFormatting();
+  focusEditor();
+} else {
+  currentTextBox.focus();
+}
+updateRatio();
+saveHistory();
+}
+
+function selectWordAtCaret() {
+const sel = window.getSelection();
+if (!sel || !sel.rangeCount) return;
+const range = sel.getRangeAt(0);
+if (!range.collapsed) return;
+
+if (range.startContainer.nodeType === Node.TEXT_NODE) {
+  const node = range.startContainer;
+  const text = node.textContent;
+  let start = range.startOffset;
+  let end = range.startOffset;
+  while (start > 0 && !/\s/.test(text[start - 1])) start--;
+  while (end < text.length && !/\s/.test(text[end])) end++;
+  if (start < end) {
+    range.setStart(node, start);
+    range.setEnd(node, end);
+    sel.removeAllRanges();
+    sel.addRange(range);
+    savedSelection = range.cloneRange();
+  }
+}
+}
+
+function applyWordFont(font) {
+if (!font) return;
+restoreSelection();
+let sel = window.getSelection();
+
+if (sel && sel.rangeCount > 0 && sel.isCollapsed) {
+selectWordAtCaret();
+sel = window.getSelection();
+}
+
+if (!sel || !sel.rangeCount || sel.toString().trim().length === 0) return;
+
+document.execCommand('fontName', false, font);
+
+const scope = currentTextBox || editor;
+scope.querySelectorAll('font[face]').forEach(el => {
+const span = document.createElement('span');
+span.style.fontFamily = el.getAttribute('face');
+span.setAttribute('data-custom-font', 'true');
+while (el.firstChild) span.appendChild(el.firstChild);
+el.parentNode.replaceChild(span, el);
+});
+
+if (!currentTextBox) exitSelectionFromFormatting();
+updateRatio();
+saveHistory();
+if (!currentTextBox) focusEditor(); else currentTextBox.focus();
+}
+
+function deleteSelection() {
+restoreSelection();
+const sel = window.getSelection();
+if (!sel || !sel.rangeCount || sel.toString().length === 0) return;
+sel.getRangeAt(0).deleteContents();
+updateImgCounter();
+document.getElementById('charCount').textContent = editor.innerText.replace(/\u200B/g, '').trim().length;
+updateRatio();
+saveHistory();
+if (!currentTextBox) focusEditor(); else currentTextBox.focus();
+}
+
+function sanitizeUrl(rawUrl) {
+if (!rawUrl) return '';
+let url = rawUrl.trim();
+
+url = url.replace(/^(https?:\/\/)+/gi, '');
+url = url.replace(/^(http:\/\/)+/gi, '');
+
+if (/^@([a-zA-Z0-9_]{3,})$/.test(url)) {
+return 'https://t.me/' + url.slice(1);
+}
+
+if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(url)) {
+return 'mailto:' + url;
+}
+if (/^[\+]?[0-9\s\-\(\)]{7,}$/.test(url) && !url.includes('.')) {
+return 'tel:' + url.replace(/[\s\-\(\)]/g, '');
+}
+
+if (!/^(https?:\/\/|mailto:|tel:)/i.test(url)) {
+url = 'https://' + url.replace(/^\/+/, '');
+}
+
+url = url.replace(/\s+/g, '');
+
+return url;
+}
+
+function insertLink() {
+restoreSelection();
+const sel = window.getSelection();
+
+if (!sel || sel.rangeCount === 0 || sel.toString().trim().length === 0) {
+alert('Сначала выдели слово или текст, который хочешь сделать ссылкой!');
+return;
+}
+
+const rangeBackup = sel.getRangeAt(0).cloneRange();
+
+let input = prompt('Введи адрес ссылки или @username:', '');
+if (!input) return;
+
+let url = sanitizeUrl(input);
+if (!url || url === 'https://') return;
+
+if (currentTextBox) currentTextBox.focus(); else editor.focus();
+const currentSel = window.getSelection();
+currentSel.removeAllRanges();
+currentSel.addRange(rangeBackup);
+
+document.execCommand('createLink', false, url);
+if (!currentTextBox) exitSelectionFromFormatting();
+
+saveHistory();
+if (!currentTextBox) focusEditor(); else currentTextBox.focus();
+}
+
+function updateImgCounter() {
+const count = editor.querySelectorAll('.img-box').length;
+document.getElementById('imgCount').textContent = count;
+return count;
+}
+
+async function insertMultipleImages(event) {
+const files = event.target.files;
+if (!files || files.length === 0) return;
+
+let currentCount = updateImgCounter();
+const maxImages = 10;
+
+if (currentCount >= maxImages) {
+event.target.value = '';
+return;
+}
+
+restoreSelection();
+const sel = window.getSelection();
+let range = null;
+if (sel && sel.rangeCount > 0 && editor.contains(sel.anchorNode)) {
+range = sel.getRangeAt(0);
+}
+
+let added = 0;
+
+for (let i = 0; i < files.length; i++) {
+if (currentCount + added >= maxImages) break;
+
+const file = files[i];
+const dataUrl = await new Promise((resolve) => {
+  const reader = new FileReader();
+  reader.onload = (e) => resolve(e.target.result);
+  reader.readAsDataURL(file);
+});
+
+const box = createImageBox(dataUrl);
+box.querySelector('img').onload = updateRatio;
+
+if (range) {
+  range.insertNode(box);
+  snapImageToLineStart(box);
+  const zwspAfter = document.createTextNode('\u200B');
+  box.parentNode.insertBefore(zwspAfter, box.nextSibling);
+  ensureAnchorBeforeImages();
+  
+  range.setStartAfter(zwspAfter);
+  range.collapse(true);
+} else {
+  editor.appendChild(box);
+  snapImageToLineStart(box);
+  const zwspAfter = document.createTextNode('\u200B');
+  editor.appendChild(zwspAfter);
+  ensureAnchorBeforeImages();
+}
+added++;
+
+}
+
+if (range && sel) {
+sel.removeAllRanges();
+sel.addRange(range);
+}
+
+updateImgCounter();
+updateRatio();
+saveHistory();
+
+event.target.value = '';
+setTimeout(() => focusEditor(), 50);
+}
+
+function safeInsertBox(range, box) {
+  let container = range.commonAncestorContainer;
+  let imgBox = null;
+  if (container.nodeType === Node.TEXT_NODE) {
+    imgBox = container.parentNode.closest('.img-box');
+  } else if (container.nodeType === Node.ELEMENT_NODE) {
+    imgBox = container.closest('.img-box');
+  }
+  if (imgBox && imgBox !== box) {
+    const nextNode = imgBox.nextSibling;
+    if (nextNode) {
+      imgBox.parentNode.insertBefore(box, nextNode);
+    } else {
+      imgBox.parentNode.appendChild(box);
+    }
+  } else {
+    range.insertNode(box);
+  }
+}
+
+function createImageBox(url) {
+const box = document.createElement('span');
+box.className = 'img-box';
+box.contentEditable = 'false';
+box.setAttribute('draggable', 'true');
+const img = document.createElement('img');
+img.src = url;
+const resizer = document.createElement('span');
+resizer.className = 'img-resizer';
+resizer.contentEditable = 'false';
+box.appendChild(img);
+box.appendChild(resizer);
+ensureRotor(box);
+box.addEventListener('click', function(e) { e.stopPropagation(); selectImgBox(box); });
+bindResizer(box);
+return box;
+}
+
+function bindResizer(box) {
+const resizer = box.querySelector('.img-resizer');
+if (!resizer) return;
+const newResizer = resizer.cloneNode(true);
+resizer.parentNode.replaceChild(newResizer, resizer);
+
+function startResize(e) {
+e.preventDefault();
+e.stopPropagation();
+box.setAttribute('draggable', 'false');
+let startX = e.clientX || e.touches[0].clientX;
+let startW = box.offsetWidth;
+let parentW = editor.offsetWidth - (isMobile() ? 30 : 80);
+
+function doDrag(ev) {
+let currentX = ev.clientX || (ev.touches && ev.touches[0].clientX);
+let newW = startW + (currentX - startX);
+let percent = (newW / parentW) * 100;
+if (percent < 15) percent = 15;
+if (percent > 100) percent = 100;
+box.style.width = percent + '%';
+applyImgStyles(box);
+}
+
+function stopDrag() {
+document.removeEventListener('mousemove', doDrag);
+document.removeEventListener('mouseup', stopDrag);
+document.removeEventListener('touchmove', doDrag);
+document.removeEventListener('touchend', stopDrag);
+box.setAttribute('draggable', 'true');
+saveHistory();
+}
+document.addEventListener('mousemove', doDrag);
+document.addEventListener('mouseup', stopDrag);
+document.addEventListener('touchmove', doDrag, {passive: false});
+document.addEventListener('touchend', stopDrag);
+}
+
+newResizer.addEventListener('mousedown', startResize);
+newResizer.addEventListener('touchstart', startResize, {passive: false});
+}
+
+let mobileImgPanelSessionFirst = true;
+let lastImgTapTime = 0;
+let lastImgTapBox = null;
+
+function selectImgBox(box) {
+if (isMobile()) { editor.blur(); if (document.activeElement) document.activeElement.blur(); }
+editor.querySelectorAll('.img-box').forEach(function(b) { b.classList.remove('selected'); });
+box.classList.add('selected');
+currentImgBox = box;
+ensureRotor(box);
+applyImgStyles(box);
+positionMiniBar(); syncImgSettings();
+
+if (isMobile()) {
+  const now = Date.now();
+  if (mobileImgPanelSessionFirst) {
+    mobileImgPanelSessionFirst = false;
+    openImgMobilePanel();
+  } else {
+    if (lastImgTapBox === box && (now - lastImgTapTime) < 400) {
+      openImgMobilePanel();
+    }
+  }
+  lastImgTapTime = now;
+  lastImgTapBox = box;
+}
+}
+
+function deleteSelectedImage() {
+if (!currentImgBox) return;
+removeCenterSpacers(currentImgBox);
+currentImgBox.remove();
+currentImgBox = null;
+closeImgMobilePanel();
+updateImgCounter();
+document.getElementById('charCount').textContent = editor.innerText.replace(/\u200B/g, '').trim().length;
+updateRatio();
+saveHistory();
+focusEditor();
+}
+
+document.addEventListener('click', function(e) {
+if (e.target.closest('#btnDeleteImg')) return;
+if (e.target.closest('#imgSettings')) return;
+if (e.target.closest('#imgMobilePanel')) return;
+if (!e.target.closest('.img-box') && !e.target.closest('#imgMiniBar')) {
+editor.querySelectorAll('.img-box').forEach(function(b) { b.classList.remove('selected'); });
+currentImgBox = null;
+hideMiniBar();
+closeImgMobilePanel();
+}
+if (!e.target.closest('.text-box') && !e.target.closest('.toolbar') && !e.target.closest('#quickBar') && !e.target.closest('#imgMiniBar') && !e.target.closest('#tbSettings')) {
+document.querySelectorAll('.text-box').forEach(function(b) { b.classList.remove('selected'); });
+currentTextBox = null;
+const tbPanel = document.getElementById('tbSettings');
+if (tbPanel) tbPanel.style.display = 'none';
+}
+});
+
+let dragBox = null;
+let isTouchDraggingImg = false;
+let imgGhost = null;
+
+editor.addEventListener('dragstart', function(e) { const box = e.target.closest('.img-box'); if (box) dragBox = box; });
+editor.addEventListener('dragover', function(e) { if (dragBox) e.preventDefault(); });
+editor.addEventListener('drop', function(e) {
+if (!dragBox) return;
+e.preventDefault();
+let range;
+if (document.caretRangeFromPoint) range = document.caretRangeFromPoint(e.clientX, e.clientY);
+else if (document.caretPositionFromPoint) {
+const pos = document.caretPositionFromPoint(e.clientX, e.clientY);
+range = document.createRange();
+range.setStart(pos.offsetNode, pos.offset);
+}
+if (range && editor.contains(range.startContainer)) {
+removeCenterSpacers(dragBox);
+dragBox.remove();
+const editorRect = editor.getBoundingClientRect();
+const dropX = e.clientX - editorRect.left;
+dragBox.classList.remove('align-right', 'align-center');
+if (dropX > editorRect.width / 2) dragBox.classList.add('align-right');
+safeInsertBox(range, dragBox);
+snapImageToLineStart(dragBox);
+const zwsp = document.createTextNode('\u200B');
+dragBox.parentNode.insertBefore(zwsp, dragBox.nextSibling);
+ensureAnchorBeforeImages();
+applyImgStyles(dragBox);
+}
+dragBox = null;
+updateRatio();
+saveHistory();
+});
+editor.addEventListener('dragend', function() { dragBox = null; });
+
+editor.addEventListener('touchstart', function(e) {
+const box = e.target.closest('.img-box');
+if (box && !e.target.closest('.img-resizer')) {
+dragBox = box;
+}
+}, {passive: true});
+
+editor.addEventListener('touchmove', function(e) {
+if (dragBox && !isTouchDraggingImg) {
+isTouchDraggingImg = true;
+imgGhost = dragBox.cloneNode(true);
+imgGhost.style.position = 'fixed';
+imgGhost.style.opacity = '0.75';
+imgGhost.style.pointerEvents = 'none';
+imgGhost.style.zIndex = '99999';
+imgGhost.style.width = '90px';
+imgGhost.style.maxWidth = '90px';
+imgGhost.style.margin = '0';
+imgGhost.style.borderRadius = '10px';
+imgGhost.style.boxShadow = '0 4px 14px rgba(0,0,0,.5)';
+const gImg = imgGhost.querySelector('img');
+if (gImg) { gImg.style.width = '90px'; gImg.style.height = 'auto'; }
+const gRes = imgGhost.querySelector('.img-resizer'); if (gRes) gRes.remove();
+document.body.appendChild(imgGhost);
+}
+if (isTouchDraggingImg) {
+e.preventDefault();
+const touch = e.touches[0];
+imgGhost.style.left = (touch.clientX - 45) + 'px';
+imgGhost.style.top = (touch.clientY - 45) + 'px';
+}
+}, {passive: false});
+
+editor.addEventListener('touchend', function(e) {
+if (isTouchDraggingImg && dragBox && imgGhost) {
+e.preventDefault();
+const touch = e.changedTouches[0];
+let range = null;
+if (document.caretRangeFromPoint) {
+range = document.caretRangeFromPoint(touch.clientX, touch.clientY);
+} else if (document.caretPositionFromPoint) {
+const pos = document.caretPositionFromPoint(touch.clientX, touch.clientY);
+if (pos) {
+range = document.createRange();
+range.setStart(pos.offsetNode, pos.offset);
+}
+}
+if (range && editor.contains(range.startContainer)) {
+removeCenterSpacers(dragBox);
+dragBox.remove();
+const editorRect = editor.getBoundingClientRect();
+const dropX = touch.clientX - editorRect.left;
+dragBox.classList.remove('align-right', 'align-center');
+if (dropX > editorRect.width / 2) dragBox.classList.add('align-right');
+safeInsertBox(range, dragBox);
+snapImageToLineStart(dragBox);
+const zwsp = document.createTextNode('\u200B');
+dragBox.parentNode.insertBefore(zwsp, dragBox.nextSibling);
+ensureAnchorBeforeImages();
+applyImgStyles(dragBox);
+}
+imgGhost.remove();
+imgGhost = null;
+isTouchDraggingImg = false;
+dragBox = null;
+updateRatio();
+saveHistory();
+} else {
+dragBox = null;
+}
+});
+
+const emojiGroups = {
+'😀 Эмоции': ['😊','😂','🤣','🥰','😍','😎','🤩','😉','🙂','😌','🤔','😏','😢','😭','😤','😡','🥺','😱','🤯','😴','🤗','😇','🥳','😜','🤪','🙄','😬','😐'],
+'👍 Жесты': ['👍','👎','👏','🙌','🙏','🤝','✌️','🤞','👌','🤙','💪','👋','🫶','☝️','👇','👆','👉','👈','🤟','✊'],
+'❤️ Символы': ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','💔','💕','💯','✨','⭐','🌟','💫','⚡','🔥','💥','🎉','🎊','🎁','🏆','🥇','👑','💎','🔔'],
+'💼 Бизнес': ['📌','📍','✅','☑️','❌','⛔','⚠️','❗','❓','💡','📝','✍️','📢','📣','📊','📈','📉','💰','💸','🎯','🔑','🔒','📅','⏰','⏳','🚀','🛒','📦','🔗','💬','👀','🧠','📖'],
+'➡️ Стрелки': ['➡️','⬅️','⬆️','⬇️','↗️','↘️','🔄','▶️','🔽','🔼','1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'],
+'🌿 Разное': ['🌿','🌸','🌹','🌻','🌈','☀️','🌙','❄️','🍀','☕','🍰','🥂','⚽','🎵','📷','🎬','✈️','🚗','🏠','🌍']
+};
+const emojiWrap = document.getElementById('emojiWrap');
+Object.keys(emojiGroups).forEach(function(g) {
+const t = document.createElement('div'); t.className = 'emoji-section-title'; t.textContent = g; emojiWrap.appendChild(t);
+const bar = document.createElement('div'); bar.className = 'emoji-bar';
+emojiGroups[g].forEach(function(e) {
+const span = document.createElement('span'); span.textContent = e;
+span.onclick = function() { restoreSelection(); document.execCommand('insertText', false, e); updateRatio(); saveHistory(); if (!currentTextBox) focusEditor(); else currentTextBox.focus(); };
+bar.appendChild(span);
+});
+emojiWrap.appendChild(bar);
+});
+
+function generatePlainText() {
+const clone = editor.cloneNode(true);
+clone.querySelectorAll('.img-box, .img-spacer-left, .img-spacer-right').forEach(el => el.remove());
+return clone.innerText.replace(/\u200B/g, '').trim();
+}
+
+function processExport() {
+const btn = document.getElementById('exportBtn');
+const originalText = btn.innerHTML;
+btn.innerHTML = '⏳ Рисую...';
+btn.disabled = true;
+editor.querySelectorAll('.img-box').forEach(function(i) { i.classList.remove('selected'); });
+currentImgBox = null;
+const savedTransform = zoomWrapper.style.transform;
+zoomWrapper.style.transform = 'scale(1)';
+
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isAndroid = /Android/i.test(navigator.userAgent);
+
+setTimeout(function() {
+html2canvas(exportNode, {
+  backgroundColor: null,
+  scale: 2,
+  useCORS: true,
+  width: exportNode.offsetWidth,
+  windowWidth: exportNode.offsetWidth,
+  scrollX: 0,
+  scrollY: 0,
+  x: 0,
+  y: 0,
+  onclone: function(clonedDoc) {
+    var ed = clonedDoc.getElementById('editor');
+    if (ed) {
+      ed.style.setProperty('-webkit-hyphens', 'none');
+      ed.style.setProperty('-moz-hyphens', 'none');
+      ed.style.setProperty('-ms-hyphens', 'none');
+      ed.style.setProperty('hyphens', 'none');
+      ed.style.setProperty('word-break', 'normal');
+      ed.style.setProperty('overflow-wrap', 'break-word');
+      ed.style.setProperty('text-align', 'justify');
+      ed.querySelectorAll('*').forEach(function(el){
+        el.style.setProperty('-webkit-hyphens', 'none');
+        el.style.setProperty('hyphens', 'none');
+      });
+    }
+    var cn = clonedDoc.documentElement;
+    if (cn) cn.setAttribute('lang', 'ru');
+  }
+}).then(function(canvas) {
+const dataUrl = canvas.toDataURL('image/png');
+
+let imgPreview = document.getElementById('previewImage');
+if (!imgPreview) {
+imgPreview = document.createElement('img');
+imgPreview.id = 'previewImage';
+imgPreview.style.cssText = 'width:100%; max-height:250px; object-fit:contain; border-radius:8px; border:1px solid #2a2f3a; margin-bottom:10px;';
+const modalTextarea = document.getElementById('markdownOutput');
+modalTextarea.parentNode.insertBefore(imgPreview, modalTextarea);
+}
+imgPreview.src = dataUrl;
+imgPreview.style.display = 'block';
+
+function finish() {
+document.getElementById('markdownOutput').value = generatePlainText();
+document.getElementById('textModal').style.display = 'flex';
+btn.innerHTML = originalText;
+btn.disabled = false;
+zoomWrapper.style.transform = savedTransform;
+updateRatio();
+}
+
+if (isIOS) {
+canvas.toBlob(function(blob) {
+if (blob) {
+const file = new File([blob], 'texter-post.png', { type: 'image/png' });
+if (navigator.canShare && navigator.canShare({ files: [file] })) {
+navigator.share({ files: [file] }).then(finish).catch(finish);
+return;
+}
+}
+finish();
+}, 'image/png');
+} else if (isAndroid) {
+canvas.toBlob(function(blob) {
+if (blob && navigator.canShare) {
+const file = new File([blob], 'texter-post.png', { type: 'image/png' });
+if (navigator.canShare({ files: [file] })) {
+navigator.share({ files: [file] }).then(finish).catch(finish);
+return;
+}
+}
+const link = document.createElement('a');
+link.download = 'texter-post.png';
+link.href = dataUrl;
+document.body.appendChild(link);
+link.click();
+document.body.removeChild(link);
+finish();
+}, 'image/png');
+} else {
+const link = document.createElement('a');
+link.download = 'texter-post.png';
+link.href = dataUrl;
+document.body.appendChild(link);
+link.click();
+document.body.removeChild(link);
+finish();
+}
+
+}).catch(function(err) {
+btn.innerHTML = originalText;
+btn.disabled = false;
+zoomWrapper.style.transform = savedTransform;
+});
+}, 100);
+}
+
+function getEditorLines() {
+const src = document.createElement('div');
+src.innerHTML = editor.innerHTML;
+src.querySelectorAll('.img-box, .img-spacer-left, .img-spacer-right').forEach(el => el.remove());
+
+src.querySelectorAll('span, font').forEach(function(el) {
+const parent = el.parentNode;
+while (el.firstChild) parent.insertBefore(el.firstChild, el);
+parent.removeChild(el);
+});
+
+src.querySelectorAll('strong').forEach(el => {
+const b = document.createElement('b');
+b.innerHTML = el.innerHTML;
+el.parentNode.replaceChild(b, el);
+});
+src.querySelectorAll('em').forEach(el => {
+const i = document.createElement('i');
+i.innerHTML = el.innerHTML;
+el.parentNode.replaceChild(i, el);
+});
+
+src.querySelectorAll('b,i,u,s,strike,del,a,code,div,p').forEach(function(el) {
+el.removeAttribute('style');
+el.removeAttribute('class');
+el.removeAttribute('data-custom-size');
+if (el.tagName === 'A') {
+Array.from(el.attributes).forEach(a => { if (a.name !== 'href') el.removeAttribute(a.name); });
+}
+});
+
+const walker = document.createTreeWalker(src, NodeFilter.SHOW_TEXT, null);
+const textNodes = [];
+while (walker.nextNode()) textNodes.push(walker.currentNode);
+textNodes.forEach(t => { t.textContent = t.textContent.replace(/\u200B/g, ''); });
+
+let html = '';
+function walk(node) {
+node.childNodes.forEach(function(child) {
+if (child.nodeType === Node.TEXT_NODE) {
+html += child.textContent;
+} else if (child.nodeType === Node.ELEMENT_NODE) {
+const tag = child.tagName;
+if (tag === 'BR') {
+html += '\n';
+} else if (tag === 'DIV' || tag === 'P') {
+if (html.length && !html.endsWith('\n')) html += '\n';
+walk(child);
+if (!html.endsWith('\n')) html += '\n';
+} else {
+const rawHref = child.getAttribute('href');
+const cleanHref = rawHref ? sanitizeUrl(rawHref) : '';
+html += '<' + tag.toLowerCase() + (tag === 'A' && cleanHref ? ' href="' + cleanHref + '"' : '') + '>';
+walk(child);
+html += '</' + tag.toLowerCase() + '>';
+}
+}
+});
+}
+walk(src);
+
+let lines = html.split('\n');
+
+while (lines.length && lines[0].trim() === '') lines.shift();
+while (lines.length && lines[lines.length - 1].trim() === '') lines.pop();
+
+const cleaned = [];
+let prevEmpty = false;
+for (const line of lines) {
+const isEmpty = line.trim() === '';
+if (isEmpty && prevEmpty) continue;
+cleaned.push(line);
+prevEmpty = isEmpty;
+}
+return cleaned;
+}
+
+async function writeToClipboard(html, plain, btnId) {
+let ok = false;
+const btn = btnId ? document.getElementById(btnId) : null;
+const original = btn ? btn.innerHTML : '';
+
+if (navigator.clipboard && window.ClipboardItem) {
+  try {
+    const fullHtml =
+      '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>' +
+      '<div>' + html + '</div></body></html>';
+    const item = new ClipboardItem({
+      'text/html': new Blob([fullHtml], { type: 'text/html' }),
+      'text/plain': new Blob([plain], { type: 'text/plain' })
+    });
+    await navigator.clipboard.write([item]);
+    ok = true;
+  } catch (e) {
+    ok = false;
+  }
+}
+
+if (!ok) {
+  const temp = document.createElement('div');
+  temp.contentEditable = 'true';
+  temp.style.position = 'fixed';
+  temp.style.left = '-9999px';
+  temp.style.top = '-9999px';
+  temp.innerHTML = '<div>' + html + '</div>';
+  document.body.appendChild(temp);
+
+  const range = document.createRange();
+  range.selectNodeContents(temp);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+
+  try {
+    ok = document.execCommand('copy');
+  } catch (e) { ok = false; }
+  document.body.removeChild(temp);
+}
+
+if (!ok && navigator.clipboard && navigator.clipboard.writeText) {
+  try {
+    await navigator.clipboard.writeText(plain);
+    ok = true;
+  } catch (err) { ok = false; }
+}
+
+if (ok && btn) {
+  btn.innerHTML = '✅ Скопировано!';
+  setTimeout(function() { btn.innerHTML = original; }, 2000);
+}
+
+restoreSelection();
+}
+
+async function copyForTelegram() {
+if (!editor.innerText.trim()) return;
+const lines = getEditorLines();
+
+const finalHtml = lines.join('<br>');
+
+const tempPlainDiv = document.createElement('div');
+tempPlainDiv.innerHTML = finalHtml;
+
+tempPlainDiv.querySelectorAll('a[href]').forEach(function(a) {
+const href = sanitizeUrl(a.getAttribute('href'));
+const text = a.textContent.trim();
+if (href && text && text !== href) {
+a.textContent = text + '\n' + href;
+} else if (href) {
+a.textContent = href;
+}
+});
+
+const finalPlain = tempPlainDiv.innerText || tempPlainDiv.textContent;
+
+await writeToClipboard(finalHtml, finalPlain, 'copyTgBtn');
+}
+
+function handleSpaceFormattingReset() {
+const sel = window.getSelection();
+if (sel && sel.rangeCount > 0 && sel.isCollapsed) {
+const range = sel.getRangeAt(0);
+let node = range.startContainer;
+let offset = range.startOffset;
+let styledParent = getStyledInlineParent(node);
+
+if (styledParent) {
+  let isAtEnd = false;
+  if (node.nodeType === Node.TEXT_NODE && offset === node.textContent.length) {
+    let p = node;
+    while (p && p !== styledParent && !p.nextSibling) {
+      p = p.parentNode;
+    }
+    if (p === styledParent || !p.nextSibling) isAtEnd = true;
+  }
+  
+  if (isAtEnd) {
+    const spaceNode = document.createTextNode(' ');
+    if (styledParent.nextSibling) {
+      styledParent.parentNode.insertBefore(spaceNode, styledParent.nextSibling);
+    } else {
+      styledParent.parentNode.appendChild(spaceNode);
+    }
+    const newRange = document.createRange();
+    newRange.setStartAfter(spaceNode);
+    newRange.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(newRange);
+    updateRatio();
+    saveHistory();
+    return true;
+  }
+}
+
+}
+return false;
+}
+
+editor.addEventListener('beforeinput', function(e) {
+if (e.data === ' ' || e.inputType === 'insertText' && e.data === ' ') {
+if (handleSpaceFormattingReset()) {
+e.preventDefault();
+}
+}
+});
+
+editor.addEventListener('keydown', function(e) {
+const sel = window.getSelection();
+
+if (e.key === 'Enter') {
+e.preventDefault();
+document.execCommand('insertLineBreak');
+updateRatio();
+saveHistory();
+return;
+}
+
+if (e.key === ' ' || e.code === 'Space') {
+if (handleSpaceFormattingReset()) {
+e.preventDefault();
+return;
+}
+}
+
+function imgNextTo(direction) {
+if (!sel || !sel.rangeCount) return null;
+const r = sel.getRangeAt(0);
+if (!r.collapsed) return null;
+let node = r.startContainer;
+let offset = r.startOffset;
+
+if (direction === 'back') {
+if (node.nodeType === Node.TEXT_NODE) {
+if (offset > 0) return null;
+let prev = node.previousSibling;
+while (prev && prev.nodeType === Node.TEXT_NODE && prev.textContent === '\u200B') prev = prev.previousSibling;
+if (prev && prev.classList && prev.classList.contains('img-box')) return prev;
+} else {
+let child = node.childNodes[offset - 1];
+while (child && child.nodeType === Node.TEXT_NODE && child.textContent === '\u200B') child = child.previousSibling;
+if (child && child.classList && child.classList.contains('img-box')) return child;
+}
+} else {
+if (node.nodeType === Node.TEXT_NODE) {
+if (offset < node.textContent.length) return null;
+let next = node.nextSibling;
+while (next && next.nodeType === Node.TEXT_NODE && next.textContent === '\u200B') next = next.nextSibling;
+if (next && next.classList && next.classList.contains('img-box')) return next;
+} else {
+let child = node.childNodes[offset];
+while (child && child.nodeType === Node.TEXT_NODE && child.textContent === '\u200B') child = child.nextSibling;
+if (child && child.classList && child.classList.contains('img-box')) return child;
+}
+}
+return null;
+
+}
+
+if (e.key === 'Backspace') {
+const box = imgNextTo('back');
+if (box) { e.preventDefault(); selectImgBox(box); return; }
+}
+if (e.key === 'Delete') {
+const box = imgNextTo('forward');
+if (box) { e.preventDefault(); selectImgBox(box); return; }
+}
+
+if (currentImgBox && (e.key === 'Delete' || e.key === 'Backspace')) {
+e.preventDefault();
+deleteSelectedImage();
+return;
+}
+
+if (currentImgBox && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+const box = currentImgBox;
+box.classList.remove('selected');
+currentImgBox = null;
+const range = document.createRange();
+range.setStartAfter(box);
+range.collapse(true);
+sel.removeAllRanges();
+sel.addRange(range);
+}
+
+if (e.ctrlKey || e.metaKey) {
+if (currentImgBox && e.key === 'c') { e.preventDefault(); window._imgClip = currentImgBox; return; }
+if (window._imgClip && e.key === 'v') { e.preventDefault(); const save=currentImgBox; currentImgBox=window._imgClip; miniDuplicate(); currentImgBox=save; return; }
+if (e.key === 'z' && !e.shiftKey) { e.preventDefault(); undoAction(e); }
+else if (e.key === 'y' || (e.key === 'z' && e.shiftKey)) { e.preventDefault(); redoAction(e); }
+else if (e.key === 'b') { e.preventDefault(); format('bold'); }
+else if (e.key === 'i') { e.preventDefault(); format('italic'); }
+else if (e.key === 'u') { e.preventDefault(); format('underline'); }
+}
+});
+
+const panelEl = document.querySelector('.panel');
+panelEl.addEventListener('mousedown', function(e) {
+if (e.target.closest('button') || e.target.closest('.emoji-bar span') || e.target.closest('input[type=color]')) {
+// Сохраняем выделение ПРЯМО СЕЙЧАС, до потери фокуса
+saveSelectionBeforeAction();
+// Не даём фокусу уйти с текста на кнопку/палитру
+if (!e.target.closest('input[type=color]')) e.preventDefault();
+}
+});
+
+const quickBar = document.getElementById('quickBar');
+const qbWordColor = document.getElementById('qbWordColor');
+
+editor.addEventListener('focus', function() {
+if (isMobile()) quickBar.classList.add('visible');
+});
+
+document.addEventListener('focusin', function(e){
+  if (isMobile() && e.target.classList && e.target.classList.contains('text-box')) {
+    quickBar.classList.add('visible');
+  }
+});
+
+document.addEventListener('touchstart', function(e){
+  if (isMobile() && e.target.closest && e.target.closest('.text-box')) {
+    quickBar.classList.add('visible');
+  }
+}, {passive: true});
+
+editor.addEventListener('blur', function() {
+setTimeout(function() {
+const active = document.activeElement;
+const inTextBox = active && active.classList && active.classList.contains('text-box');
+if (!editor.matches(':focus')
+&& !inTextBox
+&& active !== qbWordColor
+&& active !== document.getElementById('qbFontSelect')
+&& active !== document.getElementById('qbImageInput')) {
+quickBar.classList.remove('visible');
+}
+}, 300);
+});
+
+qbWordColor.addEventListener('focus', function() {
+if (isMobile()) quickBar.classList.add('visible');
+});
+
+if (window.visualViewport) {
+window.visualViewport.addEventListener('resize', positionQuickBar);
+window.visualViewport.addEventListener('scroll', positionQuickBar);
+}
+function positionQuickBar() {
+if (!quickBar.classList.contains('visible')) return;
+const vv = window.visualViewport;
+const bottomGap = window.innerHeight - (vv.height + vv.offsetTop);
+quickBar.style.bottom = bottomGap + 'px';
+}
+
+function qb(e, command) {
+if(e && e.preventDefault) e.preventDefault();
+restoreSelection();
+document.execCommand(command, false, null);
+if (!currentTextBox) exitSelectionFromFormatting();
+saveHistory();
+}
+
+function qbSize(e, factor) {
+if(e && e.preventDefault) e.preventDefault();
+changeWordSize(factor);
+}
+function qbLink(e) {
+if(e && e.preventDefault) e.preventDefault();
+insertLink();
+}
+
+function qbClean(e) {
+if(e && e.preventDefault) e.preventDefault();
+cleanFormat();
+}
+
+function qbFont(font) {
+  if (!font) return;
+
+  const hasFrozen =
+    savedSelectionForFont &&
+    !savedSelectionForFont.collapsed &&
+    savedSelectionForFont.toString().trim().length > 0;
+
+  if (hasFrozen) {
+    const scope = currentTextBox || editor;
+    if (scope) scope.focus();
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(savedSelectionForFont);
+    savedSelection = savedSelectionForFont.cloneRange();
+    applyWordFont(font);
+  } else {
+    editor.style.fontFamily = font;
+    if (fontFamilySelector) {
+      const hasOption = Array.from(fontFamilySelector.options).some(o => o.value === font);
+      if (hasOption) fontFamilySelector.value = font;
+    }
+    updateRatio();
+    saveHistory();
+  }
+
+  savedSelectionForFont = null;
+}
+
+function qbImage(e) {
+if(e && e.preventDefault) e.preventDefault();
+saveSelectionBeforeAction();
+document.getElementById('qbImageInput').click();
+}
+
+function togglePanel() {
+const panel = document.querySelector('.panel');
+const handle = document.getElementById('panelHandle');
+panel.classList.toggle('open');
+handle.classList.toggle('open');
+handle.textContent = panel.classList.contains('open') ? '‹' : '›';
+// Как только панель открыта любым способом — прячем кнопку "Инструменты"
+if (panel.classList.contains('open')) {
+  const btn = document.getElementById('mobileToolsBtn');
+  if (btn) btn.style.display = 'none';
+}
+}
+
+function onMobileToolsClick() {
+  togglePanel();
+  const btn = document.getElementById('mobileToolsBtn');
+  if (btn) btn.style.display = 'none';
+}
+
+/* ================= ЭТАП 2: ТЕКСТОВЫЕ ПЛАШКИ (ТЕКСТ-БЛОКИ) ================= */
+let currentTextBox = null;
+
+/* ===== ЭТАП 2 (Часть Б): ФОН ПЛАШКИ (цвет + прозрачность) ===== */
+function hexToRgb(hex) {
+  hex = (hex || '#000000').replace('#', '');
+  if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+  const num = parseInt(hex, 16);
+  return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+}
+
+function getTbTargetBox() {
+  if (!currentTextBox) return null;
+  return currentTextBox.classList && currentTextBox.classList.contains('text-box')
+    ? currentTextBox
+    : currentTextBox.closest('.text-box');
+}
+
+function applyTbBg(box) {
+  if (!box) return;
+  const content = box.querySelector('.tb-content');
+  if (!content) return;
+  const hex = box.dataset.bgColor || '#000000';
+  const op = (box.dataset.bgOpacity !== undefined) ? parseInt(box.dataset.bgOpacity, 10) : 55;
+  const rgb = hexToRgb(hex);
+  const rgba = 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + (op / 100) + ')';
+  const mode = box.dataset.mode || 'plate';
+
+    if (mode === 'ribbon') {
+    box.classList.add('mode-ribbon');
+    content.style.background = 'transparent';
+    const ribHex = box.dataset.ribbonColor || '#000000';
+    const ribRgb = hexToRgb(ribHex);
+    const ribOp = (box.dataset.ribbonOpacity !== undefined) ? parseInt(box.dataset.ribbonOpacity, 10) : 85;
+    box.style.setProperty('--ribbon-bg', 'rgba(' + ribRgb.r + ',' + ribRgb.g + ',' + ribRgb.b + ',' + (ribOp / 100) + ')');
+    applyRibbonStyles(box);
+    wrapTbRibbon(content);
+  } else {
+    box.classList.remove('mode-ribbon');
+    unwrapTbRibbon(content);
+    content.style.background = rgba;
+  }
+}
+
+/* Оборачивает текст плашки в span.tb-ribbon (для режима лент) */
+function wrapTbRibbon(content) {
+  if (content.querySelector('.tb-ribbon')) return;
+  const span = document.createElement('span');
+  span.className = 'tb-ribbon';
+  while (content.firstChild) span.appendChild(content.firstChild);
+  content.appendChild(span);
+}
+
+/* Убирает обёртку span.tb-ribbon (возврат к плашке) */
+function unwrapTbRibbon(content) {
+  const span = content.querySelector('.tb-ribbon');
+  if (!span) return;
+  while (span.firstChild) content.insertBefore(span.firstChild, span);
+  span.remove();
+}
+
+function setTbMode(mode) {
+  const box = getTbTargetBox();
+  if (!box) return;
+  box.dataset.mode = mode;
+  applyTbBg(box);
+  syncTbSettings();
+  clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400);
+}
+
+function setTbBgColor(v) {
+  const box = getTbTargetBox();
+  if (!box) return;
+  box.dataset.bgColor = v;
+  const el = document.getElementById('tbBgColor'); if (el) el.value = v;
+  applyTbBg(box);
+  clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400);
+}
+
+function setTbBgOpacity(v) {
+  const box = getTbTargetBox();
+  if (!box) return;
+  box.dataset.bgOpacity = v;
+  const lbl = document.getElementById('tbBgOpacityLabel'); if (lbl) lbl.textContent = v;
+  const rng = document.getElementById('tbBgOpacity'); if (rng) rng.value = v;
+  applyTbBg(box);
+  clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400);
+}
+  
+function setTbLineHeight(v) {
+  const box = getTbTargetBox();
+  if (!box) return;
+  box.dataset.lineHeight = v;
+  const content = box.querySelector('.tb-content');
+  if (content) content.style.lineHeight = v;
+  const lbl = document.getElementById('tbLineHeightLabel'); if (lbl) lbl.textContent = v;
+  const rng = document.getElementById('tbLineHeight'); if (rng) rng.value = v;
+  clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400);
+}
+  
+function setTbFontSize(v) {
+  const box = getTbTargetBox();
+  if (!box) return;
+  box.dataset.fontSize = v;
+  const content = box.querySelector('.tb-content');
+  if (content) content.style.fontSize = v + 'px';
+  const lbl = document.getElementById('tbFontSizeLabel'); if (lbl) lbl.textContent = v;
+  const rng = document.getElementById('tbFontSize'); if (rng) rng.value = v;
+  clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400);
+}
+
+/* ===== ПОДЛОЖКА (ЛЕНТЫ): вкл/выкл + настройки ===== */
+function toggleRibbonMode() {
+  const box = getTbTargetBox();
+  if (!box) return;
+  const isRibbon = box.dataset.mode === 'ribbon';
+  box.dataset.mode = isRibbon ? 'plate' : 'ribbon';
+  applyTbBg(box);
+  syncTbSettings();
+  clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400);
+}
+
+function applyRibbonStyles(box) {
+  if (!box) return;
+  const rad = box.dataset.ribbonRadius || '6';
+  const padH = box.dataset.ribbonPadH || '0.3';
+  const padV = box.dataset.ribbonPadV || '0.25';
+  box.style.setProperty('--ribbon-radius', rad + 'px');
+  box.style.setProperty('--ribbon-pad-h', padH + 'em');
+  box.style.setProperty('--ribbon-pad-v', padV + 'em');
+}
+
+function setTbRibbonColor(v) {
+  const box = getTbTargetBox();
+  if (!box) return;
+  box.dataset.ribbonColor = v;
+  const el = document.getElementById('tbRibbonColor'); if (el) el.value = v;
+  applyTbBg(box);
+  clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400);
+}
+
+function setTbRibbonOpacity(v) {
+  const box = getTbTargetBox();
+  if (!box) return;
+  box.dataset.ribbonOpacity = v;
+  const lbl = document.getElementById('tbRibbonOpacityLabel'); if (lbl) lbl.textContent = v;
+  const rng = document.getElementById('tbRibbonOpacity'); if (rng) rng.value = v;
+  applyTbBg(box);
+  clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400);
+}
+
+function setTbRibbonRadius(v) {
+  const box = getTbTargetBox();
+  if (!box) return;
+  box.dataset.ribbonRadius = v;
+  const lbl = document.getElementById('tbRibbonRadiusLabel'); if (lbl) lbl.textContent = v;
+  applyRibbonStyles(box);
+  clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400);
+}
+
+function setTbRibbonPadH(v) {
+  const box = getTbTargetBox();
+  if (!box) return;
+  box.dataset.ribbonPadH = v;
+  const lbl = document.getElementById('tbRibbonPadHLabel'); if (lbl) lbl.textContent = v;
+  applyRibbonStyles(box);
+  clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400);
+}
+
+function setTbRibbonPadV(v) {
+  const box = getTbTargetBox();
+  if (!box) return;
+  box.dataset.ribbonPadV = v;
+  const lbl = document.getElementById('tbRibbonPadVLabel'); if (lbl) lbl.textContent = v;
+  applyRibbonStyles(box);
+  clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400);
+}
+
+function syncTbSettings() {
+  const panel = document.getElementById('tbSettings');
+  if (!panel) return;
+  const box = getTbTargetBox();
+  if (!box || isMobile()) { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+  const hex = box.dataset.bgColor || '#000000';
+  const op = (box.dataset.bgOpacity !== undefined) ? parseInt(box.dataset.bgOpacity, 10) : 55;
+  const colEl = document.getElementById('tbBgColor'); if (colEl) colEl.value = hex;
+  const opEl = document.getElementById('tbBgOpacity'); if (opEl) opEl.value = op;
+  const opLbl = document.getElementById('tbBgOpacityLabel'); if (opLbl) opLbl.textContent = op;
+   const lh = box.dataset.lineHeight || '1.25';
+  const lhEl = document.getElementById('tbLineHeight'); if (lhEl) lhEl.value = lh;
+  const lhLbl = document.getElementById('tbLineHeightLabel'); if (lhLbl) lhLbl.textContent = lh;
+
+  const fs = box.dataset.fontSize || '24';
+  const fsEl = document.getElementById('tbFontSize'); if (fsEl) fsEl.value = fs;
+  const fsLbl = document.getElementById('tbFontSizeLabel'); if (fsLbl) fsLbl.textContent = fs;
+
+  const mode = box.dataset.mode || 'plate';
+  const isRibbon = (mode === 'ribbon');
+  const toggleBtn = document.getElementById('tbRibbonToggle');
+  const ribPanel = document.getElementById('tbRibbonSettings');
+  if (toggleBtn) toggleBtn.textContent = isRibbon ? '❌ Убрать подложку' : '🎀 Добавить подложку для текста';
+  if (toggleBtn) toggleBtn.style.background = isRibbon ? '#ef4444' : '#8b5cf6';
+  if (ribPanel) ribPanel.style.display = isRibbon ? 'block' : 'none';
+
+  const ribCol = box.dataset.ribbonColor || '#000000';
+  const ribColEl = document.getElementById('tbRibbonColor'); if (ribColEl) ribColEl.value = ribCol;
+  const ribOp = (box.dataset.ribbonOpacity !== undefined) ? parseInt(box.dataset.ribbonOpacity, 10) : 85;
+  const ribOpEl = document.getElementById('tbRibbonOpacity'); if (ribOpEl) ribOpEl.value = ribOp;
+  const ribOpLbl = document.getElementById('tbRibbonOpacityLabel'); if (ribOpLbl) ribOpLbl.textContent = ribOp;
+  const ribRad = box.dataset.ribbonRadius || '6';
+  const ribRadEl = document.getElementById('tbRibbonRadius'); if (ribRadEl) ribRadEl.value = ribRad;
+  const ribRadLbl = document.getElementById('tbRibbonRadiusLabel'); if (ribRadLbl) ribRadLbl.textContent = ribRad;
+  const ribPH = box.dataset.ribbonPadH || '0.3';
+  const ribPHEl = document.getElementById('tbRibbonPadH'); if (ribPHEl) ribPHEl.value = ribPH;
+  const ribPHLbl = document.getElementById('tbRibbonPadHLabel'); if (ribPHLbl) ribPHLbl.textContent = ribPH;
+  const ribPV = box.dataset.ribbonPadV || '0.25';
+  const ribPVEl = document.getElementById('tbRibbonPadV'); if (ribPVEl) ribPVEl.value = ribPV;
+  const ribPVLbl = document.getElementById('tbRibbonPadVLabel'); if (ribPVLbl) ribPVLbl.textContent = ribPV;
+}
+
+function handleTbPaste(e) {
+  const box = e.target.closest('.text-box');
+  if (!box) return;
+  e.preventDefault();
+  const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+  if (text) {
+    document.execCommand('insertText', false, text);
+  }
+  clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400);
+}
+
+document.addEventListener('paste', handleTbPaste, true);
+
+function insertImageIntoTextBox(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  const box = getTbTargetBox();
+  if (!box) { event.target.value = ''; return; }
+  const content = box.querySelector('.tb-content');
+  if (!content) { event.target.value = ''; return; }
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = document.createElement('img');
+    img.className = 'tb-img';
+    img.src = e.target.result;
+    img.contentEditable = 'false';
+    content.appendChild(img);
+    clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400);
+  };
+  reader.readAsDataURL(file);
+
+  event.target.value = '';
+}
+
+function addTextBox() {
+  if (isMobile()) { showTbToast(); return; }
+  const count = exportNode.querySelectorAll('.text-box').length;
+  if (count >= 10) { alert('Максимум 10 надписей'); return; }
+  const box = document.createElement('div');
+  box.className = 'text-box';
+  box.style.left = (30 + count * 20) + 'px';
+  box.style.top  = (30 + count * 20) + 'px';
+  box.dataset.bgColor = '#000000';
+  box.dataset.bgOpacity = '55';
+
+  const content = document.createElement('div');
+  content.className = 'tb-content';
+  content.contentEditable = 'true';
+  content.setAttribute('data-ph', 'Твой текст…');
+  box.appendChild(content);
+
+  exportNode.appendChild(box);
+  applyTbBg(box);
+  bindTextBox(box);
+  selectTextBox(box);
+  setTimeout(function(){ content.focus(); }, 30);
+  saveHistory();
+}
+
+function bindTextBox(box) {
+  const content = box.querySelector('.tb-content');
+  if (isMobile()) {
+    if (content) content.setAttribute('contenteditable', 'false');
+    box.addEventListener('click', function(e){ e.stopPropagation(); showTbToast(); });
+    box.addEventListener('touchstart', function(e){ e.stopPropagation(); showTbToast(); }, {passive: true});
+    return;
+  }
+
+  box.addEventListener('click', function(e){
+    if (e.target.closest('.tb-edge') || e.target.closest('.tb-handle') || e.target.closest('.tb-delete') || e.target.closest('.tb-resize')) return;
+    e.stopPropagation();
+    selectTextBox(box);
+    if (content) content.focus();
+  });
+
+  if (content) {
+    content.addEventListener('input', function(){ clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400); });
+    content.addEventListener('keyup', saveSelectionBeforeAction);
+    content.addEventListener('mouseup', saveSelectionBeforeAction);
+    content.addEventListener('touchend', saveSelectionBeforeAction);
+  }
+
+  ensureDragFrame(box);
+  makeTextBoxDraggable(box);
+  makeTextBoxResizable(box);
+  makeTextBoxRotatable(box);
+  applyTbRotation(box);
+}
+
+function ensureDragFrame(box) {
+  if (!box.querySelector('.tb-drag-frame')) {
+    const frame = document.createElement('div');
+    frame.className = 'tb-drag-frame';
+    frame.contentEditable = 'false';
+    ['top','bottom','left','right'].forEach(function(side){
+      const edge = document.createElement('div');
+      edge.className = 'tb-edge ' + side;
+      edge.contentEditable = 'false';
+      frame.appendChild(edge);
+    });
+    box.appendChild(frame);
+  }
+
+  if (!box.querySelector('.tb-handle')) {
+    const handle = document.createElement('div');
+    handle.className = 'tb-handle';
+    handle.contentEditable = 'false';
+    handle.textContent = '✥';
+    box.appendChild(handle);
+  }
+  if (!box.querySelector('.tb-copy')) {
+    const cp = document.createElement('div');
+    cp.className = 'tb-copy';
+    cp.contentEditable = 'false';
+    cp.textContent = '📋';
+    cp.title = 'Дублировать плашку';
+    cp.addEventListener('click', function(e){
+      e.stopPropagation();
+      duplicateTextBox(box);
+    });
+    cp.addEventListener('touchstart', function(e){
+      e.stopPropagation(); e.preventDefault();
+      duplicateTextBox(box);
+    });
+    box.appendChild(cp);
+  }
+
+  if (!box.querySelector('.tb-delete')) {
+    const delBtn = document.createElement('div');
+    delBtn.className = 'tb-delete';
+    delBtn.contentEditable = 'false';
+    delBtn.textContent = '✕';
+    delBtn.title = 'Удалить плашку';
+    delBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      deleteTextBox(box);
+    });
+    delBtn.addEventListener('touchstart', function(e) {
+      e.stopPropagation();
+      e.preventDefault();
+      deleteTextBox(box);
+    });
+    box.appendChild(delBtn);
+  }
+
+  if (!box.querySelector('.tb-resize')) {
+    const rs = document.createElement('div');
+    rs.className = 'tb-resize';
+    rs.contentEditable = 'false';
+    box.appendChild(rs);
+  }
+  if (!box.querySelector('.tb-rotate')) {
+    const rot = document.createElement('div');
+    rot.className = 'tb-rotate';
+    rot.contentEditable = 'false';
+    rot.textContent = '🔄';
+    rot.title = 'Вращать плашку';
+    box.appendChild(rot);
+  }
+}
+
+function deleteTextBox(box) {
+  if (!box) return;
+  if (currentTextBox === box || (currentTextBox && box.contains(currentTextBox))) {
+    currentTextBox = null;
+  }
+  box.remove();
+  syncTbSettings();
+  saveHistory();
+}
+
+function duplicateTextBox(box) {
+  if (!box) return;
+  const count = exportNode.querySelectorAll('.text-box').length;
+  if (count >= 10) { alert('Максимум 10 надписей'); return; }
+
+  const srcContent = box.querySelector('.tb-content');
+
+  const clone = document.createElement('div');
+  clone.className = 'text-box';
+  clone.style.left = (box.offsetLeft + 20) + 'px';
+  clone.style.top  = (box.offsetTop + 20) + 'px';
+  if (box.style.width) clone.style.width = box.style.width;
+  clone.dataset.bgColor   = box.dataset.bgColor   || '#000000';
+  clone.dataset.bgOpacity = box.dataset.bgOpacity || '55';
+  clone.dataset.rot       = box.dataset.rot       || '0';
+
+  const content = document.createElement('div');
+  content.className = 'tb-content';
+  content.contentEditable = 'true';
+  content.setAttribute('data-ph', 'Твой текст…');
+  content.innerHTML = srcContent ? srcContent.innerHTML : '';
+  if (srcContent && srcContent.style.height) content.style.height = srcContent.style.height;
+  clone.appendChild(content);
+
+  exportNode.appendChild(clone);
+  applyTbBg(clone);
+  bindTextBox(clone);
+  selectTextBox(clone);
+  saveHistory();
+}
+
+/* ===== ПРИВЯЗКА К ЦЕНТРУ ХОЛСТА (Путь А) ===== */
+const SNAP_TOLERANCE = 8; // насколько близко поднести, чтобы "прилипло" (px)
+
+function ensureSnapGuides() {
+  let gv = document.getElementById('snapGuideV');
+  let gh = document.getElementById('snapGuideH');
+  if (!gv) {
+    gv = document.createElement('div');
+    gv.id = 'snapGuideV';
+    gv.className = 'snap-guide vertical';
+    gv.contentEditable = 'false';
+    exportNode.appendChild(gv);
+  }
+  if (!gh) {
+    gh = document.createElement('div');
+    gh.id = 'snapGuideH';
+    gh.className = 'snap-guide horizontal';
+    gh.contentEditable = 'false';
+    exportNode.appendChild(gh);
+  }
+  return { gv, gh };
+}
+
+function showSnapGuideV(on) {
+  const { gv } = ensureSnapGuides();
+  if (on) { gv.style.left = (exportNode.clientWidth / 2 - 1) + 'px'; gv.classList.add('visible'); }
+  else gv.classList.remove('visible');
+}
+
+function showSnapGuideH(on) {
+  const { gh } = ensureSnapGuides();
+  if (on) { gh.style.top = (exportNode.clientHeight / 2 - 1) + 'px'; gh.classList.add('visible'); }
+  else gh.classList.remove('visible');
+}
+
+function hideSnapGuides() {
+  const gv = document.getElementById('snapGuideV');
+  const gh = document.getElementById('snapGuideH');
+  if (gv) gv.classList.remove('visible');
+  if (gh) gh.classList.remove('visible');
+}
+  /* ===== ШАГ 1: ПРИЛИПАНИЕ ПЛАШЕК ДРУГ К ДРУГУ ===== */
+function snapToOtherBoxes(box, newLeft, newTop) {
+  const w = box.offsetWidth;
+  const h = box.offsetHeight;
+
+  // линии перетаскиваемой плашки
+  const myLeft = newLeft;
+  const myRight = newLeft + w;
+  const myCX = newLeft + w / 2;
+  const myTop = newTop;
+  const myBottom = newTop + h;
+  const myCY = newTop + h / 2;
+
+  let snappedX = false, snappedY = false;
+
+  const others = exportNode.querySelectorAll('.text-box');
+  others.forEach(function(other) {
+    if (other === box) return;
+
+    const oL = other.offsetLeft;
+    const oT = other.offsetTop;
+    const oW = other.offsetWidth;
+    const oH = other.offsetHeight;
+    const oRight = oL + oW;
+    const oCX = oL + oW / 2;
+    const oBottom = oT + oH;
+    const oCY = oT + oH / 2;
+
+    // --- По горизонтали (X) ---
+    if (!snappedX) {
+      if (Math.abs(myLeft - oL) <= SNAP_TOLERANCE) { newLeft = oL; snappedX = true; }
+      else if (Math.abs(myRight - oRight) <= SNAP_TOLERANCE) { newLeft = oRight - w; snappedX = true; }
+      else if (Math.abs(myCX - oCX) <= SNAP_TOLERANCE) { newLeft = oCX - w / 2; snappedX = true; }
+    }
+
+    // --- По вертикали (Y) ---
+    if (!snappedY) {
+      if (Math.abs(myTop - oT) <= SNAP_TOLERANCE) { newTop = oT; snappedY = true; }
+      else if (Math.abs(myBottom - oBottom) <= SNAP_TOLERANCE) { newTop = oBottom - h; snappedY = true; }
+      else if (Math.abs(myCY - oCY) <= SNAP_TOLERANCE) { newTop = oCY - h / 2; snappedY = true; }
+    }
+  });
+
+  return { left: newLeft, top: newTop, snappedX: snappedX, snappedY: snappedY };
+}
+  
+/* ===== ЗЕРКАЛО ОТ ЦЕНТРА (по центрам плашек) ===== */
+function snapMirror(box, newLeft) {
+  const w = box.offsetWidth;
+  const canvasCX = exportNode.clientWidth / 2;
+  const myCX = newLeft + w / 2;
+  const myDist = myCX - canvasCX;
+
+  let resultLeft = newLeft;
+  let snapped = false;
+
+  const others = exportNode.querySelectorAll('.text-box');
+  for (let i = 0; i < others.length; i++) {
+    const other = others[i];
+    if (other === box) continue;
+
+    const oCX = other.offsetLeft + other.offsetWidth / 2;
+    const oDist = oCX - canvasCX;
+
+    if (oDist === 0) continue;
+    if ((myDist < 0 && oDist < 0) || (myDist > 0 && oDist > 0)) continue;
+
+    const targetCX = canvasCX - oDist;
+
+    if (Math.abs(myCX - targetCX) <= SNAP_TOLERANCE) {
+      resultLeft = targetCX - w / 2;
+      snapped = true;
+      break;
+    }
+  }
+
+  return { left: resultLeft, snapped: snapped };
+}
+
+function makeTextBoxDraggable(box) {
+  let isDragging = false;
+  let startX, startY, origLeft, origTop;
+
+  function onStart(e) {
+    const edge = e.target.closest('.tb-edge') || e.target.closest('.tb-handle');
+    if (!edge) return;
+
+    selectTextBox(box);
+
+    const touch = e.touches ? e.touches[0] : e;
+    startX = touch.clientX;
+    startY = touch.clientY;
+    origLeft = box.offsetLeft;
+    origTop = box.offsetTop;
+    isDragging = false;
+
+    if (e.cancelable) e.preventDefault();
+
+    function onMove(ev) {
+      const t = ev.touches ? ev.touches[0] : ev;
+      const dx = t.clientX - startX;
+      const dy = t.clientY - startY;
+
+      if (!isDragging && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) {
+        isDragging = true;
+      }
+
+      if (isDragging) {
+        if (ev.cancelable) ev.preventDefault();
+        const z = (typeof currentZoom === 'number' && currentZoom > 0) ? currentZoom : 1;
+        let newLeft = origLeft + dx / z;
+        let newTop = origTop + dy / z;
+
+        const maxLeft = exportNode.clientWidth - box.offsetWidth;
+        const maxTop = exportNode.clientHeight - box.offsetHeight;
+
+        if (newLeft < 0) newLeft = 0;
+        if (newTop < 0) newTop = 0;
+        if (newLeft > maxLeft) newLeft = maxLeft;
+        if (newTop > maxTop) newTop = maxTop;
+
+                // === ПРИВЯЗКА К ЦЕНТРУ ХОЛСТА (Путь А) ===
+        const canvasCX = exportNode.clientWidth / 2;
+        const canvasCY = exportNode.clientHeight / 2;
+        const boxCX = newLeft + box.offsetWidth / 2;
+        const boxCY = newTop + box.offsetHeight / 2;
+
+        let snappedToCanvasX = false;
+        let snappedToCanvasY = false;
+
+        // Центр по горизонтали (вертикальная линия)
+        if (Math.abs(boxCX - canvasCX) <= SNAP_TOLERANCE) {
+          newLeft = canvasCX - box.offsetWidth / 2;
+          showSnapGuideV(true);
+          snappedToCanvasX = true;
+        } else {
+          showSnapGuideV(false);
+        }
+
+        // Центр по вертикали (горизонтальная линия)
+        if (Math.abs(boxCY - canvasCY) <= SNAP_TOLERANCE) {
+          newTop = canvasCY - box.offsetHeight / 2;
+          showSnapGuideH(true);
+          snappedToCanvasY = true;
+        } else {
+          showSnapGuideH(false);
+        }
+
+        // === ШАГ 1: ПРИЛИПАНИЕ К ДРУГИМ ПЛАШКАМ ===
+        // (только если не прилипли уже к центру холста по этой оси)
+        const snapRes = snapToOtherBoxes(box, newLeft, newTop);
+        if (!snappedToCanvasX && snapRes.snappedX) {
+          newLeft = snapRes.left;
+          showSnapGuideV(true);
+        }
+                if (!snappedToCanvasY && snapRes.snappedY) {
+          newTop = snapRes.top;
+          showSnapGuideH(true);
+        }
+
+        // === ЗЕРКАЛО ОТ ЦЕНТРА ===
+        if (!snappedToCanvasX && !snapRes.snappedX) {
+          const mirror = snapMirror(box, newLeft);
+          if (mirror.snapped) {
+            newLeft = mirror.left;
+            showSnapGuideV(true);
+          }
+        }
+
+        box.style.left = newLeft + 'px';
+        box.style.top = newTop + 'px';
+      }
+    }
+
+    function onEnd() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onEnd);
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('touchend', onEnd);
+      hideSnapGuides();
+      if (isDragging) {
+        saveHistory();
+      }
+    }
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onEnd);
+    document.addEventListener('touchmove', onMove, {passive: false});
+    document.addEventListener('touchend', onEnd);
+  }
+
+  const handle = box.querySelector('.tb-handle');
+  const edges = box.querySelectorAll('.tb-edge');
+
+  if (handle) {
+    handle.addEventListener('mousedown', onStart);
+    handle.addEventListener('touchstart', onStart, {passive: false});
+  }
+  edges.forEach(function(edge){
+    edge.addEventListener('mousedown', onStart);
+    edge.addEventListener('touchstart', onStart, {passive: false});
+  });
+}
+
+function makeTextBoxResizable(box) {
+  const rs = box.querySelector('.tb-resize');
+  if (!rs) return;
+
+  function onStart(e) {
+    e.stopPropagation();
+    if (e.cancelable) e.preventDefault();
+    selectTextBox(box);
+
+    const content = box.querySelector('.tb-content');
+    const touch = e.touches ? e.touches[0] : e;
+    const startX = touch.clientX;
+    const startY = touch.clientY;
+    const startWidth = box.offsetWidth;
+    const startHeight = content ? content.offsetHeight : box.offsetHeight;
+
+    function onMove(ev) {
+      if (ev.cancelable) ev.preventDefault();
+      const t = ev.touches ? ev.touches[0] : ev;
+      const z = (typeof currentZoom === 'number' && currentZoom > 0) ? currentZoom : 1;
+      const dx = (t.clientX - startX) / z;
+      const dy = (t.clientY - startY) / z;
+
+      let newW = startWidth + dx;
+      if (newW < 60) newW = 60;
+      box.style.width = newW + 'px';
+
+      if (content) {
+        let newH = startHeight + dy;
+        if (newH < 30) newH = 30;
+        content.style.height = newH + 'px';
+      }
+    }
+
+    function onEnd() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onEnd);
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('touchend', onEnd);
+      saveHistory();
+    }
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onEnd);
+    document.addEventListener('touchmove', onMove, {passive: false});
+    document.addEventListener('touchend', onEnd);
+  }
+
+  rs.addEventListener('mousedown', onStart);
+  rs.addEventListener('touchstart', onStart, {passive: false});
+}
+
+function applyTbRotation(box) {
+  const rot = parseFloat(box.dataset.rot || '0');
+  box.style.transform = 'rotate(' + rot + 'deg)';
+  box.style.transformOrigin = 'center center';
+}
+
+function makeTextBoxRotatable(box) {
+  const handle = box.querySelector('.tb-rotate');
+  if (!handle) return;
+
+  function onStart(e) {
+    e.stopPropagation();
+    if (e.cancelable) e.preventDefault();
+    selectTextBox(box);
+
+    const rect = box.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+
+    function onMove(ev) {
+      if (ev.cancelable) ev.preventDefault();
+      const t = ev.touches ? ev.touches[0] : ev;
+      const angle = Math.atan2(t.clientY - cy, t.clientX - cx) * 180 / Math.PI + 90;
+      box.dataset.rot = angle;
+      applyTbRotation(box);
+    }
+
+    function onEnd() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onEnd);
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('touchend', onEnd);
+      saveHistory();
+    }
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onEnd);
+    document.addEventListener('touchmove', onMove, {passive: false});
+    document.addEventListener('touchend', onEnd);
+  }
+
+  handle.addEventListener('mousedown', onStart);
+  handle.addEventListener('touchstart', onStart, {passive: false});
+}
+
+function selectTextBox(box) {
+  editor.querySelectorAll('.img-box').forEach(function(b){ b.classList.remove('selected'); });
+  document.querySelectorAll('.text-box').forEach(function(b){ b.classList.remove('selected'); });
+  box.classList.add('selected');
+  currentTextBox = box.querySelector('.tb-content') || box;
+  currentImgBox = null;
+  syncTbSettings();
+}
+
+/* ================= ЭТАП 1: РАСШИРЕННЫЕ КАРТИНКИ ================= */
+
+function ensureRotor(box) {
+  if (!box) return;
+  let rotor = box.querySelector('.img-rotor');
+  if (!rotor) {
+    rotor = document.createElement('span');
+    rotor.className = 'img-rotor';
+    rotor.contentEditable = 'false';
+    const img = box.querySelector('img');
+    if (img) rotor.appendChild(img);
+    const resizer = box.querySelector('.img-resizer');
+    box.insertBefore(rotor, box.firstChild);
+    if (resizer) box.appendChild(resizer);
+  }
+}
+
+function positionMiniBar() {
+  const bar = document.getElementById('imgMiniBar');
+  if (!currentImgBox) { bar.classList.remove('visible'); return; }
+  const r = currentImgBox.getBoundingClientRect();
+  bar.classList.add('visible');
+  const barW = bar.offsetWidth || 320;
+  let left = r.left + r.width / 2 - barW / 2;
+  let top = r.top - bar.offsetHeight - 8;
+  if (top < 8) top = r.bottom + 8;
+  if (left < 8) left = 8;
+  if (left + barW > window.innerWidth - 8) left = window.innerWidth - barW - 8;
+  bar.style.left = left + 'px';
+  bar.style.top = top + 'px';
+}
+
+function hideMiniBar() {
+  const bar = document.getElementById('imgMiniBar');
+  if (bar) bar.classList.remove('visible');
+}
+
+function syncImgSettings() {
+  const box = document.getElementById('imgSettings');
+  if (!currentImgBox) { box.classList.remove('visible'); return; }
+  box.classList.add('visible');
+  const gap = parseInt(currentImgBox.dataset.gap || '20', 10);
+  const rad = parseInt(currentImgBox.dataset.radius || '12', 10);
+  const brd = parseInt(currentImgBox.dataset.border || '0', 10);
+  const col = currentImgBox.dataset.borderColor || '#000000';
+  const rot = parseInt(currentImgBox.dataset.rot || '0', 10);
+  
+  document.getElementById('imgGapRange').value = gap;
+  document.getElementById('imgGapLabel').textContent = gap;
+  document.getElementById('imgRadiusRange').value = rad;
+  document.getElementById('imgRadiusLabel').textContent = rad;
+  document.getElementById('imgBorderRange').value = brd;
+  document.getElementById('imgBorderLabel').textContent = brd;
+  document.getElementById('imgBorderColor').value = col;
+  
+  const rotRange = document.getElementById('imgRotRange');
+  const rotLabel = document.getElementById('imgRotLabel');
+  if (rotRange) rotRange.value = rot;
+  if (rotLabel) rotLabel.textContent = rot;
+
+  const miniSlider = document.getElementById('miniRotSlider');
+  if (miniSlider) miniSlider.value = rot;
+
+  syncImgMobilePanel();
+}
+
+function applyImgStyles(box) {
+  if (!box) return;
+  ensureRotor(box);
+  const gap = parseInt(box.dataset.gap || '20', 10);
+  const rad = parseInt(box.dataset.radius || '12', 10);
+  const brd = parseInt(box.dataset.border || '0', 10);
+  const col = box.dataset.borderColor || '#000000';
+  const rot = parseInt(box.dataset.rot || '0', 10);
+
+  box.style.setProperty('--img-radius', rad + 'px');
+  box.style.setProperty('--img-border', brd + 'px');
+  box.style.setProperty('--img-border-color', col);
+  box.style.setProperty('--img-rot', rot + 'deg');
+
+  const rotor = box.querySelector('.img-rotor');
+  const img = box.querySelector('img');
+  if (rotor) rotor.style.transform = 'rotate(' + rot + 'deg)';
+  if (img) {
+    img.style.borderRadius = rad + 'px';
+    img.style.boxShadow = brd > 0 ? '0 0 0 ' + brd + 'px ' + col : 'none';
+  }
+
+  const isRight = box.classList.contains('align-right');
+  const isCenter = box.classList.contains('align-center');
+
+  if (isCenter) {
+    box.style.margin = '10px auto';
+    updateCenterSpacers(box, gap);
+  } else {
+    removeCenterSpacers(box);
+    if (isRight) box.style.margin = '8px 0 8px ' + gap + 'px';
+    else box.style.margin = '8px ' + gap + 'px 8px 0';
+    box.style.removeProperty('--side-space');
+  }
+}
+
+function updateCenterSpacers(box, gap) {
+  const editorW = editor.clientWidth - (isMobile() ? 30 : 80);
+  const imgW = box.offsetWidth || (editorW * 0.5);
+  let side = (editorW - imgW) / 2 - gap;
+  if (side < 0) side = 0;
+  box.style.setProperty('--side-space', side + 'px');
+
+  let sp = box.previousElementSibling;
+  if (!sp || !sp.classList || !sp.classList.contains('img-spacer-left')) {
+    sp = document.createElement('span');
+    sp.className = 'img-spacer-left';
+    sp.contentEditable = 'false';
+    box.parentNode.insertBefore(sp, box);
+  }
+  let spR = box.nextElementSibling;
+  if (!spR || !spR.classList || !spR.classList.contains('img-spacer-right')) {
+    spR = document.createElement('span');
+    spR.className = 'img-spacer-right';
+    spR.contentEditable = 'false';
+    box.parentNode.insertBefore(spR, box.nextSibling);
+  }
+}
+
+function removeCenterSpacers(box) {
+  const prev = box.previousElementSibling;
+  if (prev && prev.classList && prev.classList.contains('img-spacer-left')) prev.remove();
+  const next = box.nextElementSibling;
+  if (next && next.classList && next.classList.contains('img-spacer-right')) next.remove();
+}
+
+function setImgGap(v) { 
+  if(!currentImgBox) return; 
+  currentImgBox.dataset.gap = v; 
+  document.getElementById('imgGapLabel').textContent = v; 
+  document.getElementById('imgGapRange').value = v; 
+  const igl = document.getElementById('impGapLabel'); if (igl) igl.textContent = v;
+  const igr = document.getElementById('impGapRange'); if (igr) igr.value = v;
+  applyImgStyles(currentImgBox); updateRatio(); clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400); 
+}
+
+function setImgRadius(v) { 
+  if(!currentImgBox) return; 
+  currentImgBox.dataset.radius = v; 
+  document.getElementById('imgRadiusLabel').textContent = v; 
+  document.getElementById('imgRadiusRange').value = v; 
+  const irl = document.getElementById('impRadiusLabel'); if (irl) irl.textContent = v;
+  const irr = document.getElementById('impRadiusRange'); if (irr) irr.value = v;
+  applyImgStyles(currentImgBox); clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400); 
+}
+
+function setImgBorder(v) { 
+  if(!currentImgBox) return; 
+  currentImgBox.dataset.border = v; 
+  document.getElementById('imgBorderLabel').textContent = v; 
+  document.getElementById('imgBorderRange').value = v; 
+  const ibl = document.getElementById('impBorderLabel'); if (ibl) ibl.textContent = v;
+  const ibr = document.getElementById('impBorderRange'); if (ibr) ibr.value = v;
+  applyImgStyles(currentImgBox); clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400); 
+}
+
+function setImgBorderColor(v) { 
+  if(!currentImgBox) return; 
+  currentImgBox.dataset.borderColor = v; 
+  document.getElementById('imgBorderColor').value = v; 
+  const ibc = document.getElementById('impBorderColor'); if (ibc) ibc.value = v;
+  applyImgStyles(currentImgBox); clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400); 
+}
+
+function setImgRot(v) {
+  if(!currentImgBox) return;
+  currentImgBox.dataset.rot = v;
+  const lbl = document.getElementById('imgRotLabel'); if (lbl) lbl.textContent = v;
+  const rng = document.getElementById('imgRotRange'); if (rng) rng.value = v;
+  const mrng = document.getElementById('miniRotSlider'); if (mrng) mrng.value = v;
+  const irng = document.getElementById('impRotRange'); if (irng) irng.value = v;
+  const ilbl = document.getElementById('impRotLabel'); if (ilbl) ilbl.textContent = v;
+  applyImgStyles(currentImgBox);
+  updateRatio(); positionMiniBar();
+  clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400);
+}
+
+function miniAlign(dir) {
+  if (!currentImgBox) return;
+  currentImgBox.classList.remove('align-right', 'align-center');
+  if (dir === 'right') currentImgBox.classList.add('align-right');
+  else if (dir === 'center') currentImgBox.classList.add('align-center');
+  applyImgStyles(currentImgBox);
+  updateRatio(); positionMiniBar(); saveHistory(); focusEditor();
+}
+
+function miniRotate(deg) {
+  if (!currentImgBox) return;
+  let rot = parseInt(currentImgBox.dataset.rot || '0', 10) + deg;
+  while (rot > 180) rot -= 360;
+  while (rot < -180) rot += 360;
+  setImgRot(rot);
+}
+
+function miniToTop() {
+  if (!currentImgBox) return;
+  const box = currentImgBox;
+  removeCenterSpacers(box);
+  editor.insertBefore(box, editor.firstChild);
+  if (!box.nextSibling || (box.nextSibling.nodeType === Node.TEXT_NODE && box.nextSibling.textContent === '')) {
+    const zwsp = document.createTextNode('\u200B');
+    editor.insertBefore(zwsp, box.nextSibling);
+  }
+  ensureAnchorBeforeImages();
+  applyImgStyles(box);
+  updateRatio(); positionMiniBar(); saveHistory(); focusEditor();
+}
+
+function miniToBottom() {
+  if (!currentImgBox) return;
+  const box = currentImgBox;
+  removeCenterSpacers(box);
+  editor.appendChild(box);
+  const zwsp = document.createTextNode('\u200B');
+  editor.appendChild(zwsp);
+  ensureAnchorBeforeImages();
+  applyImgStyles(box);
+  updateRatio(); positionMiniBar(); saveHistory(); focusEditor();
+}
+
+function miniDelete() {
+  if (!currentImgBox) return;
+  try { removeCenterSpacers(currentImgBox); } catch(e) {}
+  currentImgBox.remove();
+  currentImgBox = null;
+  hideMiniBar();
+  closeImgMobilePanel();
+  updateImgCounter();
+  document.getElementById('charCount').textContent = editor.innerText.replace(/\u200B/g, '').trim().length;
+  updateRatio(); saveHistory(); focusEditor();
+}
+
+function miniDuplicate() {
+  if (!currentImgBox) return;
+  if (updateImgCounter() >= 10) { alert('Максимум 10 картинок'); return; }
+  const clone = currentImgBox.cloneNode(true);
+  clone.classList.remove('selected');
+  currentImgBox.parentNode.insertBefore(clone, currentImgBox.nextSibling);
+  const zwsp = document.createTextNode('\u200B');
+  clone.parentNode.insertBefore(zwsp, clone.nextSibling);
+  ensureAnchorBeforeImages();
+  rebindImages();
+  applyImgStyles(clone);
+  selectImgBox(clone);
+  updateImgCounter(); updateRatio(); saveHistory(); focusEditor();
+}
+
+/* ===== ТЕЛЕФОННАЯ ПЛАВАЮЩАЯ МЕНЮ КАРТИНКИ ===== */
+let impPos = null;
+let rotUnlocked = false;
+
+function setRotLock(unlocked) {
+  rotUnlocked = unlocked;
+  const btn = document.getElementById('impRotLock');
+  const slider = document.getElementById('impRotRange');
+  if (!btn || !slider) return;
+  if (unlocked) {
+    btn.textContent = '🔓';
+    slider.style.opacity = '1';
+    slider.style.pointerEvents = 'auto';
+  } else {
+    btn.textContent = '🔒';
+    slider.style.opacity = '0.4';
+    slider.style.pointerEvents = 'none';
+  }
+}
+
+function toggleRotLock() {
+  setRotLock(!rotUnlocked);
+}
+
+function openImgMobilePanel() {
+  const p = document.getElementById('imgMobilePanel');
+  if (!p || !currentImgBox) return;
+  syncImgMobilePanel();
+  setRotLock(false);
+  p.classList.add('visible');
+  requestAnimationFrame(function(){
+    const pw = p.offsetWidth || 270;
+    const ph = p.offsetHeight || 300;
+    const peek = 40;
+    const minL = peek - pw, maxL = window.innerWidth - peek;
+    const minT = peek - ph, maxT = window.innerHeight - peek;
+    let left, top;
+    if (impPos) {
+      left = Math.max(minL, Math.min(impPos.left, maxL));
+      top  = Math.max(minT, Math.min(impPos.top, maxT));
+    } else {
+      left = Math.max(0, (window.innerWidth - pw) / 2);
+      top  = 80;
+    }
+    p.style.left = left + 'px';
+    p.style.top = top + 'px';
+    impPos = { left: left, top: top };
+  });
+}
+
+function closeImgMobilePanel() {
+  const p = document.getElementById('imgMobilePanel');
+  if (p) p.classList.remove('visible');
+}
+
+function syncImgMobilePanel() {
+  if (!currentImgBox) return;
+  const gap = parseInt(currentImgBox.dataset.gap || '20', 10);
+  const rad = parseInt(currentImgBox.dataset.radius || '12', 10);
+  const brd = parseInt(currentImgBox.dataset.border || '0', 10);
+  const col = currentImgBox.dataset.borderColor || '#000000';
+  const rot = parseInt(currentImgBox.dataset.rot || '0', 10);
+  
+  const igr = document.getElementById('impGapRange'); if (igr) igr.value = gap;
+  const igl = document.getElementById('impGapLabel'); if (igl) igl.textContent = gap;
+  const irr = document.getElementById('impRadiusRange'); if (irr) irr.value = rad;
+  const irl = document.getElementById('impRadiusLabel'); if (irl) irl.textContent = rad;
+  const ibr = document.getElementById('impBorderRange'); if (ibr) ibr.value = brd;
+  const ibl = document.getElementById('impBorderLabel'); if (ibl) ibl.textContent = brd;
+  const ibc = document.getElementById('impBorderColor'); if (ibc) ibc.value = col;
+  const irrRot = document.getElementById('impRotRange'); if (irrRot) irrRot.value = rot;
+  const irlRot = document.getElementById('impRotLabel'); if (irlRot) irlRot.textContent = rot;
+}
+
+(function(){
+  const head = document.getElementById('impHead');
+  const panel = document.getElementById('imgMobilePanel');
+  if (!head || !panel) return;
+  let dragging = false, sx = 0, sy = 0, ox = 0, oy = 0;
+  
+  function start(x, y) {
+    dragging = true; head.classList.add('grabbing');
+    sx = x; sy = y;
+    ox = panel.offsetLeft; oy = panel.offsetTop;
+  }
+  function move(x, y) {
+    if (!dragging) return;
+    let nl = ox + (x - sx), nt = oy + (y - sy);
+    const peek = 40;
+    const pw = panel.offsetWidth;
+    const ph = panel.offsetHeight;
+    const minL = peek - pw;
+    const maxL = window.innerWidth - peek;
+    const minT = peek - ph;
+    const maxT = window.innerHeight - peek;
+    nl = Math.max(minL, Math.min(nl, maxL));
+    nt = Math.max(minT, Math.min(nt, maxT));
+    panel.style.left = nl + 'px';
+    panel.style.top = nt + 'px';
+    impPos = { left: nl, top: nt };
+  }
+  function end() { dragging = false; head.classList.remove('grabbing'); }
+  
+  head.addEventListener('touchstart', e => { const t = e.touches[0]; start(t.clientX, t.clientY); }, {passive:true});
+  head.addEventListener('touchmove', e => { e.preventDefault(); const t = e.touches[0]; move(t.clientX, t.clientY); }, {passive:false});
+  head.addEventListener('touchend', end);
+  head.addEventListener('mousedown', e => start(e.clientX, e.clientY));
+  document.addEventListener('mousemove', e => move(e.clientX, e.clientY));
+  document.addEventListener('mouseup', end);
+})();
+
+stageArea.addEventListener('scroll', () => currentImgBox && positionMiniBar());
+window.addEventListener('scroll', () => currentImgBox && positionMiniBar());
+
+/* ЭТАП 2: тост-подсказка "плашки только с компьютера" */
+let _tbToastTimer = null;
+function showTbToast() {
+  let t = document.getElementById('tbToast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'tbToast';
+    t.textContent = '📝 Надписи управляются только с компьютера';
+    document.body.appendChild(t);
+  }
+  t.classList.add('show');
+  clearTimeout(_tbToastTimer);
+  _tbToastTimer = setTimeout(function(){ t.classList.remove('show'); }, 2200);
+}
+
+</script>
+</body>
+</html>
