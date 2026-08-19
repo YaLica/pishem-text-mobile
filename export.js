@@ -1,7 +1,6 @@
-function prepareRibbonExportLayers(rootNode) {
-const root = rootNode || exportNode;
+function prepareRibbonExportLayers() {
 const cleanups = [];
-root.querySelectorAll('.text-box.mode-ribbon').forEach(function(box) {
+exportNode.querySelectorAll('.text-box.mode-ribbon').forEach(function(box) {
 const content = box.querySelector('.tb-content');
 const ribbon = content && content.querySelector('.tb-ribbon');
 if (!content || !ribbon || !ribbon.textContent.trim()) return;
@@ -18,10 +17,8 @@ content.style.position = 'relative';
 ribbon.style.position = 'relative';
 ribbon.style.zIndex = '1';
 
-const doc = root.ownerDocument || document;
-const win = doc.defaultView || window;
 const contentRect = content.getBoundingClientRect();
-const style = win.getComputedStyle(ribbon);
+const style = getComputedStyle(ribbon);
 const padL = parseFloat(style.paddingLeft) || 0;
 const padR = parseFloat(style.paddingRight) || 0;
 const padT = parseFloat(style.paddingTop) || 0;
@@ -29,7 +26,7 @@ const padB = parseFloat(style.paddingBottom) || 0;
 const radius = style.borderRadius || '0px';
 const background = style.backgroundColor || box.style.getPropertyValue('--ribbon-bg') || 'rgba(0,0,0,.85)';
 
-const range = doc.createRange();
+const range = document.createRange();
 range.selectNodeContents(ribbon);
 const rawRects = Array.from(range.getClientRects()).filter(function(rect) {
 return rect.width > 0.5 && rect.height > 0.5;
@@ -62,12 +59,12 @@ ribbon.style.zIndex = oldRibbonZ;
 return;
 }
 
-const layer = doc.createElement('span');
+const layer = document.createElement('span');
 layer.className = 'tb-ribbon-export-layer';
 layer.setAttribute('aria-hidden', 'true');
 layer.style.cssText = 'position:absolute;inset:0;z-index:0;pointer-events:none;overflow:visible;';
 rows.forEach(function(row) {
-const band = doc.createElement('span');
+const band = document.createElement('span');
 band.className = 'tb-ribbon-export-band';
 band.style.position = 'absolute';
 band.style.left = (row.left - contentRect.left - padL) + 'px';
@@ -99,218 +96,67 @@ cleanups.forEach(function(cleanup) { cleanup(); });
 };
 }
 
-function collectTextBoxExportStyles() {
-const records = [];
-exportNode.querySelectorAll('.text-box').forEach(function(box, index) {
-const content = box.querySelector('.tb-content');
-if (!content) return;
-const id = 'tb-export-' + index + '-' + Date.now();
-box.setAttribute('data-export-id', id);
-const boxStyle = getComputedStyle(box);
-const contentStyle = getComputedStyle(content);
-const ribbon = content.querySelector('.tb-ribbon');
-const ribbonStyle = ribbon ? getComputedStyle(ribbon) : null;
-records.push({
-id: id,
-box: {
-width: boxStyle.width,
-height: boxStyle.height,
-left: box.style.left,
-top: box.style.top,
-transform: box.style.transform || boxStyle.transform,
-transformOrigin: boxStyle.transformOrigin
-},
-content: {
-width: contentStyle.width,
-height: contentStyle.height,
-fontSize: contentStyle.fontSize,
-lineHeight: contentStyle.lineHeight,
-fontFamily: contentStyle.fontFamily,
-fontWeight: contentStyle.fontWeight,
-fontStyle: contentStyle.fontStyle,
-fontStretch: contentStyle.fontStretch,
-fontVariant: contentStyle.fontVariant,
-fontKerning: contentStyle.fontKerning,
-fontFeatureSettings: contentStyle.fontFeatureSettings,
-textRendering: contentStyle.textRendering,
-letterSpacing: contentStyle.letterSpacing,
-textAlign: contentStyle.textAlign,
-textAlignLast: contentStyle.textAlignLast,
-wordBreak: contentStyle.wordBreak,
-overflowWrap: contentStyle.overflowWrap,
-whiteSpace: contentStyle.whiteSpace,
-padding: contentStyle.padding,
-boxSizing: contentStyle.boxSizing,
-borderRadius: contentStyle.borderRadius,
-background: contentStyle.background,
-color: contentStyle.color
-},
-ribbon: ribbonStyle ? {
-fontSize: ribbonStyle.fontSize,
-lineHeight: ribbonStyle.lineHeight,
-fontFamily: ribbonStyle.fontFamily,
-fontWeight: ribbonStyle.fontWeight,
-fontStyle: ribbonStyle.fontStyle,
-fontStretch: ribbonStyle.fontStretch,
-fontVariant: ribbonStyle.fontVariant,
-fontKerning: ribbonStyle.fontKerning,
-fontFeatureSettings: ribbonStyle.fontFeatureSettings,
-textRendering: ribbonStyle.textRendering,
-letterSpacing: ribbonStyle.letterSpacing,
-textAlign: ribbonStyle.textAlign,
-textAlignLast: ribbonStyle.textAlignLast,
-whiteSpace: ribbonStyle.whiteSpace,
-padding: ribbonStyle.padding,
-borderRadius: ribbonStyle.borderRadius
-} : null
-});
-});
-return records;
-}
-
-function applyTextBoxExportStyles(clonedDoc, records) {
-(records || []).forEach(function(record) {
-const box = clonedDoc.querySelector('[data-export-id="' + record.id + '"]');
-if (!box) return;
-const content = box.querySelector('.tb-content');
-const ribbon = content && content.querySelector('.tb-ribbon');
-Object.keys(record.box).forEach(function(key) {
-if (record.box[key]) box.style.setProperty(key.replace(/[A-Z]/g, function(m){ return '-' + m.toLowerCase(); }), record.box[key], 'important');
-});
-if (content) Object.keys(record.content).forEach(function(key) {
-if (record.content[key]) content.style.setProperty(key.replace(/[A-Z]/g, function(m){ return '-' + m.toLowerCase(); }), record.content[key], 'important');
-});
-if (ribbon && record.ribbon) Object.keys(record.ribbon).forEach(function(key) {
-if (record.ribbon[key]) ribbon.style.setProperty(key.replace(/[A-Z]/g, function(m){ return '-' + m.toLowerCase(); }), record.ribbon[key], 'important');
-});
-});
-}
-
-function cleanupTextBoxExportIds() {
-exportNode.querySelectorAll('.text-box[data-export-id]').forEach(function(box) { box.removeAttribute('data-export-id'); });
-}
-
 function generatePlainText() {
 const clone = editor.cloneNode(true);
 clone.querySelectorAll('.img-box, .img-spacer-left, .img-spacer-right').forEach(el => el.remove());
 return clone.innerText.replace(/\u200B/g, '').trim();
 }
 
-function getPrimaryFontFamily(fontFamily) {
-return String(fontFamily || '').split(',')[0].trim().replace(/^['\"]|['\"]$/g, '');
-}
-
-async function waitForExportFonts() {
-// Важно: не заставляем браузер заново скачивать Google Fonts через document.fonts.load().
-// Это в некоторых случаях ломает уже нормально работавшую загрузку шрифтов.
-// Просто даём странице коротко дождаться уже подключённых @font-face и продолжаем экспорт.
-if (!document.fonts) {
-  await new Promise(function(resolve) { requestAnimationFrame(function() { requestAnimationFrame(resolve); }); });
-  return;
-}
-const timeout = new Promise(function(resolve) { setTimeout(resolve, 1200); });
-try { await Promise.race([document.fonts.ready, timeout]); } catch (_) {}
-await new Promise(function(resolve) { requestAnimationFrame(function() { requestAnimationFrame(resolve); }); });
-}
-
-function copyPreparedTextBoxStyles(sourceRoot, cloneRoot) {
-const sourceBoxes = Array.from(sourceRoot.querySelectorAll('.text-box'));
-const cloneBoxes = Array.from(cloneRoot.querySelectorAll('.text-box'));
-const properties = [
-'width','height','min-width','max-width','left','top','transform','transform-origin',
-'font-family','font-size','font-weight','font-style','font-stretch','font-variant',
-'font-kerning','font-feature-settings','line-height','letter-spacing','text-rendering',
-'text-align','text-align-last','white-space','word-break','overflow-wrap','padding',
-'box-sizing','border-radius','background','background-color','color'
-];
-
-sourceBoxes.forEach(function(sourceBox, index) {
-const cloneBox = cloneBoxes[index];
-if (!cloneBox) return;
-const sourceContent = sourceBox.querySelector('.tb-content');
-const cloneContent = cloneBox.querySelector('.tb-content');
-const sourceRibbon = sourceContent && sourceContent.querySelector('.tb-ribbon');
-const cloneRibbon = cloneContent && cloneContent.querySelector('.tb-ribbon');
-
-[[sourceBox, cloneBox], [sourceContent, cloneContent], [sourceRibbon, cloneRibbon]].forEach(function(pair) {
-const source = pair[0], target = pair[1];
-if (!source || !target) return;
-const style = getComputedStyle(source);
-properties.forEach(function(property) {
-const value = style.getPropertyValue(property);
-if (value) target.style.setProperty(property, value, 'important');
-});
-target.style.setProperty('-webkit-text-size-adjust', '100%', 'important');
-target.style.setProperty('text-size-adjust', '100%', 'important');
-});
-});
-}
-
-async function createPreparedExportClone() {
-await waitForExportFonts();
-
-const holder = document.createElement('div');
-holder.setAttribute('aria-hidden', 'true');
-holder.style.cssText = [
-'position:fixed','left:-12000px','top:0','z-index:-1','pointer-events:none',
-'overflow:visible','opacity:1','transform:none'
-].join(';');
-
-const clone = exportNode.cloneNode(true);
-clone.removeAttribute('id');
-clone.setAttribute('data-prepared-export', 'true');
-clone.style.margin = '0';
-clone.style.transition = 'none';
-clone.style.transform = 'none';
-clone.style.boxShadow = getComputedStyle(exportNode).boxShadow;
-clone.style.width = getComputedStyle(exportNode).width;
-clone.style.setProperty('-webkit-text-size-adjust', '100%');
-clone.style.setProperty('text-size-adjust', '100%');
-
-clone.querySelectorAll('.selected').forEach(function(el) { el.classList.remove('selected'); });
-clone.querySelectorAll('.tb-drag-frame, .tb-handle, .tb-copy, .tb-delete, .tb-resize, .tb-rotate, .img-resizer, .img-rotate-handle, #snapGuideV, #snapGuideH').forEach(function(el) { el.remove(); });
-clone.querySelectorAll('[contenteditable]').forEach(function(el) { el.setAttribute('contenteditable', 'false'); });
-
-holder.appendChild(clone);
-document.body.appendChild(holder);
-copyPreparedTextBoxStyles(exportNode, clone);
-
-// Даём всем плашкам одновременно пройти полный layout в реальном DOM.
-await new Promise(function(resolve) {
-requestAnimationFrame(function() { requestAnimationFrame(resolve); });
-});
-
-// Полоски подложек считаются только после окончательной раскладки всех плашек.
-prepareRibbonExportLayers(clone);
-await new Promise(function(resolve) { requestAnimationFrame(resolve); });
-
-return {
-node: clone,
-remove: function() { if (holder.isConnected) holder.remove(); }
-};
-}
-
-async function processExport() {
+function processExport() {
 const btn = document.getElementById('exportBtn');
 const originalText = btn.innerHTML;
 btn.innerHTML = '⏳ Рисую...';
 btn.disabled = true;
 editor.querySelectorAll('.img-box').forEach(function(i) { i.classList.remove('selected'); });
 currentImgBox = null;
+const savedTransform = zoomWrapper.style.transform;
+zoomWrapper.style.transform = 'scale(1)';
+const cleanupRibbonLayers = prepareRibbonExportLayers();
 
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const isAndroid = /Android/i.test(navigator.userAgent);
-let prepared = null;
 
-function restoreExportUi() {
-if (prepared) { prepared.remove(); prepared = null; }
-btn.innerHTML = originalText;
-btn.disabled = false;
-updateRatio();
-}
-
-function showExportResult(canvas) {
+setTimeout(function() {
+html2canvas(exportNode, {
+  backgroundColor: null,
+  scale: 2,
+  useCORS: true,
+  width: exportNode.offsetWidth,
+  windowWidth: Math.max(document.documentElement.clientWidth, 1024),
+  windowHeight: Math.max(document.documentElement.clientHeight, exportNode.offsetHeight + 200),
+  scrollX: 0,
+  scrollY: 0,
+  x: 0,
+  y: 0,
+  onclone: function(clonedDoc) {
+    var root = clonedDoc.documentElement;
+    var clonedBody = clonedDoc.body;
+    if (root) { root.style.setProperty('-webkit-text-size-adjust', '100%'); root.style.setProperty('text-size-adjust', '100%'); }
+    if (clonedBody) { clonedBody.style.setProperty('-webkit-text-size-adjust', '100%'); clonedBody.style.setProperty('text-size-adjust', '100%'); }
+    clonedDoc.querySelectorAll('.text-box, .tb-content, .tb-ribbon').forEach(function(el) {
+      el.style.setProperty('-webkit-text-size-adjust', '100%');
+      el.style.setProperty('text-size-adjust', '100%');
+    });
+    var ed = clonedDoc.getElementById('editor');
+    if (ed) {
+      ed.style.setProperty('-webkit-hyphens', 'none');
+      ed.style.setProperty('-moz-hyphens', 'none');
+      ed.style.setProperty('-ms-hyphens', 'none');
+      ed.style.setProperty('hyphens', 'none');
+      ed.style.setProperty('word-break', 'normal');
+      ed.style.setProperty('overflow-wrap', 'break-word');
+      ed.style.setProperty('text-align', 'justify');
+      ed.querySelectorAll('*').forEach(function(el){
+        el.style.setProperty('-webkit-hyphens', 'none');
+        el.style.setProperty('hyphens', 'none');
+      });
+    }
+    var cn = clonedDoc.documentElement;
+    if (cn) cn.setAttribute('lang', 'ru');
+  }
+}).then(function(canvas) {
 const dataUrl = canvas.toDataURL('image/png');
+
 let imgPreview = document.getElementById('previewImage');
 if (!imgPreview) {
 imgPreview = document.createElement('img');
@@ -325,7 +171,11 @@ imgPreview.style.display = 'block';
 function finish() {
 document.getElementById('markdownOutput').value = generatePlainText();
 document.getElementById('textModal').style.display = 'flex';
-restoreExportUi();
+btn.innerHTML = originalText;
+btn.disabled = false;
+zoomWrapper.style.transform = savedTransform;
+cleanupRibbonLayers();
+updateRatio();
 }
 
 if (isIOS) {
@@ -353,7 +203,7 @@ link.download = 'texter-post.png';
 link.href = dataUrl;
 document.body.appendChild(link);
 link.click();
-link.remove();
+document.body.removeChild(link);
 finish();
 }, 'image/png');
 } else {
@@ -362,42 +212,17 @@ link.download = 'texter-post.png';
 link.href = dataUrl;
 document.body.appendChild(link);
 link.click();
-link.remove();
+document.body.removeChild(link);
 finish();
 }
-}
 
-try {
-prepared = await createPreparedExportClone();
-const canvas = await html2canvas(prepared.node, {
-backgroundColor: null,
-scale: 2,
-useCORS: true,
-width: prepared.node.offsetWidth,
-height: prepared.node.offsetHeight,
-windowWidth: Math.max(document.documentElement.clientWidth, 1024),
-windowHeight: Math.max(document.documentElement.clientHeight, prepared.node.offsetHeight + 200),
-scrollX: 0,
-scrollY: 0,
-onclone: function(clonedDoc) {
-const preparedClone = clonedDoc.querySelector('[data-prepared-export="true"]');
-if (!preparedClone) return;
-preparedClone.style.setProperty('-webkit-text-size-adjust', '100%');
-preparedClone.style.setProperty('text-size-adjust', '100%');
-preparedClone.querySelectorAll('*').forEach(function(el) {
-el.style.setProperty('-webkit-text-size-adjust', '100%');
-el.style.setProperty('text-size-adjust', '100%');
-el.style.setProperty('-webkit-hyphens', 'none');
-el.style.setProperty('hyphens', 'none');
+}).catch(function(err) {
+btn.innerHTML = originalText;
+btn.disabled = false;
+zoomWrapper.style.transform = savedTransform;
+cleanupRibbonLayers();
 });
-}
-});
-showExportResult(canvas);
-} catch (err) {
-console.error('PNG export failed:', err);
-restoreExportUi();
-alert('Не удалось создать PNG. Попробуй ещё раз.');
-}
+}, 100);
 }
 
 function escapeClipboardHtml(text) {
