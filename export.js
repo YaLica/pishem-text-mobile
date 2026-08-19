@@ -122,21 +122,12 @@ html2canvas(exportNode, {
   scale: 2,
   useCORS: true,
   width: exportNode.offsetWidth,
-  windowWidth: Math.max(document.documentElement.clientWidth, 1024),
-  windowHeight: Math.max(document.documentElement.clientHeight, exportNode.offsetHeight + 200),
+  windowWidth: exportNode.offsetWidth,
   scrollX: 0,
   scrollY: 0,
   x: 0,
   y: 0,
   onclone: function(clonedDoc) {
-    var root = clonedDoc.documentElement;
-    var clonedBody = clonedDoc.body;
-    if (root) { root.style.setProperty('-webkit-text-size-adjust', '100%'); root.style.setProperty('text-size-adjust', '100%'); }
-    if (clonedBody) { clonedBody.style.setProperty('-webkit-text-size-adjust', '100%'); clonedBody.style.setProperty('text-size-adjust', '100%'); }
-    clonedDoc.querySelectorAll('.text-box, .tb-content, .tb-ribbon').forEach(function(el) {
-      el.style.setProperty('-webkit-text-size-adjust', '100%');
-      el.style.setProperty('text-size-adjust', '100%');
-    });
     var ed = clonedDoc.getElementById('editor');
     if (ed) {
       ed.style.setProperty('-webkit-hyphens', 'none');
