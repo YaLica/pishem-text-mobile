@@ -96,6 +96,87 @@ cleanups.forEach(function(cleanup) { cleanup(); });
 };
 }
 
+function collectTextBoxExportStyles() {
+const records = [];
+exportNode.querySelectorAll('.text-box').forEach(function(box, index) {
+const content = box.querySelector('.tb-content');
+if (!content) return;
+const id = 'tb-export-' + index + '-' + Date.now();
+box.setAttribute('data-export-id', id);
+const boxStyle = getComputedStyle(box);
+const contentStyle = getComputedStyle(content);
+const ribbon = content.querySelector('.tb-ribbon');
+const ribbonStyle = ribbon ? getComputedStyle(ribbon) : null;
+records.push({
+id: id,
+box: {
+width: boxStyle.width,
+height: boxStyle.height,
+left: box.style.left,
+top: box.style.top,
+transform: box.style.transform || boxStyle.transform,
+transformOrigin: boxStyle.transformOrigin
+},
+content: {
+width: contentStyle.width,
+height: contentStyle.height,
+fontSize: contentStyle.fontSize,
+lineHeight: contentStyle.lineHeight,
+fontFamily: contentStyle.fontFamily,
+fontWeight: contentStyle.fontWeight,
+fontStyle: contentStyle.fontStyle,
+letterSpacing: contentStyle.letterSpacing,
+textAlign: contentStyle.textAlign,
+textAlignLast: contentStyle.textAlignLast,
+wordBreak: contentStyle.wordBreak,
+overflowWrap: contentStyle.overflowWrap,
+whiteSpace: contentStyle.whiteSpace,
+padding: contentStyle.padding,
+boxSizing: contentStyle.boxSizing,
+borderRadius: contentStyle.borderRadius,
+background: contentStyle.background,
+color: contentStyle.color
+},
+ribbon: ribbonStyle ? {
+fontSize: ribbonStyle.fontSize,
+lineHeight: ribbonStyle.lineHeight,
+fontFamily: ribbonStyle.fontFamily,
+fontWeight: ribbonStyle.fontWeight,
+fontStyle: ribbonStyle.fontStyle,
+letterSpacing: ribbonStyle.letterSpacing,
+textAlign: ribbonStyle.textAlign,
+textAlignLast: ribbonStyle.textAlignLast,
+whiteSpace: ribbonStyle.whiteSpace,
+padding: ribbonStyle.padding,
+borderRadius: ribbonStyle.borderRadius
+} : null
+});
+});
+return records;
+}
+
+function applyTextBoxExportStyles(clonedDoc, records) {
+(records || []).forEach(function(record) {
+const box = clonedDoc.querySelector('[data-export-id="' + record.id + '"]');
+if (!box) return;
+const content = box.querySelector('.tb-content');
+const ribbon = content && content.querySelector('.tb-ribbon');
+Object.keys(record.box).forEach(function(key) {
+if (record.box[key]) box.style.setProperty(key.replace(/[A-Z]/g, function(m){ return '-' + m.toLowerCase(); }), record.box[key], 'important');
+});
+if (content) Object.keys(record.content).forEach(function(key) {
+if (record.content[key]) content.style.setProperty(key.replace(/[A-Z]/g, function(m){ return '-' + m.toLowerCase(); }), record.content[key], 'important');
+});
+if (ribbon && record.ribbon) Object.keys(record.ribbon).forEach(function(key) {
+if (record.ribbon[key]) ribbon.style.setProperty(key.replace(/[A-Z]/g, function(m){ return '-' + m.toLowerCase(); }), record.ribbon[key], 'important');
+});
+});
+}
+
+function cleanupTextBoxExportIds() {
+exportNode.querySelectorAll('.text-box[data-export-id]').forEach(function(box) { box.removeAttribute('data-export-id'); });
+}
+
 function generatePlainText() {
 const clone = editor.cloneNode(true);
 clone.querySelectorAll('.img-box, .img-spacer-left, .img-spacer-right').forEach(el => el.remove());
@@ -111,6 +192,7 @@ editor.querySelectorAll('.img-box').forEach(function(i) { i.classList.remove('se
 currentImgBox = null;
 const savedTransform = zoomWrapper.style.transform;
 zoomWrapper.style.transform = 'scale(1)';
+const textBoxExportStyles = collectTextBoxExportStyles();
 const cleanupRibbonLayers = prepareRibbonExportLayers();
 
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -145,6 +227,7 @@ html2canvas(exportNode, {
       el.style.setProperty('-webkit-text-size-adjust', '100%');
       el.style.setProperty('text-size-adjust', '100%');
     });
+    applyTextBoxExportStyles(clonedDoc, textBoxExportStyles);
     var ed = clonedDoc.getElementById('editor');
     if (ed) {
       ed.style.setProperty('-webkit-hyphens', 'none');
@@ -183,6 +266,7 @@ btn.innerHTML = originalText;
 btn.disabled = false;
 zoomWrapper.style.transform = savedTransform;
 cleanupRibbonLayers();
+cleanupTextBoxExportIds();
 updateRatio();
 }
 
