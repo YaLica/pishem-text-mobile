@@ -1,3 +1,101 @@
+function prepareRibbonExportLayers() {
+const cleanups = [];
+exportNode.querySelectorAll('.text-box.mode-ribbon').forEach(function(box) {
+const content = box.querySelector('.tb-content');
+const ribbon = content && content.querySelector('.tb-ribbon');
+if (!content || !ribbon || !ribbon.textContent.trim()) return;
+
+const oldTransform = box.style.transform;
+const oldContentPosition = content.style.position;
+const oldRibbonPosition = ribbon.style.position;
+const oldRibbonZ = ribbon.style.zIndex;
+const oldRibbonBg = ribbon.style.background;
+
+// Измеряем строки без поворота, чтобы координаты были локальными для плашки.
+box.style.transform = 'none';
+content.style.position = 'relative';
+ribbon.style.position = 'relative';
+ribbon.style.zIndex = '1';
+
+const contentRect = content.getBoundingClientRect();
+const style = getComputedStyle(ribbon);
+const padL = parseFloat(style.paddingLeft) || 0;
+const padR = parseFloat(style.paddingRight) || 0;
+const padT = parseFloat(style.paddingTop) || 0;
+const padB = parseFloat(style.paddingBottom) || 0;
+const radius = style.borderRadius || '0px';
+const background = style.backgroundColor || box.style.getPropertyValue('--ribbon-bg') || 'rgba(0,0,0,.85)';
+
+const range = document.createRange();
+range.selectNodeContents(ribbon);
+const rawRects = Array.from(range.getClientRects()).filter(function(rect) {
+return rect.width > 0.5 && rect.height > 0.5;
+});
+
+// Range может вернуть несколько прямоугольников одной строки из-за вложенных span.
+// Объединяем их по вертикальному положению.
+const rows = [];
+rawRects.forEach(function(rect) {
+let row = rows.find(function(item) {
+return Math.abs(item.top - rect.top) < Math.max(2, Math.min(item.height, rect.height) * 0.45);
+});
+if (!row) {
+row = { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, height: rect.height };
+rows.push(row);
+} else {
+row.left = Math.min(row.left, rect.left);
+row.right = Math.max(row.right, rect.right);
+row.top = Math.min(row.top, rect.top);
+row.bottom = Math.max(row.bottom, rect.bottom);
+row.height = row.bottom - row.top;
+}
+});
+
+if (!rows.length) {
+box.style.transform = oldTransform;
+content.style.position = oldContentPosition;
+ribbon.style.position = oldRibbonPosition;
+ribbon.style.zIndex = oldRibbonZ;
+return;
+}
+
+const layer = document.createElement('span');
+layer.className = 'tb-ribbon-export-layer';
+layer.setAttribute('aria-hidden', 'true');
+layer.style.cssText = 'position:absolute;inset:0;z-index:0;pointer-events:none;overflow:visible;';
+rows.forEach(function(row) {
+const band = document.createElement('span');
+band.className = 'tb-ribbon-export-band';
+band.style.position = 'absolute';
+band.style.left = (row.left - contentRect.left - padL) + 'px';
+band.style.top = (row.top - contentRect.top - padT) + 'px';
+band.style.width = (row.right - row.left + padL + padR) + 'px';
+band.style.height = (row.bottom - row.top + padT + padB) + 'px';
+band.style.background = background;
+band.style.borderRadius = radius;
+band.style.boxSizing = 'border-box';
+layer.appendChild(band);
+});
+
+content.insertBefore(layer, content.firstChild);
+ribbon.style.background = 'transparent';
+box.style.transform = oldTransform;
+
+cleanups.push(function() {
+layer.remove();
+box.style.transform = oldTransform;
+content.style.position = oldContentPosition;
+ribbon.style.position = oldRibbonPosition;
+ribbon.style.zIndex = oldRibbonZ;
+ribbon.style.background = oldRibbonBg;
+});
+});
+
+return function cleanupRibbonExportLayers() {
+cleanups.forEach(function(cleanup) { cleanup(); });
+};
+}
+
 function generatePlainText() {
 const clone = editor.cloneNode(true);
 clone.querySelectorAll('.img-box, .img-spacer-left, .img-spacer-right').forEach(el => el.remove());
@@ -13,6 +111,7 @@ editor.querySelectorAll('.img-box').forEach(function(i) { i.classList.remove('se
 currentImgBox = null;
 const savedTransform = zoomWrapper.style.transform;
 zoomWrapper.style.transform = 'scale(1)';
+const cleanupRibbonLayers = prepareRibbonExportLayers();
 
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const isAndroid = /Android/i.test(navigator.userAgent);
@@ -66,6 +165,7 @@ document.getElementById('textModal').style.display = 'flex';
 btn.innerHTML = originalText;
 btn.disabled = false;
 zoomWrapper.style.transform = savedTransform;
+cleanupRibbonLayers();
 updateRatio();
 }
 
@@ -111,6 +211,7 @@ finish();
 btn.innerHTML = originalText;
 btn.disabled = false;
 zoomWrapper.style.transform = savedTransform;
+cleanupRibbonLayers();
 });
 }, 100);
 }
