@@ -30,10 +30,44 @@ typeTimer = setTimeout(saveHistory, 400);
 
 editor.addEventListener('paste', function(e) {
 e.preventDefault();
-const text = (e.clipboardData || window.clipboardData).getData('text/plain');
-document.execCommand('insertText', false, text);
+const text = (e.clipboardData || window.clipboardData).getData('text/plain').replace(/\r\n?/g, '\n');
+const sel = window.getSelection();
+if (!sel || !sel.rangeCount) return;
+const range = sel.getRangeAt(0);
+if (!editor.contains(range.commonAncestorContainer)) return;
+
+range.deleteContents();
+const fragment = document.createDocumentFragment();
+const parts = text.split('\n');
+let lastNode = null;
+parts.forEach(function(part, index) {
+if (index > 0) {
+const br = document.createElement('br');
+fragment.appendChild(br);
+lastNode = br;
+}
+if (part) {
+const node = document.createTextNode(part);
+fragment.appendChild(node);
+lastNode = node;
+}
+});
+range.insertNode(fragment);
+
+if (lastNode) {
+const caret = document.createRange();
+caret.setStartAfter(lastNode);
+caret.collapse(true);
+sel.removeAllRanges();
+sel.addRange(caret);
+}
+
+// Сначала даём браузеру разложить все вставленные строки, затем измеряем холст.
+requestAnimationFrame(function() {
+editor.dispatchEvent(new Event('input', { bubbles: true }));
 updateRatio();
 saveHistory();
+});
 });
 
 function clearEditor() {

@@ -46,14 +46,54 @@ e.preventDefault();
 }
 });
 
+function insertEditorLineBreak() {
+const sel = window.getSelection();
+if (!sel || !sel.rangeCount) return false;
+const range = sel.getRangeAt(0);
+if (!editor.contains(range.commonAncestorContainer)) return false;
+
+range.deleteContents();
+const br = document.createElement('br');
+range.insertNode(br);
+
+// Один BR в самом конце contenteditable не создаёт видимую новую строку:
+// он служит браузеру техническим заполнителем. Поэтому в конце добавляем
+// второй BR и ставим курсор между ними. Enter срабатывает визуально сразу.
+const after = document.createRange();
+after.setStartAfter(br);
+after.collapse(true);
+const probe = after.cloneRange();
+probe.selectNodeContents(editor);
+probe.setStart(after.startContainer, after.startOffset);
+const hasContentAfter = probe.toString().replace(/\u200B/g, '').length > 0 ||
+  Array.from(editor.querySelectorAll('.img-box')).some(function(box) {
+    try { return after.comparePoint(box, 0) === 1; } catch (_) { return false; }
+  });
+
+if (!hasContentAfter) {
+  const tail = document.createElement('br');
+  br.parentNode.insertBefore(tail, br.nextSibling);
+}
+
+const caret = document.createRange();
+caret.setStartAfter(br);
+caret.collapse(true);
+sel.removeAllRanges();
+sel.addRange(caret);
+return true;
+}
+
 editor.addEventListener('keydown', function(e) {
 const sel = window.getSelection();
 
 if (e.key === 'Enter') {
 e.preventDefault();
-document.execCommand('insertLineBreak');
+if (insertEditorLineBreak()) {
+requestAnimationFrame(function() {
 updateRatio();
 saveHistory();
+});
+}
 return;
 }
 

@@ -22,3 +22,12 @@ autoScreenFit();
 window.addEventListener('resize', setRealVH);
 window.addEventListener('orientationchange', function(){ setTimeout(setRealVH, 200); });
 
+// Undo/Redo должны быть закреплены относительно окна, а не находиться внутри сцены.
+// Это особенно важно для iOS Safari: fixed-элемент внутри перемещаемого контейнера
+// иногда начинает двигаться вместе с этим контейнером.
+function mountFixedUndoRedo() {
+const controls = document.getElementById('floatUndoRedo');
+if (controls && controls.parentNode !== document.body) document.body.appendChild(controls);
+}
+mountFixedUndoRedo();
+

@@ -289,7 +289,16 @@ body { display: block; height: 100vh; overflow: hidden; }
 }
 .stage { position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 15px; }
 
-#floatUndoRedo { left: 10px !important; }
+#floatUndoRedo {
+  position: fixed !important;
+  top: calc(10px + env(safe-area-inset-top, 0px)) !important;
+  left: calc(10px + env(safe-area-inset-left, 0px)) !important;
+  right: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+  z-index: 100000 !important;
+  touch-action: manipulation;
+}
 
 #mobileToolsBtn {
 display: flex; align-items: center; justify-content: center;
