@@ -223,9 +223,12 @@ function handleTbPaste(e) {
   const box = e.target.closest('.text-box');
   if (!box) return;
   e.preventDefault();
+  const content = box.querySelector('.tb-content');
+  if (content) currentTextBox = content;
+  saveSelectionBeforeAction();
   const text = (e.clipboardData || window.clipboardData).getData('text/plain');
-  if (text) {
-    document.execCommand('insertText', false, text);
+  if (text && insertTextAtSelection(text)) {
+    content.dispatchEvent(new Event('input', { bubbles: true }));
   }
   clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400);
 }

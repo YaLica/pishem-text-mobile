@@ -58,10 +58,7 @@ quickBar.style.bottom = bottomGap + 'px';
 
 function qb(e, command) {
 if(e && e.preventDefault) e.preventDefault();
-restoreSelection();
-document.execCommand(command, false, null);
-if (!currentTextBox) exitSelectionFromFormatting();
-saveHistory();
+format(command);
 }
 
 function qbSize(e, factor) {
