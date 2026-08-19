@@ -33,12 +33,10 @@ const stageH = stageArea.clientHeight;
 const scaledW = zoomWrapper.offsetWidth * currentZoom;
 const scaledH = zoomWrapper.offsetHeight * currentZoom;
 const padX = 30;
-const padY = 30;
+const padY = 15;
 const availW = Math.max(0, stageW - padX * 2);
-const availH = Math.max(0, stageH - padY * 2);
 
-// Если холст помещается — держим его в исходном видимом положении.
-// Если не помещается — разрешаем движение только в пределах его краёв.
+// По горизонтали не даём потерять холст.
 if (scaledW <= availW) {
 panX = 0;
 } else {
@@ -46,14 +44,12 @@ const maxX = (scaledW - availW) / 2;
 panX = Math.max(-maxX, Math.min(maxX, panX));
 }
 
-if (scaledH <= availH) {
-panY = 0;
-} else {
+// По вертикали холст должен двигаться и коротким, и длинным.
+// При этом минимум 72 px всегда остаются на экране.
 const minVisible = 72;
 const minY = minVisible - padY - scaledH;
 const maxY = stageH - minVisible - padY;
 panY = Math.max(minY, Math.min(maxY, panY));
-}
 }
 
 function applyZoom() {
@@ -74,7 +70,9 @@ const nodeH = exportNode.offsetHeight;
 let scale = Math.min(availW / nodeW, availH / nodeH, 1);
 if (scale < 0.1) scale = 0.1;
 currentZoom = scale;
-panX = 0; panY = 0;
+panX = 0;
+// На телефоне оставляем место под закреплёнными Undo/Redo и кнопкой инструментов.
+panY = isMobile() ? 96 : 0;
 applyZoom();
 }
 

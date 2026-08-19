@@ -221,53 +221,55 @@ prevEmpty = isEmpty;
 return cleaned;
 }
 
+function copyRichSelection(html) {
+const temp = document.createElement('div');
+temp.contentEditable = 'true';
+temp.setAttribute('aria-hidden', 'true');
+temp.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;overflow:hidden;opacity:0.01;pointer-events:none;';
+temp.innerHTML = html;
+document.body.appendChild(temp);
+
+const range = document.createRange();
+range.selectNodeContents(temp);
+const sel = window.getSelection();
+sel.removeAllRanges();
+sel.addRange(range);
+
+let ok = false;
+try { ok = document.execCommand('copy'); } catch (_) { ok = false; }
+sel.removeAllRanges();
+temp.remove();
+return ok;
+}
+
 async function writeToClipboard(html, plain, btnId) {
 let ok = false;
 const btn = btnId ? document.getElementById(btnId) : null;
 const original = btn ? btn.innerHTML : '';
 
-if (navigator.clipboard && window.ClipboardItem) {
+// Desktop Telegram надёжнее принимает форматирование из обычного rich-copy.
+// На iOS/Android этот путь может быть запрещён — там используем Clipboard API.
+if (!isMobile()) ok = copyRichSelection(html);
+
+if (!ok && navigator.clipboard && window.ClipboardItem) {
   try {
-    const fullHtml =
-      '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>' +
-      '<div>' + html + '</div></body></html>';
+    const fullHtml = '<div>' + html + '</div>';
     const item = new ClipboardItem({
       'text/html': new Blob([fullHtml], { type: 'text/html' }),
       'text/plain': new Blob([plain], { type: 'text/plain' })
     });
     await navigator.clipboard.write([item]);
     ok = true;
-  } catch (e) {
-    ok = false;
-  }
+  } catch (_) { ok = false; }
 }
 
-if (!ok) {
-  const temp = document.createElement('div');
-  temp.contentEditable = 'true';
-  temp.style.position = 'fixed';
-  temp.style.left = '-9999px';
-  temp.style.top = '-9999px';
-  temp.innerHTML = '<div>' + html + '</div>';
-  document.body.appendChild(temp);
-
-  const range = document.createRange();
-  range.selectNodeContents(temp);
-  const sel = window.getSelection();
-  sel.removeAllRanges();
-  sel.addRange(range);
-
-  try {
-    ok = document.execCommand('copy');
-  } catch (e) { ok = false; }
-  document.body.removeChild(temp);
-}
+if (!ok) ok = copyRichSelection(html);
 
 if (!ok && navigator.clipboard && navigator.clipboard.writeText) {
   try {
     await navigator.clipboard.writeText(plain);
     ok = true;
-  } catch (err) { ok = false; }
+  } catch (_) { ok = false; }
 }
 
 if (ok && btn) {
@@ -284,20 +286,18 @@ const lines = getEditorLines();
 
 const finalHtml = lines.join('<br>');
 
-const tempPlainDiv = document.createElement('div');
-tempPlainDiv.innerHTML = finalHtml;
-
-tempPlainDiv.querySelectorAll('a[href]').forEach(function(a) {
+// Plain-text строим напрямую из строк. innerText у элемента вне DOM
+// в Chromium склеивает <br>, из-за чего раньше пропадали все отступы.
+const finalPlain = lines.map(function(line) {
+const row = document.createElement('div');
+row.innerHTML = line;
+row.querySelectorAll('a[href]').forEach(function(a) {
 const href = sanitizeUrl(a.getAttribute('href'));
 const text = a.textContent.trim();
-if (href && text && text !== href) {
-a.textContent = text + '\n' + href;
-} else if (href) {
-a.textContent = href;
-}
+a.textContent = href && text && text !== href ? text + ' (' + href + ')' : (href || text);
 });
-
-const finalPlain = tempPlainDiv.innerText || tempPlainDiv.textContent;
+return row.textContent || '';
+}).join('\n');
 
 await writeToClipboard(finalHtml, finalPlain, 'copyTgBtn');
 }
