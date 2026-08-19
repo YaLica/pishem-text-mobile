@@ -128,6 +128,11 @@ lineHeight: contentStyle.lineHeight,
 fontFamily: contentStyle.fontFamily,
 fontWeight: contentStyle.fontWeight,
 fontStyle: contentStyle.fontStyle,
+fontStretch: contentStyle.fontStretch,
+fontVariant: contentStyle.fontVariant,
+fontKerning: contentStyle.fontKerning,
+fontFeatureSettings: contentStyle.fontFeatureSettings,
+textRendering: contentStyle.textRendering,
 letterSpacing: contentStyle.letterSpacing,
 textAlign: contentStyle.textAlign,
 textAlignLast: contentStyle.textAlignLast,
@@ -146,6 +151,11 @@ lineHeight: ribbonStyle.lineHeight,
 fontFamily: ribbonStyle.fontFamily,
 fontWeight: ribbonStyle.fontWeight,
 fontStyle: ribbonStyle.fontStyle,
+fontStretch: ribbonStyle.fontStretch,
+fontVariant: ribbonStyle.fontVariant,
+fontKerning: ribbonStyle.fontKerning,
+fontFeatureSettings: ribbonStyle.fontFeatureSettings,
+textRendering: ribbonStyle.textRendering,
 letterSpacing: ribbonStyle.letterSpacing,
 textAlign: ribbonStyle.textAlign,
 textAlignLast: ribbonStyle.textAlignLast,
@@ -186,7 +196,31 @@ clone.querySelectorAll('.img-box, .img-spacer-left, .img-spacer-right').forEach(
 return clone.innerText.replace(/\u200B/g, '').trim();
 }
 
-function processExport() {
+function getPrimaryFontFamily(fontFamily) {
+return String(fontFamily || '').split(',')[0].trim().replace(/^['\"]|['\"]$/g, '');
+}
+
+async function waitForExportFonts() {
+if (!document.fonts || !exportNode) return;
+const nodes = [exportNode].concat(Array.from(exportNode.querySelectorAll('*')));
+const seen = new Set();
+const jobs = [];
+nodes.forEach(function(node) {
+const s = getComputedStyle(node);
+const primary = getPrimaryFontFamily(s.fontFamily);
+if (!primary) return;
+const key = [primary, s.fontStyle, s.fontWeight, s.fontSize].join('|');
+if (seen.has(key)) return;
+seen.add(key);
+const spec = (s.fontStyle || 'normal') + ' ' + (s.fontWeight || '400') + ' ' + (s.fontSize || '16px') + ' "' + primary + '"';
+try { jobs.push(document.fonts.load(spec)); } catch (_) {}
+});
+try { await Promise.allSettled(jobs); } catch (_) {}
+try { await document.fonts.ready; } catch (_) {}
+await new Promise(function(resolve) { requestAnimationFrame(function() { requestAnimationFrame(resolve); }); });
+}
+
+async function processExport() {
 const btn = document.getElementById('exportBtn');
 const originalText = btn.innerHTML;
 btn.innerHTML = '⏳ Рисую...';
@@ -195,6 +229,7 @@ editor.querySelectorAll('.img-box').forEach(function(i) { i.classList.remove('se
 currentImgBox = null;
 const savedTransform = zoomWrapper.style.transform;
 zoomWrapper.style.transform = 'scale(1)';
+await waitForExportFonts();
 const textBoxExportStyles = collectTextBoxExportStyles();
 const cleanupRibbonLayers = function(){};
 
