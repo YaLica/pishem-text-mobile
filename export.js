@@ -201,22 +201,15 @@ return String(fontFamily || '').split(',')[0].trim().replace(/^['\"]|['\"]$/g, '
 }
 
 async function waitForExportFonts() {
-if (!document.fonts || !exportNode) return;
-const nodes = [exportNode].concat(Array.from(exportNode.querySelectorAll('*')));
-const seen = new Set();
-const jobs = [];
-nodes.forEach(function(node) {
-const s = getComputedStyle(node);
-const primary = getPrimaryFontFamily(s.fontFamily);
-if (!primary) return;
-const key = [primary, s.fontStyle, s.fontWeight, s.fontSize].join('|');
-if (seen.has(key)) return;
-seen.add(key);
-const spec = (s.fontStyle || 'normal') + ' ' + (s.fontWeight || '400') + ' ' + (s.fontSize || '16px') + ' "' + primary + '"';
-try { jobs.push(document.fonts.load(spec)); } catch (_) {}
-});
-try { await Promise.allSettled(jobs); } catch (_) {}
-try { await document.fonts.ready; } catch (_) {}
+// Важно: не заставляем браузер заново скачивать Google Fonts через document.fonts.load().
+// Это в некоторых случаях ломает уже нормально работавшую загрузку шрифтов.
+// Просто даём странице коротко дождаться уже подключённых @font-face и продолжаем экспорт.
+if (!document.fonts) {
+  await new Promise(function(resolve) { requestAnimationFrame(function() { requestAnimationFrame(resolve); }); });
+  return;
+}
+const timeout = new Promise(function(resolve) { setTimeout(resolve, 1200); });
+try { await Promise.race([document.fonts.ready, timeout]); } catch (_) {}
 await new Promise(function(resolve) { requestAnimationFrame(function() { requestAnimationFrame(resolve); }); });
 }
 
