@@ -115,80 +115,109 @@ zoomWrapper.style.transform = savedTransform;
 }, 100);
 }
 
-function getEditorLines() {
-const src = document.createElement('div');
-src.innerHTML = editor.innerHTML;
-src.querySelectorAll('.img-box, .img-spacer-left, .img-spacer-right').forEach(el => el.remove());
-
-src.querySelectorAll('span, font').forEach(function(el) {
-const parent = el.parentNode;
-while (el.firstChild) parent.insertBefore(el.firstChild, el);
-parent.removeChild(el);
-});
-
-src.querySelectorAll('strong').forEach(el => {
-const b = document.createElement('b');
-b.innerHTML = el.innerHTML;
-el.parentNode.replaceChild(b, el);
-});
-src.querySelectorAll('em').forEach(el => {
-const i = document.createElement('i');
-i.innerHTML = el.innerHTML;
-el.parentNode.replaceChild(i, el);
-});
-
-src.querySelectorAll('b,i,u,s,strike,del,a,code,div,p').forEach(function(el) {
-el.removeAttribute('style');
-el.removeAttribute('class');
-el.removeAttribute('data-custom-size');
-if (el.tagName === 'A') {
-Array.from(el.attributes).forEach(a => { if (a.name !== 'href') el.removeAttribute(a.name); });
+function escapeClipboardHtml(text) {
+return String(text)
+.replace(/&/g, '&amp;')
+.replace(/</g, '&lt;')
+.replace(/>/g, '&gt;')
+.replace(/"/g, '&quot;');
 }
-});
 
-const walker = document.createTreeWalker(src, NodeFilter.SHOW_TEXT, null);
-const textNodes = [];
-while (walker.nextNode()) textNodes.push(walker.currentNode);
-textNodes.forEach(t => { t.textContent = t.textContent.replace(/\u200B/g, ''); });
+function getClipboardStyle(parentState, el) {
+const state = Object.assign({}, parentState);
+const tag = el.tagName;
+
+// Поддерживаем и старую, и новую модель оформления.
+if (tag === 'B' || tag === 'STRONG') state.bold = true;
+if (tag === 'I' || tag === 'EM') state.italic = true;
+if (tag === 'U') state.underline = true;
+if (tag === 'S' || tag === 'STRIKE' || tag === 'DEL') state.strike = true;
+if (tag === 'CODE') state.code = true;
+if (tag === 'A') state.href = sanitizeUrl(el.getAttribute('href') || '');
+
+const style = el.style;
+if (style) {
+const weight = style.fontWeight;
+if (weight) state.bold = weight === 'bold' || parseInt(weight, 10) >= 600;
+if (style.fontStyle) state.italic = style.fontStyle === 'italic' || style.fontStyle === 'oblique';
+
+const decoration = style.textDecorationLine || style.textDecoration || '';
+if (decoration) {
+if (decoration === 'none') {
+state.underline = false;
+state.strike = false;
+} else {
+if (decoration.includes('underline')) state.underline = true;
+if (decoration.includes('line-through')) state.strike = true;
+}
+}
+}
+return state;
+}
+
+function wrapClipboardText(text, state) {
+let html = escapeClipboardHtml(text.replace(/\u200B/g, ''));
+if (!html) return '';
+if (state.code) html = '<code>' + html + '</code>';
+if (state.strike) html = '<s>' + html + '</s>';
+if (state.underline) html = '<u>' + html + '</u>';
+if (state.italic) html = '<i>' + html + '</i>';
+if (state.bold) html = '<b>' + html + '</b>';
+if (state.href) html = '<a href="' + escapeClipboardHtml(state.href) + '">' + html + '</a>';
+return html;
+}
+
+function getEditorLines() {
+const src = editor.cloneNode(true);
+src.querySelectorAll('.img-box, .img-spacer-left, .img-spacer-right').forEach(function(el) { el.remove(); });
 
 let html = '';
-function walk(node) {
+const initialState = {
+bold: false,
+italic: false,
+underline: false,
+strike: false,
+code: false,
+href: ''
+};
+
+function walk(node, state) {
 node.childNodes.forEach(function(child) {
 if (child.nodeType === Node.TEXT_NODE) {
-html += child.textContent;
-} else if (child.nodeType === Node.ELEMENT_NODE) {
+html += wrapClipboardText(child.textContent, state);
+return;
+}
+if (child.nodeType !== Node.ELEMENT_NODE) return;
+
 const tag = child.tagName;
 if (tag === 'BR') {
 html += '\n';
-} else if (tag === 'DIV' || tag === 'P') {
+return;
+}
+
+const nextState = getClipboardStyle(state, child);
+if (tag === 'DIV' || tag === 'P' || child.classList.contains('editor-block')) {
 if (html.length && !html.endsWith('\n')) html += '\n';
-walk(child);
+walk(child, nextState);
 if (!html.endsWith('\n')) html += '\n';
 } else {
-const rawHref = child.getAttribute('href');
-const cleanHref = rawHref ? sanitizeUrl(rawHref) : '';
-html += '<' + tag.toLowerCase() + (tag === 'A' && cleanHref ? ' href="' + cleanHref + '"' : '') + '>';
-walk(child);
-html += '</' + tag.toLowerCase() + '>';
-}
+walk(child, nextState);
 }
 });
 }
-walk(src);
+walk(src, initialState);
 
 let lines = html.split('\n');
-
 while (lines.length && lines[0].trim() === '') lines.shift();
 while (lines.length && lines[lines.length - 1].trim() === '') lines.pop();
 
 const cleaned = [];
 let prevEmpty = false;
-for (const line of lines) {
+lines.forEach(function(line) {
 const isEmpty = line.trim() === '';
-if (isEmpty && prevEmpty) continue;
-cleaned.push(line);
+if (!isEmpty || !prevEmpty) cleaned.push(line);
 prevEmpty = isEmpty;
-}
+});
 return cleaned;
 }
 
