@@ -1,3 +1,40 @@
+function getRibbonVisualLines(ribbon) {
+const doc = ribbon.ownerDocument || document;
+const textNodes = [];
+const walker = doc.createTreeWalker(ribbon, NodeFilter.SHOW_TEXT, null);
+let node;
+while ((node = walker.nextNode())) { if (node.textContent.length) textNodes.push(node); }
+if (!textNodes.length) return [];
+
+const range = doc.createRange();
+const lines = [];
+let current = null;
+
+textNodes.forEach(function(textNode) {
+const text = textNode.textContent;
+for (let i = 0; i < text.length; i++) {
+range.setStart(textNode, i);
+range.setEnd(textNode, i + 1);
+const rect = range.getBoundingClientRect();
+if (!rect || (rect.width === 0 && rect.height === 0)) {
+if (current) current.text += text[i];
+continue;
+}
+if (!current || Math.abs(rect.top - current.top) > Math.max(2, rect.height * 0.5)) {
+current = { top: rect.top, height: rect.height, text: text[i] };
+lines.push(current);
+} else {
+current.text += text[i];
+if (rect.height > current.height) current.height = rect.height;
+}
+}
+});
+
+return lines.map(function(line) {
+return { text: line.text.replace(/\s+$/, '').replace(/^\s+/, ''), top: line.top, height: line.height };
+}).filter(function(line) { return line.text.length > 0; });
+}
+
 function prepareRibbonExportLayers() {
 const cleanups = [];
 exportNode.querySelectorAll('.text-box.mode-ribbon').forEach(function(box) {
@@ -6,88 +43,112 @@ const ribbon = content && content.querySelector('.tb-ribbon');
 if (!content || !ribbon || !ribbon.textContent.trim()) return;
 
 const oldTransform = box.style.transform;
-const oldContentPosition = content.style.position;
-const oldRibbonPosition = ribbon.style.position;
-const oldRibbonZ = ribbon.style.zIndex;
-const oldRibbonBg = ribbon.style.background;
-
-// Измеряем строки без поворота, чтобы координаты были локальными для плашки.
 box.style.transform = 'none';
-content.style.position = 'relative';
-ribbon.style.position = 'relative';
-ribbon.style.zIndex = '1';
 
-const contentRect = content.getBoundingClientRect();
 const style = getComputedStyle(ribbon);
+const contentStyle = getComputedStyle(content);
 const padL = parseFloat(style.paddingLeft) || 0;
 const padR = parseFloat(style.paddingRight) || 0;
 const padT = parseFloat(style.paddingTop) || 0;
 const padB = parseFloat(style.paddingBottom) || 0;
 const radius = style.borderRadius || '0px';
 const background = style.backgroundColor || box.style.getPropertyValue('--ribbon-bg') || 'rgba(0,0,0,.85)';
+const fontSize = parseFloat(style.fontSize) || 16;
+let lineHeight = parseFloat(style.lineHeight);
+if (!lineHeight || isNaN(lineHeight)) lineHeight = fontSize * 1.2;
+const align = contentStyle.textAlign || 'left';
 
-const range = document.createRange();
-range.selectNodeContents(ribbon);
-const rawRects = Array.from(range.getClientRects()).filter(function(rect) {
-return rect.width > 0.5 && rect.height > 0.5;
-});
+const lines = getRibbonVisualLines(ribbon);
+if (!lines.length) { box.style.transform = oldTransform; return; }
 
-// Range может вернуть несколько прямоугольников одной строки из-за вложенных span.
-// Объединяем их по вертикальному положению.
-const rows = [];
-rawRects.forEach(function(rect) {
-let row = rows.find(function(item) {
-return Math.abs(item.top - rect.top) < Math.max(2, Math.min(item.height, rect.height) * 0.45);
-});
-if (!row) {
-row = { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, height: rect.height };
-rows.push(row);
-} else {
-row.left = Math.min(row.left, rect.left);
-row.right = Math.max(row.right, rect.right);
-row.top = Math.min(row.top, rect.top);
-row.bottom = Math.max(row.bottom, rect.bottom);
-row.height = row.bottom - row.top;
-}
-});
-
-if (!rows.length) {
-box.style.transform = oldTransform;
-content.style.position = oldContentPosition;
-ribbon.style.position = oldRibbonPosition;
-ribbon.style.zIndex = oldRibbonZ;
-return;
+// Шаг строк берём из фактических измерений, а не из CSS line-height:
+// иначе накапливается ошибка и фон уезжает от текста.
+let step = lineHeight;
+if (lines.length > 1) {
+const deltas = [];
+for (let i = 1; i < lines.length; i++) deltas.push(lines[i].top - lines[i - 1].top);
+deltas.sort(function(a, b) { return a - b; });
+const median = deltas[Math.floor(deltas.length / 2)];
+if (median > 1) step = median;
 }
 
-const layer = document.createElement('span');
-layer.className = 'tb-ribbon-export-layer';
-layer.setAttribute('aria-hidden', 'true');
-layer.style.cssText = 'position:absolute;inset:0;z-index:0;pointer-events:none;overflow:visible;';
-rows.forEach(function(row) {
-const band = document.createElement('span');
-band.className = 'tb-ribbon-export-band';
-band.style.position = 'absolute';
-band.style.left = (row.left - contentRect.left - padL) + 'px';
-band.style.top = (row.top - contentRect.top - padT) + 'px';
-band.style.width = (row.right - row.left + padL + padR) + 'px';
-band.style.height = (row.bottom - row.top + padT + padB) + 'px';
-band.style.background = background;
-band.style.borderRadius = radius;
-band.style.boxSizing = 'border-box';
-layer.appendChild(band);
+const oldRibbonDisplay = ribbon.style.display;
+const contentRect = content.getBoundingClientRect();
+const contentPadT = parseFloat(contentStyle.paddingTop) || 0;
+const contentBorderT = parseFloat(contentStyle.borderTopWidth) || 0;
+// Куда встанет holder сам по себе и куда он должен встать, чтобы первая
+// строка фона легла ровно под первой строкой текста редактора.
+const naturalTop = contentRect.top + contentBorderT + contentPadT;
+const desiredTop = lines[0].top - padT;
+const shift = desiredTop - naturalTop;
+
+// Каждая визуальная строка становится отдельным блоком: фон и текст —
+// это один и тот же элемент, поэтому html2canvas не может их рассинхронизировать.
+const holder = document.createElement('div');
+holder.className = 'tb-ribbon-export-lines';
+holder.style.cssText = 'display:block;overflow:visible;padding:0;border:0;';
+holder.style.height = (lines.length * step) + 'px';
+holder.style.marginTop = shift + 'px';
+holder.style.marginBottom = (-shift) + 'px';
+holder.style.fontFamily = style.fontFamily;
+holder.style.fontWeight = style.fontWeight;
+holder.style.fontStyle = style.fontStyle;
+holder.style.fontSize = style.fontSize;
+holder.style.letterSpacing = style.letterSpacing;
+holder.style.color = style.color;
+holder.style.textAlign = align;
+
+lines.forEach(function(lineData, index) {
+const line_text = lineData.text;
+const line = document.createElement('div');
+line.className = 'tb-ribbon-export-band';
+line.textContent = line_text;
+line.style.display = 'block';
+line.style.width = 'max-content';
+line.style.maxWidth = '100%';
+line.style.boxSizing = 'content-box';
+line.style.height = step + 'px';
+line.style.lineHeight = step + 'px';
+line.style.background = background;
+line.style.borderRadius = radius;
+line.style.paddingTop = padT + 'px';
+line.style.paddingBottom = padB + 'px';
+line.style.paddingLeft = padL + 'px';
+line.style.paddingRight = padR + 'px';
+// Соседние отрицательные отступы схлопываются, а не суммируются,
+// поэтому всю компенсацию держим в верхнем отступе.
+line.style.marginTop = (index === 0 ? '0' : -(padT + padB)) + 'px';
+line.style.marginBottom = '0px';
+if (align === 'center') { line.style.marginLeft = 'auto'; line.style.marginRight = 'auto'; }
+else if (align === 'right' || align === 'end') { line.style.marginLeft = 'auto'; line.style.marginRight = '0'; }
+else { line.style.marginLeft = '0'; line.style.marginRight = 'auto'; }
+holder.appendChild(line);
 });
 
-content.insertBefore(layer, content.firstChild);
-ribbon.style.background = 'transparent';
+ribbon.style.display = 'none';
+content.insertBefore(holder, ribbon);
+
+// Контрольный проход: сверяем фактическое положение первой строки с
+// оригиналом и доводим смещение. Устойчиво к любым шрифтам и интервалам.
+const firstBand = holder.firstChild;
+if (firstBand) {
+const probe = document.createRange();
+probe.selectNodeContents(firstBand);
+const inkTop = probe.getBoundingClientRect().top;
+const delta = lines[0].top - inkTop;
+if (Math.abs(delta) > 0.4) {
+const corrected = shift + delta;
+holder.style.marginTop = corrected + 'px';
+holder.style.marginBottom = (-corrected) + 'px';
+}
+}
+
 box.style.transform = oldTransform;
 
 cleanups.push(function() {
-layer.remove();
+holder.remove();
+ribbon.style.display = oldRibbonDisplay;
 box.style.transform = oldTransform;
-content.style.position = oldContentPosition;
-ribbon.style.position = oldRibbonPosition;
-ribbon.style.zIndex = oldRibbonZ;
-ribbon.style.background = oldRibbonBg;
 });
 });
 
