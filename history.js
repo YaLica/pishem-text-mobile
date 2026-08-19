@@ -20,6 +20,7 @@ const textBoxesData = Array.from(exportNode.querySelectorAll('.text-box')).map(b
     bgOpacity: (b.dataset.bgOpacity !== undefined) ? b.dataset.bgOpacity : '55',
         lineHeight: b.dataset.lineHeight || '1.25',
     fontSize: b.dataset.fontSize || '',
+    fontFamily: b.dataset.fontFamily || '',
     mode: b.dataset.mode || 'plate',
     ribbonColor: b.dataset.ribbonColor || '#000000',
     ribbonOpacity: (b.dataset.ribbonOpacity !== undefined) ? b.dataset.ribbonOpacity : '85',
@@ -69,6 +70,7 @@ if (snapshot.textBoxes && Array.isArray(snapshot.textBoxes)) {
     if (tb.bgOpacity !== undefined) box.dataset.bgOpacity = tb.bgOpacity;
         if (tb.lineHeight !== undefined) box.dataset.lineHeight = tb.lineHeight;
     if (tb.fontSize) box.dataset.fontSize = tb.fontSize;
+    if (tb.fontFamily !== undefined) box.dataset.fontFamily = tb.fontFamily;
     if (tb.mode !== undefined) box.dataset.mode = tb.mode;
     if (tb.ribbonColor !== undefined) box.dataset.ribbonColor = tb.ribbonColor;
     if (tb.ribbonOpacity !== undefined) box.dataset.ribbonOpacity = tb.ribbonOpacity;
@@ -84,6 +86,7 @@ if (snapshot.textBoxes && Array.isArray(snapshot.textBoxes)) {
     content.innerHTML = tb.html;
     if (tb.lineHeight) content.style.lineHeight = tb.lineHeight;
     if (tb.fontSize) content.style.fontSize = tb.fontSize + 'px';
+    if (tb.fontFamily) content.style.fontFamily = tb.fontFamily;
     if (tb.height) content.style.height = tb.height;
     box.appendChild(content);
 

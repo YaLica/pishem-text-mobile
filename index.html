@@ -163,6 +163,11 @@
   <label>🔠 Размер текста: <span id="tbFontSizeLabel">24</span> px</label>
   <input type="range" id="tbFontSize" min="10" max="120" value="24" oninput="setTbFontSize(this.value)">
 
+  <label>🔤 Шрифт текста плашки</label>
+  <select id="tbFontFamily" onchange="setTbFontFamily(this.value)">
+    <option value="">Как основной текст</option>
+  </select>
+
   <label>🎨 Цвет фона плашки</label>
   <input type="color" id="tbBgColor" value="#000000" oninput="setTbBgColor(this.value)">
     <label>👻 Прозрачность фона: <span id="tbBgOpacityLabel">55</span>%</label>

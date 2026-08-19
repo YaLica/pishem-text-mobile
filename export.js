@@ -1,6 +1,7 @@
-function prepareRibbonExportLayers() {
+function prepareRibbonExportLayers(rootNode) {
+const root = rootNode || exportNode;
 const cleanups = [];
-exportNode.querySelectorAll('.text-box.mode-ribbon').forEach(function(box) {
+root.querySelectorAll('.text-box.mode-ribbon').forEach(function(box) {
 const content = box.querySelector('.tb-content');
 const ribbon = content && content.querySelector('.tb-ribbon');
 if (!content || !ribbon || !ribbon.textContent.trim()) return;
@@ -17,8 +18,10 @@ content.style.position = 'relative';
 ribbon.style.position = 'relative';
 ribbon.style.zIndex = '1';
 
+const doc = root.ownerDocument || document;
+const win = doc.defaultView || window;
 const contentRect = content.getBoundingClientRect();
-const style = getComputedStyle(ribbon);
+const style = win.getComputedStyle(ribbon);
 const padL = parseFloat(style.paddingLeft) || 0;
 const padR = parseFloat(style.paddingRight) || 0;
 const padT = parseFloat(style.paddingTop) || 0;
@@ -26,7 +29,7 @@ const padB = parseFloat(style.paddingBottom) || 0;
 const radius = style.borderRadius || '0px';
 const background = style.backgroundColor || box.style.getPropertyValue('--ribbon-bg') || 'rgba(0,0,0,.85)';
 
-const range = document.createRange();
+const range = doc.createRange();
 range.selectNodeContents(ribbon);
 const rawRects = Array.from(range.getClientRects()).filter(function(rect) {
 return rect.width > 0.5 && rect.height > 0.5;
@@ -59,12 +62,12 @@ ribbon.style.zIndex = oldRibbonZ;
 return;
 }
 
-const layer = document.createElement('span');
+const layer = doc.createElement('span');
 layer.className = 'tb-ribbon-export-layer';
 layer.setAttribute('aria-hidden', 'true');
 layer.style.cssText = 'position:absolute;inset:0;z-index:0;pointer-events:none;overflow:visible;';
 rows.forEach(function(row) {
-const band = document.createElement('span');
+const band = doc.createElement('span');
 band.className = 'tb-ribbon-export-band';
 band.style.position = 'absolute';
 band.style.left = (row.left - contentRect.left - padL) + 'px';
@@ -193,7 +196,7 @@ currentImgBox = null;
 const savedTransform = zoomWrapper.style.transform;
 zoomWrapper.style.transform = 'scale(1)';
 const textBoxExportStyles = collectTextBoxExportStyles();
-const cleanupRibbonLayers = prepareRibbonExportLayers();
+const cleanupRibbonLayers = function(){};
 
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const isAndroid = /Android/i.test(navigator.userAgent);
@@ -228,6 +231,8 @@ html2canvas(exportNode, {
       el.style.setProperty('text-size-adjust', '100%');
     });
     applyTextBoxExportStyles(clonedDoc, textBoxExportStyles);
+    var clonedExportNode = clonedDoc.getElementById('export-node');
+    if (clonedExportNode) prepareRibbonExportLayers(clonedExportNode);
     var ed = clonedDoc.getElementById('editor');
     if (ed) {
       ed.style.setProperty('-webkit-hyphens', 'none');
@@ -313,6 +318,7 @@ btn.innerHTML = originalText;
 btn.disabled = false;
 zoomWrapper.style.transform = savedTransform;
 cleanupRibbonLayers();
+cleanupTextBoxExportIds();
 });
 }, 100);
 }

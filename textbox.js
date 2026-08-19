@@ -35,6 +35,7 @@ function applyTbBg(box) {
     box.style.setProperty('--ribbon-bg', 'rgba(' + ribRgb.r + ',' + ribRgb.g + ',' + ribRgb.b + ',' + (ribOp / 100) + ')');
     applyRibbonStyles(box);
     wrapTbRibbon(content);
+    applyTbTypography(box);
   } else {
     box.classList.remove('mode-ribbon');
     unwrapTbRibbon(content);
@@ -87,12 +88,41 @@ function setTbBgOpacity(v) {
   clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400);
 }
   
+function populateTbFontSelector() {
+  const tbSel = document.getElementById('tbFontFamily');
+  const mainSel = document.getElementById('fontFamilySelector');
+  if (!tbSel || !mainSel || tbSel.dataset.ready === '1') return;
+  Array.from(mainSel.options).forEach(function(opt, index) {
+    if (index === 0) return;
+    const clone = opt.cloneNode(true);
+    tbSel.appendChild(clone);
+  });
+  tbSel.dataset.ready = '1';
+}
+
+function applyTbTypography(box) {
+  if (!box) return;
+  const content = box.querySelector('.tb-content');
+  if (!content) return;
+  const fs = box.dataset.fontSize || '24';
+  const lh = box.dataset.lineHeight || '1.25';
+  const ff = box.dataset.fontFamily || '';
+  content.style.fontSize = fs + 'px';
+  content.style.lineHeight = lh;
+  content.style.fontFamily = ff || '';
+  const ribbon = content.querySelector('.tb-ribbon');
+  if (ribbon) {
+    ribbon.style.fontSize = fs + 'px';
+    ribbon.style.lineHeight = lh;
+    ribbon.style.fontFamily = ff || '';
+  }
+}
+
 function setTbLineHeight(v) {
   const box = getTbTargetBox();
   if (!box) return;
   box.dataset.lineHeight = v;
-  const content = box.querySelector('.tb-content');
-  if (content) content.style.lineHeight = v;
+  applyTbTypography(box);
   const lbl = document.getElementById('tbLineHeightLabel'); if (lbl) lbl.textContent = v;
   const rng = document.getElementById('tbLineHeight'); if (rng) rng.value = v;
   clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400);
@@ -102,10 +132,19 @@ function setTbFontSize(v) {
   const box = getTbTargetBox();
   if (!box) return;
   box.dataset.fontSize = v;
-  const content = box.querySelector('.tb-content');
-  if (content) content.style.fontSize = v + 'px';
+  applyTbTypography(box);
   const lbl = document.getElementById('tbFontSizeLabel'); if (lbl) lbl.textContent = v;
   const rng = document.getElementById('tbFontSize'); if (rng) rng.value = v;
+  clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400);
+}
+
+function setTbFontFamily(v) {
+  const box = getTbTargetBox();
+  if (!box) return;
+  box.dataset.fontFamily = v || '';
+  applyTbTypography(box);
+  const sel = document.getElementById('tbFontFamily');
+  if (sel) sel.value = v || '';
   clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400);
 }
 
@@ -177,6 +216,7 @@ function setTbRibbonPadV(v) {
 }
 
 function syncTbSettings() {
+  populateTbFontSelector();
   const panel = document.getElementById('tbSettings');
   if (!panel) return;
   const box = getTbTargetBox();
@@ -194,6 +234,11 @@ function syncTbSettings() {
   const fs = box.dataset.fontSize || '24';
   const fsEl = document.getElementById('tbFontSize'); if (fsEl) fsEl.value = fs;
   const fsLbl = document.getElementById('tbFontSizeLabel'); if (fsLbl) fsLbl.textContent = fs;
+
+  const ff = box.dataset.fontFamily || '';
+  const ffEl = document.getElementById('tbFontFamily'); if (ffEl) ffEl.value = ff;
+
+  applyTbTypography(box);
 
   const mode = box.dataset.mode || 'plate';
   const isRibbon = (mode === 'ribbon');
@@ -267,6 +312,9 @@ function addTextBox() {
   box.style.top  = (30 + count * 20) + 'px';
   box.dataset.bgColor = '#000000';
   box.dataset.bgOpacity = '55';
+  box.dataset.fontSize = '24';
+  box.dataset.lineHeight = '1.25';
+  box.dataset.fontFamily = '';
 
   const content = document.createElement('div');
   content.className = 'tb-content';
@@ -309,6 +357,7 @@ function bindTextBox(box) {
   makeTextBoxDraggable(box);
   makeTextBoxResizable(box);
   makeTextBoxRotatable(box);
+  applyTbTypography(box);
   applyTbRotation(box);
 }
 
@@ -408,6 +457,15 @@ function duplicateTextBox(box) {
   if (box.style.width) clone.style.width = box.style.width;
   clone.dataset.bgColor   = box.dataset.bgColor   || '#000000';
   clone.dataset.bgOpacity = box.dataset.bgOpacity || '55';
+  clone.dataset.fontSize  = box.dataset.fontSize  || '24';
+  clone.dataset.lineHeight = box.dataset.lineHeight || '1.25';
+  clone.dataset.fontFamily = box.dataset.fontFamily || '';
+  clone.dataset.mode = box.dataset.mode || 'plate';
+  clone.dataset.ribbonColor = box.dataset.ribbonColor || '#000000';
+  clone.dataset.ribbonOpacity = box.dataset.ribbonOpacity || '85';
+  clone.dataset.ribbonRadius = box.dataset.ribbonRadius || '6';
+  clone.dataset.ribbonPadH = box.dataset.ribbonPadH || '0.3';
+  clone.dataset.ribbonPadV = box.dataset.ribbonPadV || '0.25';
   clone.dataset.rot       = box.dataset.rot       || '0';
 
   const content = document.createElement('div');
