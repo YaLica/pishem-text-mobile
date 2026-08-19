@@ -1,221 +1,246 @@
-function getRibbonVisualLines(ribbon) {
-const doc = ribbon.ownerDocument || document;
-const textNodes = [];
-const walker = doc.createTreeWalker(ribbon, NodeFilter.SHOW_TEXT, null);
-let node;
-while ((node = walker.nextNode())) { if (node.textContent.length) textNodes.push(node); }
-if (!textNodes.length) return [];
-
-const range = doc.createRange();
-const lines = [];
-let current = null;
-
-textNodes.forEach(function(textNode) {
-const text = textNode.textContent;
-for (let i = 0; i < text.length; i++) {
-range.setStart(textNode, i);
-range.setEnd(textNode, i + 1);
-const rect = range.getBoundingClientRect();
-if (!rect || (rect.width === 0 && rect.height === 0)) {
-if (current) current.text += text[i];
-continue;
-}
-if (!current || Math.abs(rect.top - current.top) > Math.max(2, rect.height * 0.5)) {
-current = { top: rect.top, height: rect.height, text: text[i] };
-lines.push(current);
-} else {
-current.text += text[i];
-if (rect.height > current.height) current.height = rect.height;
-}
-}
-});
-
-return lines.map(function(line) {
-return { text: line.text.replace(/\s+$/, '').replace(/^\s+/, ''), top: line.top, height: line.height };
-}).filter(function(line) { return line.text.length > 0; });
-}
-
-function prepareRibbonExportLayers() {
-const cleanups = [];
-exportNode.querySelectorAll('.text-box.mode-ribbon').forEach(function(box) {
-const content = box.querySelector('.tb-content');
-const ribbon = content && content.querySelector('.tb-ribbon');
-if (!content || !ribbon || !ribbon.textContent.trim()) return;
-
-const oldTransform = box.style.transform;
-box.style.transform = 'none';
-
-const style = getComputedStyle(ribbon);
-const contentStyle = getComputedStyle(content);
-const padL = parseFloat(style.paddingLeft) || 0;
-const padR = parseFloat(style.paddingRight) || 0;
-const padT = parseFloat(style.paddingTop) || 0;
-const padB = parseFloat(style.paddingBottom) || 0;
-const radius = style.borderRadius || '0px';
-const background = style.backgroundColor || box.style.getPropertyValue('--ribbon-bg') || 'rgba(0,0,0,.85)';
-const fontSize = parseFloat(style.fontSize) || 16;
-let lineHeight = parseFloat(style.lineHeight);
-if (!lineHeight || isNaN(lineHeight)) lineHeight = fontSize * 1.2;
-const align = contentStyle.textAlign || 'left';
-
-const lines = getRibbonVisualLines(ribbon);
-if (!lines.length) { box.style.transform = oldTransform; return; }
-
-// Шаг строк берём из фактических измерений, а не из CSS line-height:
-// иначе накапливается ошибка и фон уезжает от текста.
-let step = lineHeight;
-if (lines.length > 1) {
-const deltas = [];
-for (let i = 1; i < lines.length; i++) deltas.push(lines[i].top - lines[i - 1].top);
-deltas.sort(function(a, b) { return a - b; });
-const median = deltas[Math.floor(deltas.length / 2)];
-if (median > 1) step = median;
-}
-
-const oldRibbonDisplay = ribbon.style.display;
-const contentRect = content.getBoundingClientRect();
-const contentPadT = parseFloat(contentStyle.paddingTop) || 0;
-const contentBorderT = parseFloat(contentStyle.borderTopWidth) || 0;
-// Куда встанет holder сам по себе и куда он должен встать, чтобы первая
-// строка фона легла ровно под первой строкой текста редактора.
-const naturalTop = contentRect.top + contentBorderT + contentPadT;
-const desiredTop = lines[0].top - padT;
-const shift = desiredTop - naturalTop;
-
-// Каждая визуальная строка становится отдельным блоком: фон и текст —
-// это один и тот же элемент, поэтому html2canvas не может их рассинхронизировать.
-const holder = document.createElement('div');
-holder.className = 'tb-ribbon-export-lines';
-holder.style.cssText = 'display:block;overflow:visible;padding:0;border:0;';
-holder.style.height = (lines.length * step) + 'px';
-holder.style.marginTop = shift + 'px';
-holder.style.marginBottom = (-shift) + 'px';
-holder.style.fontFamily = style.fontFamily;
-holder.style.fontWeight = style.fontWeight;
-holder.style.fontStyle = style.fontStyle;
-holder.style.fontSize = style.fontSize;
-holder.style.letterSpacing = style.letterSpacing;
-holder.style.color = style.color;
-holder.style.textAlign = align;
-
-lines.forEach(function(lineData, index) {
-const line_text = lineData.text;
-const line = document.createElement('div');
-line.className = 'tb-ribbon-export-band';
-line.textContent = line_text;
-line.style.display = 'block';
-line.style.width = 'max-content';
-line.style.maxWidth = '100%';
-line.style.boxSizing = 'content-box';
-line.style.height = step + 'px';
-line.style.lineHeight = step + 'px';
-line.style.background = background;
-line.style.borderRadius = radius;
-line.style.paddingTop = padT + 'px';
-line.style.paddingBottom = padB + 'px';
-line.style.paddingLeft = padL + 'px';
-line.style.paddingRight = padR + 'px';
-// Соседние отрицательные отступы схлопываются, а не суммируются,
-// поэтому всю компенсацию держим в верхнем отступе.
-line.style.marginTop = (index === 0 ? '0' : -(padT + padB)) + 'px';
-line.style.marginBottom = '0px';
-if (align === 'center') { line.style.marginLeft = 'auto'; line.style.marginRight = 'auto'; }
-else if (align === 'right' || align === 'end') { line.style.marginLeft = 'auto'; line.style.marginRight = '0'; }
-else { line.style.marginLeft = '0'; line.style.marginRight = 'auto'; }
-holder.appendChild(line);
-});
-
-ribbon.style.display = 'none';
-content.insertBefore(holder, ribbon);
-
-// Контрольный проход: сверяем фактическое положение первой строки с
-// оригиналом и доводим смещение. Устойчиво к любым шрифтам и интервалам.
-const firstBand = holder.firstChild;
-if (firstBand) {
-const probe = document.createRange();
-probe.selectNodeContents(firstBand);
-const inkTop = probe.getBoundingClientRect().top;
-const delta = lines[0].top - inkTop;
-if (Math.abs(delta) > 0.4) {
-const corrected = shift + delta;
-holder.style.marginTop = corrected + 'px';
-holder.style.marginBottom = (-corrected) + 'px';
-}
-}
-
-box.style.transform = oldTransform;
-
-cleanups.push(function() {
-holder.remove();
-ribbon.style.display = oldRibbonDisplay;
-box.style.transform = oldTransform;
-});
-});
-
-return function cleanupRibbonExportLayers() {
-cleanups.forEach(function(cleanup) { cleanup(); });
-};
-}
-
 function generatePlainText() {
 const clone = editor.cloneNode(true);
 clone.querySelectorAll('.img-box, .img-spacer-left, .img-spacer-right').forEach(el => el.remove());
 return clone.innerText.replace(/\u200B/g, '').trim();
 }
 
-function processExport() {
+/* ==========================================================================
+   ЭКСПОРТ PNG: рисует сам браузер
+
+   Раньше картинку рисовал html2canvas. Он не поддерживает
+   box-decoration-break: clone — то самое свойство, которым сделана подложка
+   под текстом. Поэтому подложку приходилось вычислять вручную, и она
+   разъезжалась с текстом.
+
+   Теперь разметка отдаётся браузеру через SVG foreignObject: он верстает её
+   своим движком — так же, как в редакторе. Подложка, переносы строк,
+   выравнивание по ширине и шрифты получаются штатно, без вычислений.
+
+   html2canvas остаётся страховкой: если новый способ не сработает,
+   экспорт молча уходит на старый путь.
+   ========================================================================== */
+
+const EXPORT_SCALE = 2;
+const exportFontCache = {};
+let exportCssCache = null;
+
+// Собираем CSS страницы: без него разметка внутри картинки будет без стилей.
+function collectPageCss() {
+  if (exportCssCache !== null) return Promise.resolve(exportCssCache);
+
+  let css = '';
+  try {
+    for (const sheet of document.styleSheets) {
+      if (sheet.href && sheet.href.indexOf(location.origin) !== 0) continue; // чужие домены не читаются
+      let rules = null;
+      try { rules = sheet.cssRules; } catch (e) { rules = null; }
+      if (!rules) continue;
+      for (const rule of rules) css += rule.cssText + '\n';
+    }
+  } catch (e) { css = ''; }
+
+  if (css) { exportCssCache = css; return Promise.resolve(css); }
+
+  // Запасной путь: если правила прочитать не дали — качаем файл напрямую.
+  const link = document.querySelector('link[rel="stylesheet"][href*="styles.css"]');
+  if (!link) { exportCssCache = ''; return Promise.resolve(''); }
+  return fetch(link.href)
+    .then(r => r.text())
+    .then(t => { exportCssCache = t; return t; })
+    .catch(() => { exportCssCache = ''; return ''; });
+}
+
+function fileToBase64(url) {
+  if (exportFontCache[url]) return Promise.resolve(exportFontCache[url]);
+  return fetch(url)
+    .then(r => r.arrayBuffer())
+    .then(buf => {
+      const bytes = new Uint8Array(buf);
+      let bin = '';
+      const chunk = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunk) {
+        bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+      }
+      const out = 'data:font/woff2;base64,' + btoa(bin);
+      exportFontCache[url] = out;
+      return out;
+    });
+}
+
+// Берём спецификации шрифтов из <link> самой страницы: так набор начертаний
+// заведомо совпадает с тем, что уже отображается в редакторе.
+function fontSpecsFromPage() {
+  const specs = new Map();
+  document.querySelectorAll('link[href*="fonts.googleapis.com"]').forEach(link => {
+    const matches = link.href.match(/family=[^&]+/g) || [];
+    matches.forEach(part => {
+      const spec = part.slice('family='.length);
+      const name = decodeURIComponent(spec.split(':')[0]).replace(/\+/g, ' ');
+      if (!specs.has(name)) specs.set(name, spec);
+    });
+  });
+  return specs;
+}
+
+function usedFontSpecs() {
+  const available = fontSpecsFromPage();
+  const used = [];
+  const seen = {};
+  const nodes = exportNode.querySelectorAll('*');
+  const all = [exportNode].concat(Array.prototype.slice.call(nodes));
+  all.forEach(el => {
+    const family = getComputedStyle(el).fontFamily;
+    if (!family) return;
+    family.split(',').forEach(part => {
+      const name = part.trim().replace(/^['"]|['"]$/g, '');
+      if (available.has(name) && !seen[name]) { seen[name] = true; used.push(available.get(name)); }
+    });
+  });
+  return used;
+}
+
+// Шрифты нужно вложить внутрь картинки: внешние ссылки оттуда не работают.
+function buildFontCss() {
+  const specs = usedFontSpecs();
+  if (!specs.length) return Promise.resolve('');
+  const url = 'https://fonts.googleapis.com/css2?' + specs.map(s => 'family=' + s).join('&') + '&display=swap';
+  return fetch(url)
+    .then(r => r.text())
+    .then(css => {
+      const urls = [];
+      const re = /url\((https:\/\/[^)]+)\)/g;
+      let m;
+      while ((m = re.exec(css))) { if (urls.indexOf(m[1]) === -1) urls.push(m[1]); }
+      return Promise.all(urls.map(u =>
+        fileToBase64(u).then(data => ({ u: u, data: data })).catch(() => null)
+      )).then(pairs => {
+        pairs.forEach(p => { if (p) css = css.split(p.u).join(p.data); });
+        return css;
+      });
+    })
+    .catch(() => '');
+}
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('SVG image failed'));
+    img.src = src;
+    if (img.decode) img.decode().then(() => resolve(img)).catch(() => {});
+  });
+}
+
+function buildExportClone() {
+  const clone = exportNode.cloneNode(true);
+  clone.style.margin = '0';
+  clone.style.transform = 'none';
+  clone.style.transition = 'none';
+  clone.style.boxShadow = 'none';
+
+  // Убираем всё служебное: рамки, ручки, кнопки, выделение.
+  clone.querySelectorAll(
+    '.tb-drag-frame, .tb-handle, .tb-copy, .tb-delete, .tb-resize, .tb-rotate,' +
+    '.img-resizer, .img-rotate-handle, #snapGuideV, #snapGuideH'
+  ).forEach(el => el.remove());
+  clone.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
+  clone.querySelectorAll('[contenteditable]').forEach(el => el.setAttribute('contenteditable', 'false'));
+  clone.querySelectorAll('[placeholder]').forEach(el => el.removeAttribute('placeholder'));
+  return clone;
+}
+
+async function exportNativeCanvas() {
+  const width = Math.ceil(exportNode.offsetWidth);
+  const height = Math.ceil(exportNode.offsetHeight);
+  if (!width || !height) throw new Error('нулевой размер холста');
+
+  const clone = buildExportClone();
+  const results = await Promise.all([collectPageCss(), buildFontCss()]);
+  const pageCss = results[0];
+  const fontCss = results[1];
+
+  const markup = new XMLSerializer().serializeToString(clone);
+  const css = fontCss + '\n' + pageCss +
+    '\n#export-node{margin:0 !important;box-shadow:none !important;transform:none !important;}' +
+    '\n*{-webkit-text-size-adjust:100%;text-size-adjust:100%;}';
+
+  const svg =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="' + (width * EXPORT_SCALE) +
+    '" height="' + (height * EXPORT_SCALE) + '" viewBox="0 0 ' + width + ' ' + height + '">' +
+    '<foreignObject x="0" y="0" width="' + width + '" height="' + height + '">' +
+    '<div xmlns="http://www.w3.org/1999/xhtml">' +
+    '<style><![CDATA[' + css + ']]></style>' +
+    markup +
+    '</div></foreignObject></svg>';
+
+  const img = await loadImage('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width * EXPORT_SCALE;
+  canvas.height = height * EXPORT_SCALE;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+  // Пустой результат означает, что браузер не отрисовал разметку.
+  const probe = ctx.getImageData(0, 0, Math.min(canvas.width, 40), Math.min(canvas.height, 40)).data;
+  let filled = false;
+  for (let i = 3; i < probe.length; i += 4) { if (probe[i] !== 0) { filled = true; break; } }
+  if (!filled) throw new Error('пустая картинка');
+
+  return canvas;
+}
+
+function exportFallbackCanvas() {
+  return html2canvas(exportNode, {
+    backgroundColor: null,
+    scale: EXPORT_SCALE,
+    useCORS: true,
+    width: exportNode.offsetWidth,
+    windowWidth: Math.max(document.documentElement.clientWidth, 1024),
+    windowHeight: Math.max(document.documentElement.clientHeight, exportNode.offsetHeight + 200),
+    scrollX: 0,
+    scrollY: 0,
+    x: 0,
+    y: 0
+  });
+}
+
+async function processExport() {
 const btn = document.getElementById('exportBtn');
 const originalText = btn.innerHTML;
 btn.innerHTML = '⏳ Рисую...';
 btn.disabled = true;
 editor.querySelectorAll('.img-box').forEach(function(i) { i.classList.remove('selected'); });
+document.querySelectorAll('.text-box.selected').forEach(function(b) { b.classList.remove('selected'); });
 currentImgBox = null;
+
 const savedTransform = zoomWrapper.style.transform;
 zoomWrapper.style.transform = 'scale(1)';
-const cleanupRibbonLayers = prepareRibbonExportLayers();
 
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const isAndroid = /Android/i.test(navigator.userAgent);
 
-setTimeout(function() {
-html2canvas(exportNode, {
-  backgroundColor: null,
-  scale: 2,
-  useCORS: true,
-  width: exportNode.offsetWidth,
-  windowWidth: Math.max(document.documentElement.clientWidth, 1024),
-  windowHeight: Math.max(document.documentElement.clientHeight, exportNode.offsetHeight + 200),
-  scrollX: 0,
-  scrollY: 0,
-  x: 0,
-  y: 0,
-  onclone: function(clonedDoc) {
-    var root = clonedDoc.documentElement;
-    var clonedBody = clonedDoc.body;
-    if (root) { root.style.setProperty('-webkit-text-size-adjust', '100%'); root.style.setProperty('text-size-adjust', '100%'); }
-    if (clonedBody) { clonedBody.style.setProperty('-webkit-text-size-adjust', '100%'); clonedBody.style.setProperty('text-size-adjust', '100%'); }
-    clonedDoc.querySelectorAll('.text-box, .tb-content, .tb-ribbon').forEach(function(el) {
-      el.style.setProperty('-webkit-text-size-adjust', '100%');
-      el.style.setProperty('text-size-adjust', '100%');
-    });
-    var ed = clonedDoc.getElementById('editor');
-    if (ed) {
-      ed.style.setProperty('-webkit-hyphens', 'none');
-      ed.style.setProperty('-moz-hyphens', 'none');
-      ed.style.setProperty('-ms-hyphens', 'none');
-      ed.style.setProperty('hyphens', 'none');
-      ed.style.setProperty('word-break', 'normal');
-      ed.style.setProperty('overflow-wrap', 'break-word');
-      ed.style.setProperty('text-align', 'justify');
-      ed.querySelectorAll('*').forEach(function(el){
-        el.style.setProperty('-webkit-hyphens', 'none');
-        el.style.setProperty('hyphens', 'none');
-      });
-    }
-    var cn = clonedDoc.documentElement;
-    if (cn) cn.setAttribute('lang', 'ru');
+if (document.fonts) { try { await document.fonts.ready; } catch (e) {} }
+await new Promise(function(r) { requestAnimationFrame(function() { requestAnimationFrame(r); }); });
+
+let canvas = null;
+try {
+  canvas = await exportNativeCanvas();
+} catch (err) {
+  console.warn('PNG: браузерный экспорт не удался, пробую html2canvas:', err && err.message);
+  try {
+    canvas = await exportFallbackCanvas();
+  } catch (err2) {
+    console.error('PNG: не удалось создать картинку:', err2);
+    zoomWrapper.style.transform = savedTransform;
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+    updateRatio();
+    alert('Не удалось создать PNG. Попробуй ещё раз.');
+    return;
   }
-}).then(function(canvas) {
+}
+
 const dataUrl = canvas.toDataURL('image/png');
 
 let imgPreview = document.getElementById('previewImage');
@@ -235,7 +260,6 @@ document.getElementById('textModal').style.display = 'flex';
 btn.innerHTML = originalText;
 btn.disabled = false;
 zoomWrapper.style.transform = savedTransform;
-cleanupRibbonLayers();
 updateRatio();
 }
 
@@ -264,7 +288,7 @@ link.download = 'texter-post.png';
 link.href = dataUrl;
 document.body.appendChild(link);
 link.click();
-document.body.removeChild(link);
+link.remove();
 finish();
 }, 'image/png');
 } else {
@@ -273,17 +297,9 @@ link.download = 'texter-post.png';
 link.href = dataUrl;
 document.body.appendChild(link);
 link.click();
-document.body.removeChild(link);
+link.remove();
 finish();
 }
-
-}).catch(function(err) {
-btn.innerHTML = originalText;
-btn.disabled = false;
-zoomWrapper.style.transform = savedTransform;
-cleanupRibbonLayers();
-});
-}, 100);
 }
 
 function escapeClipboardHtml(text) {
