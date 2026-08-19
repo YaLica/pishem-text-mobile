@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Тест экспорта PNG — сравнение двух способов</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat&family=Lora&family=Montserrat&family=Oswald&family=Pacifico&family=Roboto&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style id="pageCss">
+/* ==== стили холста и плашек — как на рабочем сайте ==== */
+#export-node {
+  --bg-color: #ffffff; --text-color: #000000;
+  background: var(--bg-color); color: var(--text-color);
+  padding: 32px 40px; border-radius: 24px 24px 24px 0;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+  width: 800px; position: relative; margin: 0;
+  -webkit-text-size-adjust: 100%; text-size-adjust: 100%;
+}
+#export-node::before {
+  content: ''; position: absolute; bottom: 0; left: -16px;
+  width: 16px; height: 32px;
+  background: radial-gradient(circle at 0 0, transparent 16px, var(--bg-color) 16px);
+}
+#editor {
+  outline: none; font-size: 32px; line-height: 1.2; white-space: pre-wrap;
+  word-break: normal; overflow-wrap: break-word; hyphens: none;
+  min-height: 60px; text-align: justify; text-align-last: left;
+  font-weight: 400;
+}
+.text-box {
+  position: absolute; left: 40px; top: 40px;
+  min-width: 60px; max-width: 90%; z-index: 20; box-sizing: border-box;
+}
+.text-box .tb-content {
+  padding: 10px 14px;
+  background: rgba(0,0,0,0.55); color: #ffffff;
+  border-radius: 10px; font-size: 24px; line-height: 1.25;
+  text-align: center;
+  word-break: break-word; overflow-wrap: break-word;
+  outline: none; min-height: 1.25em;
+}
+.text-box.mode-ribbon .tb-content {
+  background: transparent !important; padding: 0;
+}
+/* ГЛАВНОЕ: подложка на каждой строке штатным свойством браузера */
+.text-box.mode-ribbon .tb-content .tb-ribbon {
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  padding: var(--ribbon-pad-v, 0.25em) var(--ribbon-pad-h, 0.3em);
+  border-radius: var(--ribbon-radius, 6px);
+  background: var(--ribbon-bg, rgba(0,0,0,0.85));
+  line-height: 1.0;
+}
+</style>
+<style>
+/* интерфейс тестовой страницы — в экспорт не попадает */
+body { margin:0; font:14px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+       background:#0f1115; color:#e6e9ef; padding:16px; }
+h1 { font-size:18px; margin:0 0 4px; }
+.hint { color:#9aa4b2; font-size:13px; margin:0 0 14px; }
+.panel { background:#171a21; border:1px solid #2a2f3a; border-radius:10px; padding:12px; margin-bottom:14px; }
+.row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+button { background:#2b3242; color:#e6e9ef; border:1px solid #3a4254; border-radius:8px;
+         padding:9px 14px; font-size:14px; cursor:pointer; }
+button:hover { background:#36405a; }
+button.primary { background:#10b981; border-color:#10b981; color:#06281d; font-weight:600; }
+button:disabled { opacity:.5; cursor:default; }
+.stage { background:#748eaa; padding:24px; border-radius:10px; overflow:auto; margin-bottom:14px; }
+.results { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+@media (max-width:900px){ .results { grid-template-columns:1fr; } }
+.card { background:#171a21; border:1px solid #2a2f3a; border-radius:10px; padding:10px; }
+.card h3 { margin:0 0 4px; font-size:14px; }
+.card .tag { font-size:12px; color:#9aa4b2; margin:0 0 8px; }
+.card img { width:100%; background:#fff; border-radius:6px; display:block; }
+.bad { color:#f87171; } .good { color:#34d399; }
+#log { font:12px/1.5 monospace; color:#9aa4b2; white-space:pre-wrap; max-height:150px; overflow:auto; }
+label { font-size:13px; color:#9aa4b2; }
+select { background:#0f1115; color:#e6e9ef; border:1px solid #2a2f3a; border-radius:6px; padding:5px; }
+</style>
+</head>
+<body>
+
+<h1>Тест экспорта PNG</h1>
+<p class="hint">Слева — как сейчас (html2canvas). Справа — новый способ (рисует сам браузер).
+Сравни каждую картинку с холстом ниже.</p>
+
+<div class="panel">
+  <div class="row">
+    <label>Сцена:</label>
+    <select id="scene">
+      <option value="1">1 плашка с подложкой</option>
+      <option value="2" selected>2 плашки с подложкой, разные шрифты</option>
+      <option value="3">Подложка + обычная плашка</option>
+      <option value="4">4 плашки, все режимы и выравнивания</option>
+      <option value="5">Рукописный шрифт + широкая подложка</option>
+    </select>
+    <button onclick="buildScene()">Построить сцену</button>
+    <button class="primary" onclick="runBoth()">Сравнить оба способа</button>
+    <button onclick="downloadNative()">Скачать PNG (новый способ)</button>
+  </div>
+</div>
+
+<div class="stage">
+  <div id="export-node">
+    <div id="editor">Основной текст поста. Он должен выглядеть в PNG так же, как здесь, на холсте.</div>
+  </div>
+</div>
+
+<div class="results">
+  <div class="card">
+    <h3>Как сейчас: html2canvas</h3>
+    <p class="tag" id="tagOld">—</p>
+    <img id="imgOld" alt="">
+  </div>
+  <div class="card">
+    <h3>Новый способ: рисует браузер</h3>
+    <p class="tag" id="tagNew">—</p>
+    <img id="imgNew" alt="">
+  </div>
+</div>
+
+<div class="panel" style="margin-top:14px">
+  <div id="log">Готово к работе. Нажми «Сравнить оба способа».</div>
+</div>
+
+<script>
+const exportNode = document.getElementById('export-node');
+const editor = document.getElementById('editor');
+const logEl = document.getElementById('log');
+const SCALE = 2;
+
+function log(msg) { logEl.textContent += '\n' + msg; logEl.scrollTop = logEl.scrollHeight; }
+function clearLog() { logEl.textContent = ''; }
+
+/* ============ построение сцен ============ */
+const TEXT = 'Дождь нужен растениям, животным и людям. Без него не было бы жизни. Он может испортить планы, но часто дарит особое настроение.';
+
+function makeBox(opts) {
+  const box = document.createElement('div');
+  box.className = 'text-box' + (opts.mode === 'ribbon' ? ' mode-ribbon' : '');
+  box.style.left = opts.left + 'px';
+  box.style.top = opts.top + 'px';
+  box.style.width = opts.width + 'px';
+  if (opts.rot) box.style.transform = 'rotate(' + opts.rot + 'deg)';
+
+  const content = document.createElement('div');
+  content.className = 'tb-content';
+  content.style.fontFamily = opts.font;
+  content.style.fontSize = opts.size + 'px';
+  content.style.lineHeight = opts.lh || '1.25';
+  content.style.textAlign = opts.align || 'left';
+  if (opts.align === 'justify') content.style.textAlignLast = 'left';
+
+  if (opts.mode === 'ribbon') {
+    box.style.setProperty('--ribbon-bg', opts.bg || 'rgba(0,0,0,0.85)');
+    box.style.setProperty('--ribbon-pad-v', (opts.padV || 0.25) + 'em');
+    box.style.setProperty('--ribbon-pad-h', (opts.padH || 0.3) + 'em');
+    const ribbon = document.createElement('span');
+    ribbon.className = 'tb-ribbon';
+    ribbon.textContent = opts.text || TEXT;
+    content.appendChild(ribbon);
+  } else {
+    content.textContent = opts.text || TEXT;
+    if (opts.bg) content.style.background = opts.bg;
+  }
+  box.appendChild(content);
+  return box;
+}
+
+function buildScene() {
+  exportNode.querySelectorAll('.text-box').forEach(b => b.remove());
+  const scene = document.getElementById('scene').value;
+  const boxes = [];
+
+  if (scene === '1') {
+    boxes.push({mode:'ribbon', left:40, top:30, width:320, font:"'Roboto', sans-serif", size:24, align:'left'});
+  }
+  if (scene === '2') {
+    boxes.push({mode:'ribbon', left:30, top:20,  width:300, font:"'Caveat', cursive",      size:28, align:'left'});
+    boxes.push({mode:'ribbon', left:400, top:60, width:300, font:"'Oswald', sans-serif",   size:22, align:'right', bg:'rgba(20,90,80,0.9)'});
+  }
+  if (scene === '3') {
+    boxes.push({mode:'ribbon', left:30, top:20,  width:310, font:"'Lora', serif",          size:22, align:'left'});
+    boxes.push({mode:'plate',  left:400, top:70, width:300, font:"'Montserrat', sans-serif", size:20, align:'center'});
+  }
+  if (scene === '4') {
+    boxes.push({mode:'ribbon', left:20,  top:10,  width:280, font:"'Roboto', sans-serif",     size:20, align:'left'});
+    boxes.push({mode:'ribbon', left:330, top:40,  width:260, font:"'Lora', serif",            size:18, align:'center', lh:'1.6'});
+    boxes.push({mode:'plate',  left:20,  top:220, width:300, font:"'Oswald', sans-serif",     size:19, align:'right'});
+    boxes.push({mode:'ribbon', left:360, top:250, width:300, font:"'Montserrat', sans-serif", size:17, align:'justify', rot:-3});
+  }
+  if (scene === '5') {
+    boxes.push({mode:'ribbon', left:40, top:30, width:360, font:"'Pacifico', cursive", size:26,
+                align:'left', padV:0.6, padH:0.9, bg:'rgba(120,40,90,0.9)'});
+  }
+
+  boxes.forEach(o => exportNode.appendChild(makeBox(o)));
+  clearLog();
+  log('Сцена построена: плашек ' + boxes.length);
+}
+
+/* ============ СПОСОБ 1: html2canvas (как сейчас) ============ */
+async function exportOld() {
+  const canvas = await html2canvas(exportNode, {
+    backgroundColor: null, scale: SCALE, useCORS: true,
+    width: exportNode.offsetWidth,
+    windowWidth: Math.max(document.documentElement.clientWidth, 1024),
+    windowHeight: Math.max(document.documentElement.clientHeight, exportNode.offsetHeight + 200),
+    scrollX: 0, scrollY: 0
+  });
+  return canvas;
+}
+
+/* ============ СПОСОБ 2: рисует сам браузер ============ */
+const fontCache = {};
+
+// Какие шрифты реально подключены на странице через Google Fonts.
+function availableFamilies() {
+  const set = new Set();
+  document.querySelectorAll('link[href*="fonts.googleapis.com"]').forEach(link => {
+    [...link.href.matchAll(/family=([^&:]+)/g)].forEach(m => {
+      set.add(decodeURIComponent(m[1]).replace(/\+/g, ' '));
+    });
+  });
+  return set;
+}
+
+// Берём только подключённые: на системный шрифт Google отвечает ошибкой,
+// и запрос падает целиком.
+function usedFamilies() {
+  const available = availableFamilies();
+  const found = new Set();
+  exportNode.querySelectorAll('.tb-content, .tb-ribbon, #editor').forEach(el => {
+    getComputedStyle(el).fontFamily.split(',').forEach(part => {
+      const fam = part.trim().replace(/['"]/g, '');
+      if (available.has(fam)) found.add(fam);
+    });
+  });
+  return [...found];
+}
+
+async function toBase64(url) {
+  if (fontCache[url]) return fontCache[url];
+  const buf = await (await fetch(url)).arrayBuffer();
+  const bytes = new Uint8Array(buf);
+  let bin = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  }
+  fontCache[url] = 'data:font/woff2;base64,' + btoa(bin);
+  return fontCache[url];
+}
+
+// Шрифты нужно вложить внутрь картинки: иначе браузер их там не увидит.
+async function buildFontCss(families) {
+  if (!families.length) return '';
+  const url = 'https://fonts.googleapis.com/css2?' +
+    families.map(f => 'family=' + f.replace(/ /g, '+')).join('&') + '&display=swap';
+  let css = await (await fetch(url)).text();
+  const urls = [...new Set([...css.matchAll(/url\((https:\/\/[^)]+)\)/g)].map(m => m[1]))];
+  log('Вкладываю шрифты: ' + families.join(', ') + ' (файлов: ' + urls.length + ')');
+  for (const u of urls) {
+    try { css = css.split(u).join(await toBase64(u)); }
+    catch (e) { log('не удалось вложить: ' + u); }
+  }
+  return css;
+}
+
+async function exportNative() {
+  const width = Math.ceil(exportNode.offsetWidth);
+  const height = Math.ceil(exportNode.offsetHeight);
+
+  const clone = exportNode.cloneNode(true);
+  clone.removeAttribute('id');
+  clone.setAttribute('data-export-root', 'true');
+  clone.querySelectorAll('[contenteditable]').forEach(el => el.setAttribute('contenteditable', 'false'));
+  clone.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
+
+  const fontCss = await buildFontCss(usedFamilies());
+  const pageCss = document.getElementById('pageCss').textContent
+                        .replace(/#export-node/g, '[data-export-root]');
+  const body = new XMLSerializer().serializeToString(clone);
+
+  // Браузер сам рисует разметку внутри картинки — со своей вёрсткой,
+  // своими переносами и штатной подложкой box-decoration-break.
+  const svg =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="' + (width * SCALE) + '" height="' + (height * SCALE) + '"' +
+    ' viewBox="0 0 ' + width + ' ' + height + '">' +
+    '<foreignObject x="0" y="0" width="' + width + '" height="' + height + '">' +
+    '<div xmlns="http://www.w3.org/1999/xhtml">' +
+    '<style><![CDATA[' + fontCss + '\n' + pageCss +
+    '\n[data-export-root]{margin:0 !important;box-shadow:none !important;}]]></style>' +
+    body + '</div></foreignObject></svg>';
+
+  const img = new Image();
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  await img.decode();
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width * SCALE;
+  canvas.height = height * SCALE;
+  canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+  return canvas;
+}
+
+/* ============ запуск обоих ============ */
+async function runBoth() {
+  clearLog();
+  if (!exportNode.querySelector('.text-box')) buildScene();
+  log('Жду готовности шрифтов...');
+  if (document.fonts) { try { await document.fonts.ready; } catch (e) {} }
+
+  try {
+    const t0 = performance.now();
+    const c1 = await exportOld();
+    document.getElementById('imgOld').src = c1.toDataURL('image/png');
+    document.getElementById('tagOld').textContent =
+      c1.width + '×' + c1.height + ', ' + Math.round(performance.now() - t0) + ' мс';
+    log('html2canvas: готово');
+  } catch (e) {
+    document.getElementById('tagOld').innerHTML = '<span class="bad">ошибка: ' + e.message + '</span>';
+    log('html2canvas упал: ' + e.message);
+  }
+
+  try {
+    const t0 = performance.now();
+    const c2 = await exportNative();
+    document.getElementById('imgNew').src = c2.toDataURL('image/png');
+    document.getElementById('tagNew').textContent =
+      c2.width + '×' + c2.height + ', ' + Math.round(performance.now() - t0) + ' мс';
+    log('новый способ: готово');
+  } catch (e) {
+    document.getElementById('tagNew').innerHTML = '<span class="bad">ошибка: ' + e.message + '</span>';
+    log('новый способ упал: ' + e.message);
+  }
+  log('Сравни обе картинки с холстом выше.');
+}
+
+async function downloadNative() {
+  try {
+    const canvas = await exportNative();
+    canvas.toBlob(function(blob) {
+      const file = new File([blob], 'test-native.png', { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file] }).catch(function(){});
+        return;
+      }
+      const a = document.createElement('a');
+      a.download = 'test-native.png';
+      a.href = URL.createObjectURL(blob);
+      document.body.appendChild(a); a.click(); a.remove();
+    }, 'image/png');
+    log('PNG скачан.');
+  } catch (e) { log('не удалось: ' + e.message); }
+}
+
+buildScene();
+</script>
+</body>
+</html>
