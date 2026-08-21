@@ -33,6 +33,27 @@
     try { localStorage.setItem(RECENT_KEY, JSON.stringify(list)); } catch (e) {}
   }
 
+  /* ---- умеет ли устройство рисовать флаги ----
+     На телефоне и на Маке флаг рисуется одним значком — вкладка нужна.
+     В Windows картинок флагов нет: вместо флага видны буквы (AC, AD, AE),
+     поэтому там вкладку прячем. */
+  function supportsFlags() {
+    try {
+      var plat = (navigator.userAgentData && navigator.userAgentData.platform)
+        ? navigator.userAgentData.platform
+        : (navigator.platform || navigator.userAgent || '');
+      if (/win/i.test(plat)) return false;
+
+      var g = document.createElement('canvas').getContext('2d');
+      if (!g) return true;
+      g.font = '24px sans-serif';
+      var pair = g.measureText('\uD83C\uDDF7\uD83C\uDDFA').width;
+      var half = g.measureText('\uD83C\uDDF7').width;
+      if (!pair || !half) return true;
+      return pair < half * 1.8;
+    } catch (e) { return true; }
+  }
+
   function insert(ch) {
     try {
       if (typeof restoreSelection === 'function') restoreSelection();
@@ -301,6 +322,11 @@
         return r.json();
       })
       .then(function (json) {
+        if (!supportsFlags()) {
+          Object.keys(json).forEach(function (k) {
+            if (k.indexOf('\u0424\u043b\u0430\u0433') !== -1) delete json[k];
+          });
+        }
         data = json;
         placeButton();
       })
