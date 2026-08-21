@@ -1,0 +1,150 @@
+/* ==========================================================================
+   ПАНЕЛЬ БЛОКАМИ — часть 1
+   Цвета взяты с палитры: Golden Biscuit, Rose Candy, Cherry Velvet, Sage Garden.
+   Рамка яркая, заливка внутри — еле заметное напыление того же цвета,
+   чтобы панель осталась тёмной и текст читался.
+   ========================================================================== */
+
+.pb-block {
+  --blk: #888;
+  --blk-fill: rgba(255,255,255,0.03);
+  position: relative;
+  border: 1.5px solid var(--blk);
+  border-radius: 14px;
+  background: var(--blk-fill);
+  padding: 12px 14px 14px;
+  margin: 0 0 16px;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.25) inset;
+}
+
+/* цвета блоков сверху вниз */
+.pb-block.pb-base   { --blk: #EFD7B8; --blk-fill: rgba(239,215,184,0.045); }
+.pb-block.pb-img    { --blk: #FA9EBC; --blk-fill: rgba(250,158,188,0.05);  }
+.pb-block.pb-plate  { --blk: #C73459; --blk-fill: rgba(199,52,89,0.07);    }
+.pb-block.pb-ribbon { --blk: #90B48F; --blk-fill: rgba(144,180,143,0.06);  }
+
+/* ---- заголовок блока ---- */
+.pb-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  user-select: none;
+}
+.pb-title {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--blk);
+  margin: 0;
+}
+.pb-arrow {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  line-height: 1;
+  font-size: 13px;
+  border-radius: 8px;
+  border: 1px solid var(--blk);
+  background: transparent;
+  color: var(--blk);
+  cursor: pointer;
+  transition: transform .18s ease, background .18s ease;
+}
+.pb-arrow:hover { background: color-mix(in srgb, var(--blk) 18%, transparent); }
+.pb-block.pb-collapsed .pb-arrow { transform: rotate(-90deg); }
+
+/* ---- тело блока: сворачивается только по клику на стрелку ---- */
+.pb-body { display: block; }
+.pb-block.pb-collapsed .pb-body { display: none; }
+
+/* ---- подсказка, когда работать не с чем ---- */
+.pb-hint {
+  font-size: 12px;
+  line-height: 1.45;
+  color: #9aa4b2;
+  background: rgba(0,0,0,0.22);
+  border: 1px dashed color-mix(in srgb, var(--blk) 45%, transparent);
+  border-radius: 8px;
+  padding: 9px 11px;
+  margin: 0;
+}
+.pb-block.pb-idle .pb-body > *:not(.pb-hint):not(.pb-keep) {
+  opacity: 0.38;
+  pointer-events: none;
+}
+.pb-block:not(.pb-idle) .pb-hint { display: none; }
+
+/* ---- кнопки внутри блока — в тон блоку ---- */
+.pb-block .pb-tinted {
+  background: color-mix(in srgb, var(--blk) 22%, #1b1f27) !important;
+  border: 1px solid color-mix(in srgb, var(--blk) 62%, transparent) !important;
+  color: #f2f5fa !important;
+  transition: background .16s ease, border-color .16s ease;
+}
+.pb-block .pb-tinted:hover {
+  background: color-mix(in srgb, var(--blk) 38%, #1b1f27) !important;
+  border-color: var(--blk) !important;
+}
+.pb-block .pb-tinted:active {
+  background: color-mix(in srgb, var(--blk) 55%, #1b1f27) !important;
+}
+
+/* внутренние подписи и ползунки подкрашиваем в тон */
+.pb-block label { color: #dfe4ec; }
+.pb-block .pb-sub {
+  color: var(--blk) !important;
+  font-weight: 600;
+}
+.pb-block input[type="range"] { accent-color: var(--blk); }
+.pb-block hr { border-color: color-mix(in srgb, var(--blk) 30%, transparent); }
+
+/* внутренние коробочки настроек больше не рисуют свою рамку:
+   её роль теперь у самого блока */
+.pb-block #tbSettings,
+.pb-block #tbRibbonSettings,
+.pb-block #imgSettings {
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+  margin-top: 0 !important;
+}
+
+/* ---- кнопка «Добавить плашку» — отдельно, ниже блока картинок ---- */
+#pbAddPlate {
+  display: block;
+  width: 100%;
+  margin: 0 0 16px;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 12px;
+  cursor: pointer;
+  background: linear-gradient(180deg, #C73459 0%, #a82a49 100%) !important;
+  border: 1px solid #C73459 !important;
+  color: #fff !important;
+  box-shadow: 0 2px 10px rgba(199,52,89,0.25);
+  transition: filter .16s ease, transform .06s ease;
+}
+#pbAddPlate:hover  { filter: brightness(1.12); }
+#pbAddPlate:active { transform: translateY(1px); }
+
+/* ---- телефон ---- */
+@media (max-width: 900px) {
+  .pb-block { padding: 10px 11px 12px; margin-bottom: 13px; border-radius: 12px; }
+  .pb-title { font-size: 12px; }
+  .pb-arrow { width: 30px; height: 30px; }
+  /* блоки, которых на телефоне нет по содержимому, прячем целиком */
+  .pb-block.pb-plate,
+  .pb-block.pb-ribbon,
+  #pbAddPlate { display: none !important; }
+}
+
+/* запасной вариант для старых браузеров без color-mix */
+@supports not (background: color-mix(in srgb, red 50%, blue)) {
+  .pb-block .pb-tinted { background: #2b3242 !important; border-color: #3a4254 !important; }
+  .pb-arrow:hover { background: rgba(255,255,255,0.08); }
+}
