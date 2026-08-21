@@ -1,0 +1,50 @@
+/* ==========================================================================
+   РЕЖИМ «БЕЗ ФОНА» + УБОРКА ЭМОДЗИ С ТЕЛЕФОНА
+   Отдельный файл, рабочие стили не переписываются.
+   ========================================================================== */
+
+/* ---- галочка «Без фона» под выбором цвета ---- */
+.bg-none-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #cbd3e1;
+  cursor: pointer;
+  user-select: none;
+}
+.bg-none-row input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: #10b981;
+}
+.bg-none-row:hover { color: #fff; }
+
+/* ---- прозрачный холст ----
+   Фон убираем, хвостик и тень прячем — иначе в прозрачном посте
+   останутся тёмные следы. Пунктир показывает границы композиции. */
+#export-node.bg-none {
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: 2px dashed rgba(120, 140, 175, 0.85);
+  outline-offset: -1px;
+}
+#export-node.bg-none::before { display: none !important; }
+
+/* на время съёмки пунктир убираем, чтобы не попал в картинку */
+#export-node.bg-none-shooting { outline: none !important; }
+
+/* ---- телефон: эмодзи убраны совсем ----
+   В телефонной клавиатуре свой набор — панель только занимает место. */
+@media (max-width: 768px) {
+  .emoji-wrap,
+  .emoji-section-title,
+  .emoji-bar,
+  .emoji-open-btn,
+  .emoji-pop {
+    display: none !important;
+  }
+}
