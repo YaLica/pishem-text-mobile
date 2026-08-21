@@ -1,0 +1,107 @@
+/* ==========================================================================
+   ЭМОДЗИ — оформление панели с поиском
+   ========================================================================== */
+
+.emoji-pro { display: block; }
+
+/* ---- поиск ---- */
+.emoji-search {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0 0 8px;
+  padding: 9px 11px;
+  font-size: 13px;
+  color: #eef2f8;
+  background: #1b2029;
+  border: 1px solid #2f3746;
+  border-radius: 9px;
+  outline: none;
+}
+.emoji-search::placeholder { color: #7d8798; }
+.emoji-search:focus { border-color: #3d7eff; }
+
+/* ---- вкладки категорий ---- */
+.emoji-tabs {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 4px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  margin-bottom: 6px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+.emoji-tabs::-webkit-scrollbar { height: 4px; }
+.emoji-tabs::-webkit-scrollbar-thumb { background: #333b4a; border-radius: 4px; }
+
+.emoji-tab {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+  background: #1b2029;
+  border: 1px solid #2f3746;
+  border-radius: 9px;
+  transition: background .15s ease, border-color .15s ease;
+}
+.emoji-tab:hover  { background: #252c38; }
+.emoji-tab.active { background: #10b98130; border-color: #10b981; }
+
+/* ---- сетка эмодзи ---- */
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(34px, 1fr));
+  gap: 2px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: 4px;
+  -webkit-overflow-scrolling: touch;
+}
+.emoji-grid::-webkit-scrollbar { width: 6px; }
+.emoji-grid::-webkit-scrollbar-thumb { background: #333b4a; border-radius: 6px; }
+
+.emoji-grid span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  font-size: 21px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 7px;
+  user-select: none;
+  transition: background .12s ease, transform .08s ease;
+}
+.emoji-grid span:hover  { background: #2a3140; }
+.emoji-grid span:active { transform: scale(0.88); }
+
+/* ---- показать ещё ---- */
+.emoji-more {
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px;
+  font-size: 12px;
+  color: #cfd6e2;
+  cursor: pointer;
+  background: #1b2029;
+  border: 1px solid #2f3746;
+  border-radius: 9px;
+}
+.emoji-more:hover { background: #252c38; }
+
+.emoji-empty {
+  padding: 14px 4px;
+  font-size: 12px;
+  color: #7d8798;
+  text-align: center;
+}
+
+/* ---- телефон ---- */
+@media (max-width: 900px) {
+  .emoji-grid { max-height: 210px; grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); }
+  .emoji-grid span { height: 38px; font-size: 23px; }
+  .emoji-tab { width: 38px; height: 38px; font-size: 18px; }
+}
