@@ -1,0 +1,37 @@
+АРХИВ 1 — 10 файлов
+FONT_PACK_1/alice-400.woff2
+FONT_PACK_1/amatic-sc-400.woff2
+FONT_PACK_1/bad-script-400.woff2
+FONT_PACK_1/bebas-neue-400.woff2
+FONT_PACK_1/caveat-400.woff2
+FONT_PACK_1/comfortaa-400.woff2
+FONT_PACK_1/cormorant-garamond-400.woff2
+FONT_PACK_1/exo-2-400.woff2
+FONT_PACK_1/inter-400.woff2
+FONT_PACK_1/kelly-slab-400.woff2
+
+АРХИВ 2 — 10 файлов
+FONT_PACK_2/lora-400.woff2
+FONT_PACK_2/marck-script-400.woff2
+FONT_PACK_2/merriweather-400.woff2
+FONT_PACK_2/montserrat-400.woff2
+FONT_PACK_2/neucha-400.woff2
+FONT_PACK_2/nunito-400.woff2
+FONT_PACK_2/open-sans-400.woff2
+FONT_PACK_2/oranienbaum-400.woff2
+FONT_PACK_2/oswald-400.woff2
+FONT_PACK_2/pt-serif-400.woff2
+
+АРХИВ 3 — 10 файлов
+FONT_PACK_3/pacifico-400.woff2
+FONT_PACK_3/philosopher-400.woff2
+FONT_PACK_3/playfair-display-400.woff2
+FONT_PACK_3/raleway-400.woff2
+FONT_PACK_3/roboto-400.woff2
+FONT_PACK_3/rubik-400.woff2
+FONT_PACK_3/russo-one-400.woff2
+FONT_PACK_3/tenor-sans-400.woff2
+FONT_PACK_3/ubuntu-400.woff2
+FONT_PACK_3/yeseva-one-400.woff2
+
+ИТОГО: 30 файлов
