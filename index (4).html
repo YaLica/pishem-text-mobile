@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Генератор постов (Кроссплатформа)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alice&family=Amatic+SC:wght@700&family=Bad+Script&family=Bebas+Neue&family=Caveat&family=Comfortaa&family=Cormorant+Garamond&family=Exo+2&family=Inter&family=Kelly+Slab&family=Lora&family=Marck+Script&family=Merriweather&family=Montserrat&family=Neucha&family=Nunito&family=Open+Sans&family=Oranienbaum&family=Oswald&family=PT+Serif&family=Pacifico&family=Philosopher&family=Playfair+Display&family=Raleway&family=Roboto&family=Rubik&family=Russo+One&family=Tenor+Sans&family=Ubuntu&family=Yeseva+One&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="emoji-pro.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="panel-blocks.css">
+<link rel="stylesheet" href="size-align.css">
+<link rel="stylesheet" href="no-bg.css">
+</head>
+<body>
+
+<div class="panel">
+<h1>🎨 Текстер PRO</h1>
+<label>📏 Платформа (Размер холста)</label>
+<div class="row" style="margin-bottom: 10px;">
+<button class="preset active" onclick="setPreset('telegram', this)" style="flex: 1 1 60%;">💬 Редактор MAX / Telegram</button>
+<button class="preset" onclick="setPreset('custom', this)" style="flex: 1 1 30%;">⚙️ Свой размер PNG-пост</button>
+</div>
+<div id="widthControl" style="display: none; background: #2a2f3a50; padding: 10px; border-radius: 8px; margin-top: 10px;">
+<label>Своя ширина: <span id="wLabel">800</span> px</label>
+<input type="range" id="width" min="300" max="2000" value="800" oninput="updateCustomWidth()">
+</div>
+<hr style="border-color: #2a2f3a; margin: 15px 0;">
+
+<div style="display: flex; gap: 10px; margin-bottom: 15px;">
+<div style="flex: 1;">
+<label style="color: #fff; margin-top: 0;">🎨 Фон поста</label>
+<input type="color" id="bgColorPicker" value="#ffffff" oninput="updateBgColor(this.value)">
+<label class="bg-none-row" title="Пост без фона — прозрачный PNG">
+<input type="checkbox" id="bgNoneToggle" onchange="toggleNoBg(this.checked)">
+<span>Без фона</span>
+</label>
+</div>
+<div style="flex: 1;">
+<label style="color: #fff; margin-top: 0;">✍️ Текст (общий)</label>
+<input type="color" value="#000000" oninput="updateMainTextColor(this.value)">
+</div>
+</div>
+
+<div style="margin-bottom: 15px;">
+<label style="color: #fff; margin-top: 0;">🔤 Основной шрифт всего поста</label>
+<select id="fontFamilySelector" onchange="updateFontFamily(this.value)">
+<option value="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif">📱 Системный (Стандарт)</option>
+<option value="'Times New Roman', Times, serif" style="font-family: 'Times New Roman', Times, serif">🏛️ Классический: Times New Roman</option>
+<option value="'Roboto', sans-serif" style="font-family: 'Roboto', sans-serif">🤖 Современный: Roboto</option>
+<option value="'Open Sans', sans-serif" style="font-family: 'Open Sans', sans-serif">📖 Открытый: Open Sans</option>
+<option value="'Montserrat', sans-serif" style="font-family: 'Montserrat', sans-serif">💎 Стильный: Montserrat</option>
+<option value="'Inter', sans-serif" style="font-family: 'Inter', sans-serif">✨ Чистый: Inter</option>
+<option value="'Oswald', sans-serif" style="font-family: 'Oswald', sans-serif">📏 Узкий: Oswald</option>
+<option value="'Raleway', sans-serif" style="font-family: 'Raleway', sans-serif">⚜️ Элегантный: Raleway</option>
+<option value="'Ubuntu', sans-serif" style="font-family: 'Ubuntu', sans-serif">🟢 Округлый: Ubuntu</option>
+<option value="'Nunito', sans-serif" style="font-family: 'Nunito', sans-serif">☁️ Мягкий: Nunito</option>
+<option value="'Rubik', sans-serif" style="font-family: 'Rubik', sans-serif">🟥 Плотный: Rubik</option>
+<option value="'Exo 2', sans-serif" style="font-family: 'Exo 2', sans-serif">⚡ Техно: Exo 2</option>
+<option value="'Merriweather', serif" style="font-family: 'Merriweather', serif">📚 Книжный: Merriweather</option>
+<option value="'Playfair Display', serif" style="font-family: 'Playfair Display', serif">📰 Журнальный: Playfair Display</option>
+<option value="'Lora', serif" style="font-family: 'Lora', serif">🪶 Поэтичный: Lora</option>
+<option value="'PT Serif', serif" style="font-family: 'PT Serif', serif">🏢 Официальный: PT Serif</option>
+<option value="'Cormorant Garamond', serif" style="font-family: 'Cormorant Garamond', serif">👑 Премиум: Cormorant Garamond</option>
+<option value="'Tenor Sans', sans-serif" style="font-family: 'Tenor Sans', sans-serif">🎨 Гротеск: Tenor Sans</option>
+<option value="'Alice', serif" style="font-family: 'Alice', serif">📜 Винтаж: Alice</option>
+<option value="'Comfortaa', cursive" style="font-family: 'Comfortaa', cursive">🎈 Пузырьковый: Comfortaa</option>
+<option value="'Caveat', cursive" style="font-family: 'Caveat', cursive">🖋️ Рукописный: Caveat</option>
+<option value="'Bebas Neue', sans-serif" style="font-family: 'Bebas Neue', sans-serif">📢 ТИТУЛ: Bebas Neue</option>
+<option value="'Russo One', sans-serif" style="font-family: 'Russo One', sans-serif">🔥 Мощный: Russo One</option>
+<option value="'Pacifico', cursive" style="font-family: 'Pacifico', cursive">🌊 Летний: Pacifico</option>
+<option value="'Kelly Slab', cursive" style="font-family: 'Kelly Slab', cursive">💻 Киберпанк: Kelly Slab</option>
+<option value="'Neucha', cursive" style="font-family: 'Neucha', cursive">✍️ Маркер: Neucha</option>
+<option value="'Amatic SC', cursive" style="font-family: 'Amatic SC', cursive">🎬 Кино: Amatic SC</option>
+<option value="'Marck Script', cursive" style="font-family: 'Marck Script', cursive">☕ Кофейня: Marck Script</option>
+<option value="'Bad Script', cursive" style="font-family: 'Bad Script', cursive">📝 Записки: Bad Script</option>
+<option value="'Yeseva One', serif" style="font-family: 'Yeseva One', serif">🌸 Салон: Yeseva One</option>
+<option value="'Philosopher', sans-serif" style="font-family: 'Philosopher', sans-serif">🕊️ Изящный: Philosopher</option>
+<option value="'Oranienbaum', serif" style="font-family: 'Oranienbaum', serif">🏛️ Антиква: Oranienbaum</option>
+</select>
+</div>
+
+<div class="dual-slider-row" style="display: flex; gap: 10px; margin-bottom: 15px;">
+<div style="flex: 1;">
+<label style="color: #fff; margin-top: 0;">🔠 Размер: <span id="baseFontSizeLabel">32</span> px</label>
+<input type="range" id="baseFontSlider" min="16" max="64" value="32" oninput="updateBaseFontSize(this.value)">
+</div>
+<div style="flex: 1;">
+<label style="color: #fff; margin-top: 0;">↕️ Интервал: <span id="lineHeightLabel">1.2</span></label>
+<input type="range" id="lineHeightSlider" min="0.8" max="2.5" step="0.05" value="1.2" oninput="updateLineHeight(this.value)">
+</div>
+</div>
+
+<div class="toolbar">
+<button id="btnUndo" onclick="undoAction()" title="Шаг назад (Ctrl+Z)" disabled>↩️</button>
+<button id="btnRedo" onclick="redoAction()" title="Шаг вперед (Ctrl+Y)" disabled>↪️</button>
+<div class="toolbar-divider"></div>
+<button onclick="format('bold')" title="Жирный"><b>Ж</b></button>
+<button onclick="format('italic')" title="Курсив"><i>К</i></button>
+<button onclick="format('underline')" title="Подчеркнутый"><u>Ч</u></button>
+<button onclick="format('strikeThrough')" title="Зачеркнутый"><s>S</s></button>
+<button onclick="formatCode()" title="Код"><code>&lt;/&gt;</code></button>
+<div class="toolbar-divider"></div>
+<button onclick="format('justifyLeft')" title="По левому краю">|≡</button>
+<button onclick="format('justifyCenter')" title="По центру">≡</button>
+<button onclick="format('justifyRight')" title="По правому краю">≡|</button>
+<button onclick="format('justifyFull')" title="По ширине">≡≡</button>
+<div class="toolbar-divider"></div>
+<button onclick="insertLink()" title="Ссылка">🔗</button>
+<input type="color" id="wordColor" value="#ff0000" oninput="applyTextColor(this.value)" title="Цвет выделенного текста">
+<button onclick="changeWordSize(1.2)" title="Увеличить выделенное">A+</button>
+<button onclick="changeWordSize(0.85)" title="Уменьшить выделенное">A-</button>
+<select onmousedown="saveSelectionBeforeAction()" onchange="applyWordFont(this.value); this.selectedIndex=0;" title="Шрифт выделенного слова" style="width:auto; min-width:65px; height:32px; padding:0 4px; font-size:12px; background:#2a2f3a; color:#e8e8e8; border:1px solid #2a2f3a; border-radius:6px; outline:none;">
+<option value="">🔤 Слово</option>
+<option value="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif">📱 Системный (Стандарт)</option>
+<option value="'Times New Roman', Times, serif" style="font-family: 'Times New Roman', Times, serif">🏛️ Классический: Times New Roman</option>
+<option value="'Roboto', sans-serif" style="font-family: 'Roboto', sans-serif">🤖 Современный: Roboto</option>
+<option value="'Open Sans', sans-serif" style="font-family: 'Open Sans', sans-serif">📖 Открытый: Open Sans</option>
+<option value="'Montserrat', sans-serif" style="font-family: 'Montserrat', sans-serif">💎 Стильный: Montserrat</option>
+<option value="'Inter', sans-serif" style="font-family: 'Inter', sans-serif">✨ Чистый: Inter</option>
+<option value="'Oswald', sans-serif" style="font-family: 'Oswald', sans-serif">📏 Узкий: Oswald</option>
+<option value="'Raleway', sans-serif" style="font-family: 'Raleway', sans-serif">⚜️ Элегантный: Raleway</option>
+<option value="'Ubuntu', sans-serif" style="font-family: 'Ubuntu', sans-serif">🟢 Округлый: Ubuntu</option>
+<option value="'Nunito', sans-serif" style="font-family: 'Nunito', sans-serif">☁️ Мягкий: Nunito</option>
+<option value="'Rubik', sans-serif" style="font-family: 'Rubik', sans-serif">🟥 Плотный: Rubik</option>
+<option value="'Exo 2', sans-serif" style="font-family: 'Exo 2', sans-serif">⚡ Техно: Exo 2</option>
+<option value="'Merriweather', serif" style="font-family: 'Merriweather', serif">📚 Книжный: Merriweather</option>
+<option value="'Playfair Display', serif" style="font-family: 'Playfair Display', serif">📰 Журнальный: Playfair Display</option>
+<option value="'Lora', serif" style="font-family: 'Lora', serif">🪶 Поэтичный: Lora</option>
+<option value="'PT Serif', serif" style="font-family: 'PT Serif', serif">🏢 Официальный: PT Serif</option>
+<option value="'Cormorant Garamond', serif" style="font-family: 'Cormorant Garamond', serif">👑 Премиум: Cormorant Garamond</option>
+<option value="'Tenor Sans', sans-serif" style="font-family: 'Tenor Sans', sans-serif">🎨 Гротеск: Tenor Sans</option>
+<option value="'Alice', serif" style="font-family: 'Alice', serif">📜 Винтаж: Alice</option>
+<option value="'Comfortaa', cursive" style="font-family: 'Comfortaa', cursive">🎈 Пузырьковый: Comfortaa</option>
+<option value="'Caveat', cursive" style="font-family: 'Caveat', cursive">🖋️ Рукописный: Caveat</option>
+<option value="'Bebas Neue', sans-serif" style="font-family: 'Bebas Neue', sans-serif">📢 ТИТУЛ: Bebas Neue</option>
+<option value="'Russo One', sans-serif" style="font-family: 'Russo One', sans-serif">🔥 Мощный: Russo One</option>
+<option value="'Pacifico', cursive" style="font-family: 'Pacifico', cursive">🌊 Летний: Pacifico</option>
+<option value="'Kelly Slab', cursive" style="font-family: 'Kelly Slab', cursive">💻 Киберпанк: Kelly Slab</option>
+<option value="'Neucha', cursive" style="font-family: 'Neucha', cursive">✍️ Маркер: Neucha</option>
+<option value="'Amatic SC', cursive" style="font-family: 'Amatic SC', cursive">🎬 Кино: Amatic SC</option>
+<option value="'Marck Script', cursive" style="font-family: 'Marck Script', cursive">☕ Кофейня: Marck Script</option>
+<option value="'Bad Script', cursive" style="font-family: 'Bad Script', cursive">📝 Записки: Bad Script</option>
+<option value="'Yeseva One', serif" style="font-family: 'Yeseva One', serif">🌸 Салон: Yeseva One</option>
+<option value="'Philosopher', sans-serif" style="font-family: 'Philosopher', sans-serif">🕊️ Изящный: Philosopher</option>
+<option value="'Oranienbaum', serif" style="font-family: 'Oranienbaum', serif">🏛️ Антиква: Oranienbaum</option>
+</select>
+<button onclick="deleteSelection()" title="Удалить выделенное">❌</button>
+<button onclick="cleanFormat()" title="Сбросить стили выделенного (Метёлка)">🧹</button>
+</div>
+
+<label style="color: #fff;">😀 Эмодзи для постов</label>
+<div class="emoji-wrap" id="emojiWrap"></div>
+
+<hr style="border-color: #2a2f3a; margin: 15px 0;">
+
+<div style="background: #2a2f3a50; padding: 15px; border-radius: 8px;">
+<label style="color: #4ade80;">🖼️ КАРТИНКИ</label>
+<input type="file" accept="image/*" multiple onchange="insertMultipleImages(event)">
+<div style="font-size: 11px; color: #9aa4b2; margin-top: 6px;">
+<b>Мультивыбор:</b> можешь выбрать сразу несколько картинок.<br>
+<b>Размер:</b> кликни и потяни за правый нижний угол ⇲.
+</div>
+<button id="btnDeleteImg" class="danger" onclick="deleteSelectedImage()" style="margin-top: 12px; padding: 8px; display: block;">🗑️ Удалить выбранную картинку</button>
+<button class="primary tb-hide-mobile" onclick="addTextBox()" style="margin-top: 12px; padding: 10px; background:#10b981;">➕ Добавить надпись (плашку)</button>
+  <div id="tbSettings" class="tb-hide-mobile" style="display:none; background:#10b98120; padding:12px; border-radius:8px; margin-top:12px; border:1px solid #10b981;">
+   <label style="color:#10b981; margin-top:0;">🎨 Настройки выбранной надписи</label>
+
+  <label>🔠 Размер текста: <span id="tbFontSizeLabel">24</span> px</label>
+  <input type="range" id="tbFontSize" min="10" max="120" value="24" oninput="setTbFontSize(this.value)">
+
+  <label>🔤 Шрифт текста плашки</label>
+  <select id="tbFontFamily" onchange="setTbFontFamily(this.value)">
+    <option value="">Как основной текст</option>
+  </select>
+
+  <label>🎨 Цвет фона плашки</label>
+  <input type="color" id="tbBgColor" value="#000000" oninput="setTbBgColor(this.value)">
+    <label>👻 Прозрачность фона: <span id="tbBgOpacityLabel">55</span>%</label>
+  <input type="range" id="tbBgOpacity" min="0" max="100" value="55" oninput="setTbBgOpacity(this.value)">
+    <label>↕️ Интервал строк: <span id="tbLineHeightLabel">1.25</span></label>
+  <input type="range" id="tbLineHeight" min="0.8" max="2.5" step="0.05" value="1.25" oninput="setTbLineHeight(this.value)">
+
+  <button type="button" onclick="document.getElementById('tbImageInput').click()" style="width:100%; margin-top:10px; background:#10b981; color:#fff; padding:10px;">🖼️ Вставить картинку в плашку</button>
+  <input type="file" id="tbImageInput" accept="image/*" style="display:none;" onchange="insertImageIntoTextBox(event)">
+
+  <button type="button" id="tbRibbonToggle" onclick="toggleRibbonMode()" style="width:100%; margin-top:10px; background:#8b5cf6; color:#fff; padding:10px;">🎀 Добавить подложку для текста</button>
+
+  <div id="tbRibbonSettings" style="display:none; background:#8b5cf620; padding:12px; border-radius:8px; margin-top:10px; border:1px solid #8b5cf6;">
+    <label style="color:#a78bfa; margin-top:0;">🎀 Настройки подложки (лент)</label>
+    <label>🎨 Цвет подложки</label>
+    <input type="color" id="tbRibbonColor" value="#000000" oninput="setTbRibbonColor(this.value)">
+    <label>👻 Прозрачность подложки: <span id="tbRibbonOpacityLabel">85</span>%</label>
+    <input type="range" id="tbRibbonOpacity" min="0" max="100" value="85" oninput="setTbRibbonOpacity(this.value)">
+    <label>⬜ Скругление: <span id="tbRibbonRadiusLabel">6</span> px</label>
+    <input type="range" id="tbRibbonRadius" min="0" max="30" value="6" oninput="setTbRibbonRadius(this.value)">
+    <label>↔️ Плотность (ширина): <span id="tbRibbonPadHLabel">0.3</span> em</label>
+    <input type="range" id="tbRibbonPadH" min="0" max="1.5" step="0.05" value="0.3" oninput="setTbRibbonPadH(this.value)">
+    <label>↕️ Высота подложки: <span id="tbRibbonPadVLabel">0.25</span></label>
+    <input type="range" id="tbRibbonPadV" min="0" max="0.5" step="0.01" value="0.25" oninput="setTbRibbonPadV(this.value)"> 
+  </div>
+</div>
+<div id="imgSettings">
+  <label style="color:#4ade80; margin-top:0;">🎛️ Настройки выбранной картинки</label>
+  <label>↔️ Отступ текста: <span id="imgGapLabel">20</span> px</label>
+  <input type="range" id="imgGapRange" min="0" max="60" value="20" oninput="setImgGap(this.value)">
+  <label>⬜ Скругление углов: <span id="imgRadiusLabel">12</span> px</label>
+  <input type="range" id="imgRadiusRange" min="0" max="60" value="12" oninput="setImgRadius(this.value)">
+  <label>🖼️ Рамка: <span id="imgBorderLabel">0</span> px</label>
+  <input type="range" id="imgBorderRange" min="0" max="12" value="0" oninput="setImgBorder(this.value)">
+  <label>🎨 Цвет рамки</label>
+  <input type="color" id="imgBorderColor" value="#000000" oninput="setImgBorderColor(this.value)">
+  <label>🔄 Поворот: <span id="imgRotLabel">0</span>°</label>
+  <div style="display:flex; gap:6px; align-items:center; margin-top:4px;">
+    <button type="button" onclick="miniRotate(-90)" style="flex:0 0 auto; width:38px; height:34px; background:#2a2f3a; color:#fff;">↺</button>
+    <input type="range" id="imgRotRange" min="-180" max="180" value="0" step="1" oninput="setImgRot(this.value)" style="flex:1;">
+    <button type="button" onclick="miniRotate(90)" style="flex:0 0 auto; width:38px; height:34px; background:#2a2f3a; color:#fff;">↻</button>
+  </div>
+  <button type="button" onclick="setImgRot(0)" style="width:100%; margin-top:6px; background:#2a2f3a; color:#fff; padding:6px;">⟲ Сбросить поворот</button>
+</div></div>
+
+<div class="ratio-box" id="ratioBox">
+<div class="ratio-title ok" id="ratioTitle">🟢 Идеальные пропорции для ленты (PNG)</div>
+<div class="ratio-bar-track"><div class="ratio-bar-fill" id="ratioFill"></div></div>
+<div class="ratio-info">
+<div class="stats-row">
+<span>Размер: <b id="ratioSize">800 × 100</b></span>
+<span>1 : <b id="ratioValue">0.1</b></span>
+</div>
+</div>
+</div>
+
+<div class="stats-box">
+<div class="stats-row">
+<span>Символы: <span id="charCount">0</span></span>
+<span>Фото: <span id="imgCount">0</span>/10</span>
+</div>
+</div>
+
+<button class="primary" id="exportBtn" onclick="processExport()">⬇️ Скачать PNG-пост</button>
+
+<div style="display: flex; gap: 8px; margin-top: 10px; flex-direction: column;">
+<button class="primary" id="copyTgBtn" onclick="copyForTelegram()" style="background:#2481cc; margin-top: 0; padding: 12px; font-size: 14px;">⧉ Скопировать для MAX / Telegram</button>
+</div>
+
+<button class="danger" onclick="clearEditor()">🗑️ Очистить холст</button>
+</div>
+
+<button id="panelHandle" onclick="togglePanel()">›</button>
+
+<div class="stage" id="stageArea">
+<div id="floatUndoRedo">
+<button id="floatUndo" onclick="undoAction()" title="Отменить">↩️</button>
+<button id="floatRedo" onclick="redoAction()" title="Повторить">↪️</button>
+</div>
+<button id="mobileToolsBtn" onclick="onMobileToolsClick()">⚙️ Инструменты</button>
+
+<div id="zoomControls">
+<button id="modeBtn" onclick="toggleMode()" title="Режим: Текст / Рука" style="min-width:auto; padding:0 8px; width:auto;">✍️</button>
+<div class="toolbar-divider" style="height:24px;"></div>
+<button onclick="zoomStep(-0.1)" title="Отдалить">➖</button>
+<span id="zoomLabel">100%</span>
+<button onclick="zoomStep(0.1)" title="Приблизить">➕</button>
+<button onclick="zoomFit()" title="По размеру экрана">⛶</button>
+</div>
+
+<div id="zoom-wrapper">
+<div id="export-node" class="no-tail" style="border-radius: 16px;">
+<div id="editor" contenteditable="true" placeholder="Начни писать статью здесь..."></div>
+</div>
+</div>
+</div>
+
+<div class="modal-overlay" id="textModal">
+<div class="modal">
+<h2>Твоя картинка и текст</h2>
+<img id="previewImage" src="" alt="Готовый пост">
+<p style="font-size: 12px; color: #9aa4b2; margin-top: 10px;">Вставь это под картинкой:</p>
+<textarea id="markdownOutput" readonly></textarea>
+<div style="display: flex; gap: 8px; flex-direction: column;">
+<div style="display: flex; gap: 8px;">
+<button class="primary" style="margin-top:0; background:#2481cc; padding: 12px; flex: 1; font-size: 13px; line-height: 1.2;" onclick="copyForTelegram()">⧉ Скопировать<br>для MAX / Telegram</button>
+</div>
+<button class="danger" style="margin-top:0; padding: 10px; font-size: 14px;" onclick="document.getElementById('textModal').style.display='none'">Закрыть</button>
+</div>
+</div>
+</div>
+
+<!-- МИНИ-ПАНЕЛЬ КАРТИНКИ (Компьютер) -->
+<div id="imgMiniBar">
+  <button onmousedown="event.preventDefault()" onclick="miniDuplicate()" title="Дублировать">🗐</button>
+  <div class="mb-div"></div>
+  <button onmousedown="event.preventDefault()" onclick="miniAlign('left')" title="Слева">◀</button>
+  <button onmousedown="event.preventDefault()" onclick="miniAlign('center')" title="По центру">▲</button>
+  <button onmousedown="event.preventDefault()" onclick="miniAlign('right')" title="Справа">▶</button>
+  <div class="mb-div"></div>
+  <button onmousedown="event.preventDefault()" onclick="miniRotate(-90)" title="Повернуть влево">↺</button>
+  <input type="range" id="miniRotSlider" min="-180" max="180" value="0" step="1" oninput="setImgRot(this.value)" onmousedown="event.stopPropagation()" style="width:70px; height:20px; margin:0 2px;" title="Плавный поворот">
+  <button onmousedown="event.preventDefault()" onclick="miniRotate(90)" title="Повернуть вправо">↻</button>
+  <div class="mb-div"></div>
+  <button onmousedown="event.preventDefault()" onclick="miniToTop()" title="В начало поста">⬆️</button>
+  <button onmousedown="event.preventDefault()" onclick="miniToBottom()" title="В конец поста">⬇️</button>
+  <div class="mb-div"></div>
+  <button onmousedown="event.preventDefault()" onclick="miniDelete()" title="Удалить">🗑️</button>
+</div>
+
+<!-- ТЕЛЕФОННАЯ ПЛАВАЮЩАЯ МЕНЮ КАРТИНКИ -->
+<div id="imgMobilePanel">
+  <div class="imp-head" id="impHead">
+    <span class="imp-title">🎛️ Картинка</span>
+    <span class="imp-close" onclick="closeImgMobilePanel()">✕</span>
+  </div>
+  <label>↔️ Отступ текста: <span id="impGapLabel">20</span> px</label>
+  <input type="range" id="impGapRange" min="0" max="60" value="20" oninput="setImgGap(this.value)">
+  <label>⬜ Скругление: <span id="impRadiusLabel">12</span> px</label>
+  <input type="range" id="impRadiusRange" min="0" max="60" value="12" oninput="setImgRadius(this.value)">
+  <label>🖼️ Рамка: <span id="impBorderLabel">0</span> px</label>
+  <input type="range" id="impBorderRange" min="0" max="12" value="0" oninput="setImgBorder(this.value)">
+  <label>🎨 Цвет рамки</label>
+  <input type="color" id="impBorderColor" value="#000000" oninput="setImgBorderColor(this.value)">
+  <label>🔄 Поворот: <span id="impRotLabel">0</span>°</label>
+  <div class="imp-rot-row">
+    <button onclick="miniRotate(-90)">↺</button>
+    <button id="impRotLock" onclick="toggleRotLock()" title="Включить/выключить плавный поворот" style="flex:0 0 auto; width:34px; height:32px; background:#2a2f3a; color:#fff;">🔒</button>
+    <input type="range" id="impRotRange" min="-180" max="180" value="0" step="1" oninput="setImgRot(this.value)" style="flex:1; opacity:0.4; pointer-events:none;">
+    <button onclick="miniRotate(90)">↻</button>
+  </div>
+  <div class="imp-btns">
+    <button onclick="miniDuplicate()" title="Дублировать">🗐</button>
+    <button onclick="miniAlign('left')" title="Слева">◀</button>
+    <button onclick="miniAlign('center')" title="Центр">▲</button>
+    <button onclick="miniAlign('right')" title="Справа">▶</button>
+    <button onclick="miniToTop()" title="В начало">⬆️</button>
+    <button onclick="miniToBottom()" title="В конец">⬇️</button>
+    <button onclick="miniDelete()" title="Удалить">🗑️</button>
+  </div>
+</div>
+
+<!-- QUICKBAR -->
+<div id="quickBar">
+<button onmousedown="undoAction(event)">↩️</button>
+<button onmousedown="redoAction(event)">↪️</button>
+<button onmousedown="qb(event,'bold')"><b>Ж</b></button>
+<button onmousedown="qb(event,'italic')"><i>К</i></button>
+<button onmousedown="qb(event,'underline')"><u>Ч</u></button>
+<button onmousedown="qbSize(event,1.2)">A+</button>
+<button onmousedown="qbSize(event,0.85)">A-</button>
+<input type="color" id="qbWordColor" value="#ff0000" oninput="applyTextColor(this.value)" onchange="applyTextColor(this.value)" title="Цвет выделенного текста">
+<button onmousedown="qbLink(event)">🔗</button>
+<button onmousedown="qbClean(event)" title="Сбросить стили">🧹</button>
+<button onmousedown="qbImage(event)" title="Добавить картинку">🖼️</button>
+<select id="qbFontSelect" ontouchstart="freezeSelectionForFont(); event.stopPropagation();" onmousedown="freezeSelectionForFont(); event.stopPropagation();" onchange="qbFont(this.value); this.selectedIndex=0;" title="Шрифт выделенного слова" style="flex:0 0 auto; width:auto; min-width:90px; height:42px; padding:0 6px; border-radius:10px; background:#2a2f3a; color:#e6ebf2; border:1px solid #3a4150; font-size:13px;">
+<option value="">🔤 Шрифт</option>
+<option value="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif">📱 Системный (Стандарт)</option>
+<option value="'Times New Roman', Times, serif" style="font-family: 'Times New Roman', Times, serif">🏛️ Классический: Times New Roman</option>
+<option value="'Roboto', sans-serif" style="font-family: 'Roboto', sans-serif">🤖 Современный: Roboto</option>
+<option value="'Open Sans', sans-serif" style="font-family: 'Open Sans', sans-serif">📖 Открытый: Open Sans</option>
+<option value="'Montserrat', sans-serif" style="font-family: 'Montserrat', sans-serif">💎 Стильный: Montserrat</option>
+<option value="'Inter', sans-serif" style="font-family: 'Inter', sans-serif">✨ Чистый: Inter</option>
+<option value="'Oswald', sans-serif" style="font-family: 'Oswald', sans-serif">📏 Узкий: Oswald</option>
+<option value="'Raleway', sans-serif" style="font-family: 'Raleway', sans-serif">⚜️ Элегантный: Raleway</option>
+<option value="'Ubuntu', sans-serif" style="font-family: 'Ubuntu', sans-serif">🟢 Округлый: Ubuntu</option>
+<option value="'Nunito', sans-serif" style="font-family: 'Nunito', sans-serif">☁️ Мягкий: Nunito</option>
+<option value="'Rubik', sans-serif" style="font-family: 'Rubik', sans-serif">🟥 Плотный: Rubik</option>
+<option value="'Exo 2', sans-serif" style="font-family: 'Exo 2', sans-serif">⚡ Техно: Exo 2</option>
+<option value="'Merriweather', serif" style="font-family: 'Merriweather', serif">📚 Книжный: Merriweather</option>
+<option value="'Playfair Display', serif" style="font-family: 'Playfair Display', serif">📰 Журнальный: Playfair Display</option>
+<option value="'Lora', serif" style="font-family: 'Lora', serif">🪶 Поэтичный: Lora</option>
+<option value="'PT Serif', serif" style="font-family: 'PT Serif', serif">🏢 Официальный: PT Serif</option>
+<option value="'Cormorant Garamond', serif" style="font-family: 'Cormorant Garamond', serif">👑 Премиум: Cormorant Garamond</option>
+<option value="'Tenor Sans', sans-serif" style="font-family: 'Tenor Sans', sans-serif">🎨 Гротеск: Tenor Sans</option>
+<option value="'Alice', serif" style="font-family: 'Alice', serif">📜 Винтаж: Alice</option>
+<option value="'Comfortaa', cursive" style="font-family: 'Comfortaa', cursive">🎈 Пузырьковый: Comfortaa</option>
+<option value="'Caveat', cursive" style="font-family: 'Caveat', cursive">🖋️ Рукописный: Caveat</option>
+<option value="'Bebas Neue', sans-serif" style="font-family: 'Bebas Neue', sans-serif">📢 ТИТУЛ: Bebas Neue</option>
+<option value="'Russo One', sans-serif" style="font-family: 'Russo One', sans-serif">🔥 Мощный: Russo One</option>
+<option value="'Pacifico', cursive" style="font-family: 'Pacifico', cursive">🌊 Летний: Pacifico</option>
+<option value="'Kelly Slab', cursive" style="font-family: 'Kelly Slab', cursive">💻 Киберпанк: Kelly Slab</option>
+<option value="'Neucha', cursive" style="font-family: 'Neucha', cursive">✍️ Маркер: Neucha</option>
+<option value="'Amatic SC', cursive" style="font-family: 'Amatic SC', cursive">🎬 Кино: Amatic SC</option>
+<option value="'Marck Script', cursive" style="font-family: 'Marck Script', cursive">☕ Кофейня: Marck Script</option>
+<option value="'Bad Script', cursive" style="font-family: 'Bad Script', cursive">📝 Записки: Bad Script</option>
+<option value="'Yeseva One', serif" style="font-family: 'Yeseva One', serif">🌸 Салон: Yeseva One</option>
+<option value="'Philosopher', sans-serif" style="font-family: 'Philosopher', sans-serif">🕊️ Изящный: Philosopher</option>
+<option value="'Oranienbaum', serif" style="font-family: 'Oranienbaum', serif">🏛️ Антиква: Oranienbaum</option>
+</select>
+<button class="tb-hide-mobile" onmousedown="event.preventDefault(); addTextBox();" title="Добавить надпись">📝</button>
+<input type="file" id="qbImageInput" accept="image/*" multiple style="display:none;" onchange="insertMultipleImages(event)">
+</div>
+
+<script src="core.js"></script>
+<script src="history.js"></script>
+<script src="zoom.js"></script>
+<script src="settings.js"></script>
+<script src="range-engine.js"></script>
+<script src="format-range.js"></script>
+<script src="images.js"></script>
+<script src="export.js"></script>
+<script src="editor-events.js"></script>
+<script src="ui.js"></script>
+<script src="textbox.js"></script>
+<script src="image-ui.js"></script>
+<script src="panel-blocks.js"></script>
+<script src="size-align.js"></script>
+<script src="panel-fixes.js"></script>
+<script src="emoji-pro.js"></script>
+<script src="no-bg.js"></script>
+</body>
+</html>
