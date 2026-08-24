@@ -76,6 +76,19 @@
            (node.tagName === 'DIV' || node.tagName === 'P');
   }
 
+  // Ближайший блок, внутри которого лежит узел. Именно он отвечает за
+  // выравнивание своей строки. Брать самый верхний блок нельзя: Enter
+  // иногда вкладывает новую строку внутрь предыдущей, и тогда выравнивание
+  // задело бы соседний текст.
+  function nearestBlock(node) {
+    if (node && node.nodeType === 3) node = node.parentNode;
+    while (node && node !== editor) {
+      if (isBlock(node)) return node;
+      node = node.parentNode;
+    }
+    return null;
+  }
+
   // поднимаемся до прямого потомка редактора
   function topLevel(node) {
     while (node && node.parentNode && node.parentNode !== editor) {
@@ -126,6 +139,11 @@
     }
 
     if (range.collapsed) {
+      // курсор стоит в тексте: берём ближайший блок, а если его нет —
+      // собираем строку из соседей вокруг курсора
+      var near = nearestBlock(range.startContainer);
+      if (near) { addLine([near]); return lines; }
+
       var top = topLevel(range.startContainer);
       if (!top) return lines;
       if (isBlock(top)) addLine([top]);
@@ -154,11 +172,16 @@
     editor.insertBefore(div, nodes[0]);
     nodes.forEach(function (n) { div.appendChild(n); });
 
-    // блок сам начинает новую строку, поэтому следующий <br> лишний:
-    // без этого под строкой появляется пустая полоса
+    // Блок сам по себе начинает новую строку и сам её заканчивает.
+    // Поэтому соседние <br> становятся лишними: каждый из них добавил бы
+    // ещё одну пустую строку, и текст ниже уезжал бы вниз.
     var after = div.nextSibling;
     if (after && after.nodeType === 1 && after.tagName === 'BR') {
       editor.removeChild(after);
+    }
+    var before = div.previousSibling;
+    if (before && before.nodeType === 1 && before.tagName === 'BR') {
+      editor.removeChild(before);
     }
     return div;
   }
