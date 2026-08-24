@@ -75,6 +75,11 @@ if(e && e.preventDefault) e.preventDefault();
 cleanFormat();
 }
 
+function qbAlign(e, cmd) {
+if(e && e.preventDefault) e.preventDefault();
+format(cmd);
+}
+
 function qbFont(font) {
   if (!font) return;
 
