@@ -370,4 +370,71 @@
     normalizeParagraphs();
     updateAlignButtons();
   });
+
+  /* ========================================================================
+     АВТОНОРМАЛИЗАЦИЯ: превращаем "текст<br>текст" в абзацы при первом
+     фокусе/вводе, чтобы выравнивание работало с первого клика.
+     ======================================================================== */
+  var autoNormalizeTimer = null;
+
+  function autoNormalize() {
+    clearTimeout(autoNormalizeTimer);
+    autoNormalizeTimer = setTimeout(function() {
+      if (needsNormalize()) normalizeKeepingCaret();
+    }, 0);
+  }
+
+  // input приходит до полного обновления contenteditable, поэтому ждём конец
+  // текущего события, и только после этого перестраиваем строки в абзацы.
+  editor.addEventListener('input', autoNormalize);
+  editor.addEventListener('focus', autoNormalize);
+
+  /* ========================================================================
+     ФИКС КАРТИНОК: не даём им попасть внутрь абзаца с текстом.
+     Картинка всегда вставляется отдельным блоком верхнего уровня.
+     ======================================================================== */
+  function interceptImageInsertion() {
+    if (typeof insertMultipleImages !== 'function') return;
+    var original = window.insertMultipleImages;
+
+    window.insertMultipleImages = function(files) {
+      normalizeKeepingCaret();
+      
+      var sel = window.getSelection();
+      var range = (sel && sel.rangeCount) ? sel.getRangeAt(0) : null;
+      var marker = null;
+      
+      if (range && editor.contains(range.commonAncestorContainer)) {
+        marker = document.createElement('span');
+        marker.setAttribute('data-img-insertion-point', '1');
+        marker.style.display = 'none';
+        try {
+          var rClone = range.cloneRange();
+          rClone.collapse(false);
+          rClone.insertNode(marker);
+        } catch(e) { marker = null; }
+      }
+
+      var result = original.apply(this, arguments);
+
+      setTimeout(function() {
+        if (marker && marker.parentNode) {
+          var boxes = editor.querySelectorAll('.img-box');
+          boxes.forEach(function(box) {
+            var para = box.closest('[data-para]');
+            if (para && para.parentNode === editor) {
+              editor.insertBefore(box, para.nextSibling);
+            }
+          });
+          marker.remove();
+        }
+        normalizeParagraphs();
+      }, 100);
+
+      return result;
+    };
+  }
+
+  interceptImageInsertion();
+
 })();
