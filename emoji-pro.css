@@ -198,6 +198,7 @@
   .emoji-grid span { font-size: 24px; }
   .emoji-tab { flex: 0 0 36px; height: 36px; font-size: 18px; }
 }
+
 /* ---- телефон: эмодзи не нужны, там своя клавиатура ---- */
 @media (max-width: 820px) {
   .emoji-slot,
