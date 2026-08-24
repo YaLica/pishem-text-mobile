@@ -50,10 +50,14 @@ function collectPageCss() {
     .catch(() => { exportCssCache = ''; return ''; });
 }
 
-function fileToBase64(url) {
+function fileToBase64(url, attempt) {
   if (exportFontCache[url]) return Promise.resolve(exportFontCache[url]);
-  return fetch(url)
-    .then(r => r.arrayBuffer())
+  attempt = attempt || 1;
+  return fetch(url, { cache: 'force-cache' })
+    .then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.arrayBuffer();
+    })
     .then(buf => {
       const bytes = new Uint8Array(buf);
       let bin = '';
@@ -64,6 +68,16 @@ function fileToBase64(url) {
       const out = 'data:font/woff2;base64,' + btoa(bin);
       exportFontCache[url] = out;
       return out;
+    })
+    .catch(err => {
+      // Одна сорвавшаяся загрузка = потерянный шрифт в PNG. Раньше ошибка
+      // гасилась молча, и картинка выходила с чужим шрифтом «через раз».
+      if (attempt >= 3) {
+        console.warn('PNG: шрифт не загрузился после 3 попыток:', url, err && err.message);
+        throw err;
+      }
+      return new Promise(r => setTimeout(r, 150 * attempt))
+        .then(() => fileToBase64(url, attempt + 1));
     });
 }
 
@@ -104,7 +118,7 @@ function buildFontCss() {
   const specs = usedFontSpecs();
   if (!specs.length) return Promise.resolve('');
   const url = 'https://fonts.googleapis.com/css2?' + specs.map(s => 'family=' + s).join('&') + '&display=swap';
-  return fetch(url)
+  return fetch(url, { cache: 'force-cache' })
     .then(r => r.text())
     .then(css => {
       const urls = [];
@@ -112,7 +126,10 @@ function buildFontCss() {
       let m;
       while ((m = re.exec(css))) { if (urls.indexOf(m[1]) === -1) urls.push(m[1]); }
       return Promise.all(urls.map(u =>
-        fileToBase64(u).then(data => ({ u: u, data: data })).catch(() => null)
+        fileToBase64(u).then(data => ({ u: u, data: data })).catch(() => {
+          console.warn('PNG: не удалось вшить файл шрифта:', u);
+          return null;
+        })
       )).then(pairs => {
         pairs.forEach(p => { if (p) css = css.split(p.u).join(p.data); });
         return css;
