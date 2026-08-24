@@ -139,13 +139,58 @@ function buildFontCss() {
 }
 
 function loadImage(src) {
+  // Раньше decode() и onload соревновались, кто первым отдаст картинку.
+  // decode() часто выигрывал, и холст рисовался до того, как браузер
+  // применил шрифты внутри SVG — отсюда «то тот шрифт, то не тот».
+  // Теперь ждём именно полной загрузки, и только потом decode.
   return new Promise((resolve, reject) => {
     const img = new Image();
-    img.onload = () => resolve(img);
+    img.onload = () => {
+      if (!img.decode) { resolve(img); return; }
+      img.decode().then(() => resolve(img)).catch(() => resolve(img));
+    };
     img.onerror = () => reject(new Error('SVG image failed'));
     img.src = src;
-    if (img.decode) img.decode().then(() => resolve(img)).catch(() => {});
   });
+}
+
+// Принудительный прогрев шрифтов.
+// Файлы уже скачаны и вшиты в CSS как base64. Подкладываем этот CSS в саму
+// страницу и просим браузер по-настоящему подготовить каждое начертание.
+// После этого шрифт лежит в памяти уже разобранным, и рисование SVG не
+// начинается раньше, чем шрифт готов.
+async function warmUpFonts(fontCss) {
+  if (!fontCss || !document.fonts) return;
+
+  const style = document.createElement('style');
+  style.setAttribute('data-export-warmup', '1');
+  style.textContent = fontCss;
+  document.head.appendChild(style);
+
+  try {
+    const families = [];
+    const re = /font-family:\s*['"]([^'"]+)['"]/g;
+    let m;
+    while ((m = re.exec(fontCss))) {
+      if (families.indexOf(m[1]) === -1) families.push(m[1]);
+    }
+
+    const jobs = [];
+    families.forEach(name => {
+      ['normal 400 32px', 'normal 700 32px', 'italic 400 32px'].forEach(spec => {
+        jobs.push(document.fonts.load(spec + ' "' + name + '"').catch(() => null));
+      });
+    });
+    await Promise.all(jobs);
+    await document.fonts.ready;
+
+    // два кадра на то, чтобы браузер закончил внутреннюю подготовку
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+  } catch (e) {
+    console.warn('PNG: прогрев шрифтов не удался:', e && e.message);
+  } finally {
+    if (style.parentNode) style.parentNode.removeChild(style);
+  }
 }
 
 function buildExportClone() {
@@ -190,7 +235,18 @@ async function exportNativeCanvas() {
     markup +
     '</div></foreignObject></svg>';
 
-  const img = await loadImage('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg));
+  const src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+
+  // 1. Готовим шрифты заранее.
+  await warmUpFonts(fontCss);
+
+  // 2. Первый проход — «холостой». Браузер разбирает разметку и шрифты
+  //    внутри SVG. Результат не используем.
+  try { await loadImage(src); } catch (e) { /* не критично */ }
+
+  // 3. Второй проход — рабочий. К этому моменту всё уже подготовлено,
+  //    поэтому шрифт попадает в картинку с первого раза.
+  const img = await loadImage(src);
 
   const canvas = document.createElement('canvas');
   canvas.width = width * EXPORT_SCALE;
