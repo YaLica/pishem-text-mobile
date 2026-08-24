@@ -21,16 +21,22 @@
     } else { fn(); }
   }
 
+   /* ---- недавние живут только до перезагрузки ----
+     Раньше список хранился в памяти браузера и оставался после закрытия
+     вкладки. Теперь он держится в обычной переменной: обновила страницу —
+     вкладка «Недавние» снова пустая. Заодно подчищаем то,
+     что осталось от прошлой версии. */
+  var recentList = [];
+  try { localStorage.removeItem(RECENT_KEY); } catch (e) {}
+
   function loadRecent() {
-    try { return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); }
-    catch (e) { return []; }
+    return recentList.slice();
   }
 
   function pushRecent(ch) {
-    var list = loadRecent().filter(function (x) { return x !== ch; });
-    list.unshift(ch);
-    list = list.slice(0, RECENT_MAX);
-    try { localStorage.setItem(RECENT_KEY, JSON.stringify(list)); } catch (e) {}
+    recentList = recentList.filter(function (x) { return x !== ch; });
+    recentList.unshift(ch);
+    recentList = recentList.slice(0, RECENT_MAX);
   }
 
   /* ---- умеет ли устройство рисовать флаги ----
