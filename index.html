@@ -147,10 +147,9 @@
 </div>
 
 <div class="emoji-desktop-only">
-  <label style="color: #fff;">😀 Эмодзи для постов</label>
-  <div class="emoji-wrap" id="emojiWrap"></div>
-</div>
+<label style="color: #fff;">😀 Эмодзи для постов</label>
 <div class="emoji-wrap" id="emojiWrap"></div>
+</div>
 
 <hr style="border-color: #2a2f3a; margin: 15px 0;">
 
@@ -345,6 +344,10 @@
 <button onmousedown="qb(event,'underline')"><u>Ч</u></button>
 <button onmousedown="qbSize(event,1.2)">A+</button>
 <button onmousedown="qbSize(event,0.85)">A-</button>
+<button onmousedown="qbAlign(event,'justifyLeft')" title="По левому краю">|≡</button>
+<button onmousedown="qbAlign(event,'justifyCenter')" title="По центру">≡</button>
+<button onmousedown="qbAlign(event,'justifyRight')" title="По правому краю">≡|</button>
+<button onmousedown="qbAlign(event,'justifyFull')" title="По ширине">≡≡</button>
 <input type="color" id="qbWordColor" value="#ff0000" oninput="applyTextColor(this.value)" onchange="applyTextColor(this.value)" title="Цвет выделенного текста">
 <button onmousedown="qbLink(event)">🔗</button>
 <button onmousedown="qbClean(event)" title="Сбросить стили">🧹</button>
