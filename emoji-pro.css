@@ -201,8 +201,7 @@
 
 /* ---- телефон: эмодзи не нужны, там своя клавиатура ---- */
 @media (max-width: 820px) {
-  .emoji-slot,
-  #emojiWrap,
+  .emoji-desktop-only,
   .qb-emoji,
   .emoji-pop {
     display: none !important;
