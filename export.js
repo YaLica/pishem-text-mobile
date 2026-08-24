@@ -222,8 +222,6 @@ const isAndroid = /Android/i.test(navigator.userAgent);
 
 if (document.fonts) { try { await document.fonts.ready; } catch (e) {} }
 await new Promise(function(r) { requestAnimationFrame(function() { requestAnimationFrame(r); }); });
-// даём браузеру время на загрузку шрифтов, особенно при первом экспорте
-await new Promise(function(r) { setTimeout(r, 800); });
 
 let canvas = null;
 try {
@@ -490,4 +488,3 @@ return row.textContent || '';
 
 await writeToClipboard(finalHtml, finalPlain, 'copyTgBtn');
 }
-
