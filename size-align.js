@@ -1,17 +1,24 @@
 /* ==========================================================================
-   ЧАСТЬ 2 — размер до 240 и выравнивание для каждого абзаца
+   size-align.js — написан заново
 
-   1. Размер текста до 240 px: ползунок основного текста, ползунок плашки
-      и кнопки A+ / A−.
-   2. Плашка больше не упирается в 90% ширины холста: на крупном кегле
-      текст переносился там, где этого не ждёшь.
-   3. Выравнивание для каждого абзаца ОСНОВНОГО текста по отдельности.
-      Текст в плашках не трогается: там кнопки работают ровно как раньше.
+   Делает три вещи и больше ничего:
 
-   Почему абзацы вообще понадобились: строки в редакторе разделены
-   переносом <br>, а не блоками. Для браузера это один сплошной кусок,
-   поэтому кнопка выравнивания меняла сразу весь пост. Теперь каждая
-   строка — свой блок, и кнопке некуда промахнуться.
+   1. Размер текста до 240 px (ползунки и кнопки A+ / A−).
+   2. Выравнивание отдельно для каждой строки ОСНОВНОГО текста.
+   3. Подсветку активной кнопки выравнивания.
+
+   Чего этот файл НЕ делает — специально:
+   • не перехватывает вставку текста (этим занимается editor-events.js),
+   • не перехватывает вставку картинок,
+   • не перестраивает редактор при загрузке, вводе, фокусе и отмене.
+
+   Почему так. Прошлая версия при каждом действии перекраивала весь
+   редактор и считала картинку разделителем строк: текст заворачивался
+   в блок, а картинка выталкивалась наружу. Из-за этого ехала вёрстка,
+   картинка уходила вниз и переставала слушаться курсора.
+
+   Здесь картинка — обычная часть своей строки. Трогается только та
+   строка, на которой стоит курсор. Всё остальное остаётся как есть.
    ========================================================================== */
 
 (function () {
@@ -25,7 +32,7 @@
     } else { fn(); }
   }
 
-  /* ---------------- 1. потолок размера ---------------- */
+  /* ======================= 1. размер до 240 ======================= */
 
   function raiseSliders() {
     var base = document.getElementById('baseFontSlider');
@@ -34,7 +41,7 @@
     if (tb) tb.max = String(MAX_SIZE);
   }
 
-  // кнопки A+ / A− упирались в 200
+  // кнопки A+ / A- упирались в 200
   function patchWordSize() {
     if (typeof window.changeWordSize !== 'function') return;
     if (typeof window.getUsableRange !== 'function') return;
@@ -54,135 +61,138 @@
     };
   }
 
-  /* ---------------- 2. абзацы ---------------- */
+  /* ======================= 2. выравнивание ======================= */
 
-  function isSkippable(node) {
+  // Строку заканчивает перенос <br> или готовый блок.
+  // Картинка НЕ заканчивает строку: она стоит в строке вместе с текстом.
+  function isLineBreaker(node) {
     if (!node || node.nodeType !== 1) return false;
-    return node.classList.contains('img-box') ||
-           node.classList.contains('img-spacer-left') ||
-           node.classList.contains('img-spacer-right');
+    if (node.tagName === 'BR') return true;
+    return node.tagName === 'DIV' || node.tagName === 'P';
   }
 
-  function editorHasContent() {
-    if (!editor) return false;
-    if (editor.querySelector('img')) return true;
-    return (editor.innerText || '').replace(/\u200B/g, '').trim().length > 0;
+  function isBlock(node) {
+    return node && node.nodeType === 1 &&
+           (node.tagName === 'DIV' || node.tagName === 'P');
   }
 
-  // нужна ли перестройка: есть ли верхнеуровневые <br> или голый текст
-  function needsNormalize() {
-    if (!editor) return false;
-    var kids = editor.childNodes;
-    for (var i = 0; i < kids.length; i++) {
-      var n = kids[i];
-      if (n.nodeType === 3 && (n.textContent || '').trim()) return true;
-      if (n.nodeType === 1) {
-        if (n.tagName === 'BR') return true;
-        if (isSkippable(n)) continue;
-        if (n.tagName !== 'DIV' && n.tagName !== 'P') return true;
-      }
+  // поднимаемся до прямого потомка редактора
+  function topLevel(node) {
+    while (node && node.parentNode && node.parentNode !== editor) {
+      node = node.parentNode;
     }
-    return false;
+    return (node && node.parentNode === editor) ? node : null;
   }
 
-  // Строки, разделённые <br>, превращаются в отдельные блоки.
-  // Пустые строки сохраняются, картинки не трогаются.
-  function normalizeParagraphs() {
-    if (!editor || !editorHasContent()) return;
-
-    var kids = Array.prototype.slice.call(editor.childNodes);
-    var run = [];
-
-    function flush(before, force) {
-      if (!run.length && !force) { run = []; return; }
-      var div = document.createElement('div');
-      div.setAttribute('data-para', '1');
-      run.forEach(function (n) { div.appendChild(n); });
-      if (!div.childNodes.length) div.appendChild(document.createElement('br'));
-      editor.insertBefore(div, before || null);
-      run = [];
-    }
-
-    kids.forEach(function (node) {
-      if (isSkippable(node)) { flush(node, false); return; }
-
-      if (node.nodeType === 1 && node.tagName === 'BR') {
-        flush(node, true);              // <br> закрывает абзац
-        if (node.parentNode === editor) editor.removeChild(node);
-        return;
-      }
-
-      if (node.nodeType === 1 && (node.tagName === 'DIV' || node.tagName === 'P')) {
-        flush(node, false);
-        node.setAttribute('data-para', '1');
-        return;
-      }
-
-      if (node.nodeType === 3 && !(node.textContent || '').length) return;
-      run.push(node);
-    });
-
-    flush(null, false);
+  // строка целиком: соседи слева и справа до ближайшего переноса
+  function lineAround(node) {
+    var run = [node];
+    var n = node.previousSibling;
+    while (n && !isLineBreaker(n)) { run.unshift(n); n = n.previousSibling; }
+    n = node.nextSibling;
+    while (n && !isLineBreaker(n)) { run.push(n); n = n.nextSibling; }
+    return run;
   }
 
-  // перестройка с сохранением курсора
-  function normalizeKeepingCaret() {
-    if (!needsNormalize()) return;
-
-    var sel = window.getSelection();
-    var range = (sel && sel.rangeCount) ? sel.getRangeAt(0) : null;
-    var inside = range && editor.contains(range.commonAncestorContainer);
-
-    if (!inside) { normalizeParagraphs(); return; }
-
-    var collapsed = range.collapsed;
-    var m1 = document.createElement('span');
-    var m2 = document.createElement('span');
-    m1.setAttribute('data-caret-marker', '1');
-    m2.setAttribute('data-caret-marker', '1');
-
-    var rEnd = range.cloneRange(); rEnd.collapse(false); rEnd.insertNode(m2);
-    var rBeg = range.cloneRange(); rBeg.collapse(true);  rBeg.insertNode(m1);
-
-    normalizeParagraphs();
-
-    try {
-      var p1 = m1.parentNode, i1 = Array.prototype.indexOf.call(p1.childNodes, m1);
-      var p2 = m2.parentNode, i2 = Array.prototype.indexOf.call(p2.childNodes, m2);
-
-      m2.parentNode.removeChild(m2);
-      m1.parentNode.removeChild(m1);
-      if (p2 === p1 && i2 > i1) i2--;
-
-      var nr = document.createRange();
-      nr.setStart(p1, Math.min(i1, p1.childNodes.length));
-      if (collapsed) nr.collapse(true);
-      else nr.setEnd(p2, Math.min(i2, p2.childNodes.length));
-
-      sel.removeAllRanges();
-      sel.addRange(nr);
-    } catch (e) {
-      if (m1.parentNode) m1.parentNode.removeChild(m1);
-      if (m2.parentNode) m2.parentNode.removeChild(m2);
-    }
-  }
-
-  function paragraphsInRange(range) {
+  // верхнеуровневые узлы, попавшие в выделение
+  function nodesInRange(range) {
     var out = [];
-    Array.prototype.slice.call(editor.children).forEach(function (el) {
-      if (isSkippable(el)) return;
-      if (el.tagName !== 'DIV' && el.tagName !== 'P') return;
+    Array.prototype.slice.call(editor.childNodes).forEach(function (n) {
       var hit = false;
-      try { hit = range.intersectsNode(el); } catch (e) { hit = false; }
-      if (hit) out.push(el);
+      try { hit = range.intersectsNode(n); } catch (e) { hit = false; }
+      if (hit) out.push(n);
     });
     return out;
+  }
+
+  // пустой ли узел: пробелы и служебные символы за содержимое не считаем
+  function isBlank(node) {
+    if (node.nodeType !== 3) return false;
+    return !(node.textContent || '').replace(/\u200B/g, '').trim();
+  }
+
+  // Строки, которые нужно выровнять. Каждая — либо готовый блок,
+  // либо набор соседних узлов между переносами.
+  function linesToAlign(range) {
+    var lines = [];
+
+    function addLine(nodes) {
+      if (!nodes.length) return;
+      // не дублируем уже собранную строку
+      for (var i = 0; i < lines.length; i++) {
+        if (lines[i][0] === nodes[0]) return;
+      }
+      lines.push(nodes);
+    }
+
+    if (range.collapsed) {
+      var top = topLevel(range.startContainer);
+      if (!top) return lines;
+      if (isBlock(top)) addLine([top]);
+      else if (!isLineBreaker(top)) addLine(lineAround(top));
+      return lines;
+    }
+
+    nodesInRange(range).forEach(function (n) {
+      if (isBlock(n)) addLine([n]);
+      else if (!isLineBreaker(n) && !isBlank(n)) addLine(lineAround(n));
+    });
+    return lines;
   }
 
   function setAlign(el, align) {
     el.style.textAlign = align;
     // без второго свойства последняя строка убегает влево
     el.style.textAlignLast = (align === 'justify') ? 'left' : align;
+  }
+
+  // Оборачиваем строку в блок, чтобы у неё было своё выравнивание.
+  // Картинки внутри остаются на своих местах — строка не распадается.
+  function wrapLine(nodes) {
+    var div = document.createElement('div');
+    div.setAttribute('data-para', '1');
+    editor.insertBefore(div, nodes[0]);
+    nodes.forEach(function (n) { div.appendChild(n); });
+
+    // блок сам начинает новую строку, поэтому следующий <br> лишний:
+    // без этого под строкой появляется пустая полоса
+    var after = div.nextSibling;
+    if (after && after.nodeType === 1 && after.tagName === 'BR') {
+      editor.removeChild(after);
+    }
+    return div;
+  }
+
+  function alignSelection(align) {
+    var sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return false;
+
+    var range = sel.getRangeAt(0);
+    if (!editor.contains(range.commonAncestorContainer)) return false;
+
+    var lines = linesToAlign(range);
+    if (!lines.length) return false;
+
+    // запоминаем курсор: узлы переезжают, но сами остаются теми же
+    var sc = range.startContainer, so = range.startOffset;
+    var ec = range.endContainer,   eo = range.endOffset;
+
+    lines.forEach(function (nodes) {
+      var box = (nodes.length === 1 && isBlock(nodes[0]))
+        ? nodes[0]
+        : wrapLine(nodes);
+      setAlign(box, align);
+    });
+
+    try {
+      var r = document.createRange();
+      r.setStart(sc, Math.min(so, sc.length !== undefined ? sc.length : sc.childNodes.length));
+      r.setEnd(ec, Math.min(eo, ec.length !== undefined ? ec.length : ec.childNodes.length));
+      sel.removeAllRanges();
+      sel.addRange(r);
+    } catch (e) { /* курсор восстановить не удалось — не критично */ }
+
+    return true;
   }
 
   function patchAlignment() {
@@ -199,35 +209,28 @@
       var align = map[command];
       if (!align) return false;
 
-      // картинки — прежнее поведение
+      // выбрана картинка — прежнее поведение
       if (typeof currentImgBox !== 'undefined' && currentImgBox) {
         return original.call(this, command);
       }
-      // текст в плашках — прежнее поведение, по просьбе не трогаем
-      var scope = getEditingScope();
-      if (scope !== editor) return original.call(this, command);
-
-      normalizeKeepingCaret();
-
-      var sel = window.getSelection();
-      var range = (sel && sel.rangeCount) ? sel.getRangeAt(0) : null;
-      var targets = (range && editor.contains(range.commonAncestorContainer))
-        ? paragraphsInRange(range) : [];
-
-      if (!targets.length) {
-        // курсора в тексте нет — как раньше, на весь пост
-        setAlign(editor, align);
-      } else {
-        targets.forEach(function (p) { setAlign(p, align); });
+      // текст в плашке — прежнее поведение, не трогаем
+      if (typeof getEditingScope === 'function' && getEditingScope() !== editor) {
+        return original.call(this, command);
       }
 
-      finishTextOperation();
+      if (typeof restoreSelection === 'function') restoreSelection();
+
+      if (!alignSelection(align)) return false;
+
+      if (typeof saveSelectionBeforeAction === 'function') saveSelectionBeforeAction();
+      if (typeof updateRatio === 'function') updateRatio();
+      if (typeof saveHistory === 'function') saveHistory();
       updateAlignButtons();
       return true;
     };
   }
 
-  /* ---------------- 3. подсветка активной кнопки ---------------- */
+  /* ==================== 3. подсветка кнопок ==================== */
 
   var alignButtons = null;
 
@@ -245,9 +248,11 @@
     if (!sel || !sel.rangeCount) return null;
     var range = sel.getRangeAt(0);
     if (!editor.contains(range.commonAncestorContainer)) return null;
+
     var node = range.startContainer;
     if (node.nodeType === 3) node = node.parentNode;
     if (!node || !node.closest) return null;
+
     var box = node.closest('[data-para]') || editor;
     return getComputedStyle(box).textAlign;
   }
@@ -255,15 +260,18 @@
   function updateAlignButtons() {
     if (!alignButtons) collectAlignButtons();
     var cur = currentAlign();
-    var back = { left: 'justifyLeft', center: 'justifyCenter',
-                 right: 'justifyRight', justify: 'justifyFull', start: 'justifyLeft' };
-    var activeCmd = back[cur] || null;
+    var back = {
+      left: 'justifyLeft', start: 'justifyLeft',
+      center: 'justifyCenter', right: 'justifyRight',
+      end: 'justifyRight', justify: 'justifyFull'
+    };
+    var active = back[cur] || null;
     Object.keys(alignButtons).forEach(function (cmd) {
-      alignButtons[cmd].classList.toggle('align-active', cmd === activeCmd);
+      alignButtons[cmd].classList.toggle('align-active', cmd === active);
     });
   }
 
-  /* ---------------- запуск ---------------- */
+  /* ========================== запуск ========================== */
 
   ready(function () {
     if (typeof editor === 'undefined' || !editor) return;
@@ -272,71 +280,6 @@
     patchWordSize();
     patchAlignment();
     collectAlignButtons();
-
-    // свой обработчик вставки: сразу абзацами, без <br>
-    editor.addEventListener('paste', function (e) {
-      var cd = e.clipboardData || window.clipboardData;
-      if (!cd) return;
-      var text = cd.getData('text/plain');
-      if (text === null || text === undefined) return;
-
-      e.preventDefault();
-      e.stopImmediatePropagation();
-
-      var sel = window.getSelection();
-      if (!sel || !sel.rangeCount) return;
-      var range = sel.getRangeAt(0);
-      if (!editor.contains(range.commonAncestorContainer)) return;
-
-      range.deleteContents();
-      normalizeKeepingCaret();
-
-      sel = window.getSelection();
-      if (!sel.rangeCount) return;
-      range = sel.getRangeAt(0);
-
-      var parts = String(text).replace(/\r\n?/g, '\n').split('\n');
-      var node = range.startContainer;
-      if (node.nodeType === 3) node = node.parentNode;
-      var host = (node && node.closest) ? node.closest('[data-para]') : null;
-
-      if (!host) {
-        var frag = document.createDocumentFragment();
-        parts.forEach(function (p, i) {
-          if (i) frag.appendChild(document.createElement('br'));
-          if (p) frag.appendChild(document.createTextNode(p));
-        });
-        range.insertNode(frag);
-        // курсор в конец вставленного, иначе текст остаётся выделенным синим
-        range.collapse(false);
-        sel.removeAllRanges();
-        sel.addRange(range);
-      } else {
-        // первая строка вставляется в текущий абзац, остальные — новыми
-        range.insertNode(document.createTextNode(parts[0] || ''));
-        var after = host;
-        for (var i = 1; i < parts.length; i++) {
-          var d = document.createElement('div');
-          d.setAttribute('data-para', '1');
-          d.style.textAlign = host.style.textAlign || '';
-          d.style.textAlignLast = host.style.textAlignLast || '';
-          if (parts[i]) d.appendChild(document.createTextNode(parts[i]));
-          else d.appendChild(document.createElement('br'));
-          after.parentNode.insertBefore(d, after.nextSibling);
-          after = d;
-        }
-        var r2 = document.createRange();
-        r2.selectNodeContents(after);
-        r2.collapse(false);
-        sel.removeAllRanges();
-        sel.addRange(r2);
-      }
-
-      normalizeKeepingCaret();
-      if (typeof updateRatio === 'function') updateRatio();
-      if (typeof saveHistory === 'function') saveHistory();
-      updateAlignButtons();
-    }, true);
 
     // новая строка наследует выравнивание предыдущей
     editor.addEventListener('keyup', function (e) {
@@ -360,18 +303,7 @@
       updateAlignButtons._t = setTimeout(updateAlignButtons, 80);
     });
 
-    // после отмены и повтора структура восстанавливается из истории
-    ['undoAction', 'redoAction'].forEach(function (name) {
-      if (typeof window[name] !== 'function') return;
-      var orig = window[name];
-      window[name] = function () {
-        var r = orig.apply(this, arguments);
-        setTimeout(function () { normalizeParagraphs(); updateAlignButtons(); }, 0);
-        return r;
-      };
-    });
-
-    normalizeParagraphs();
     updateAlignButtons();
   });
+
 })();
