@@ -307,6 +307,10 @@
           if (p) frag.appendChild(document.createTextNode(p));
         });
         range.insertNode(frag);
+        // курсор в конец вставленного, иначе текст остаётся выделенным синим
+        range.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(range);
       } else {
         // первая строка вставляется в текущий абзац, остальные — новыми
         range.insertNode(document.createTextNode(parts[0] || ''));
