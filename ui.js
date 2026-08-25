@@ -27,12 +27,29 @@ document.addEventListener('touchstart', function(e){
   }
 }, {passive: true});
 
+// Нажатие на картинку тоже держит панель на экране.
+document.addEventListener('touchstart', function(e){
+  if (isMobile() && e.target.closest && e.target.closest('.img-box')) {
+    quickBar.classList.add('visible');
+  }
+}, {passive: true});
+document.addEventListener('click', function(e){
+  if (isMobile() && e.target.closest && e.target.closest('.img-box')) {
+    quickBar.classList.add('visible');
+  }
+});
+
 editor.addEventListener('blur', function() {
 setTimeout(function() {
 const active = document.activeElement;
 const inTextBox = active && active.classList && active.classList.contains('text-box');
+// Выбранная картинка — тоже работа в редакторе. Раньше она не попадала ни
+// в одно из условий, поэтому после нажатия на фото панель пропадала и
+// добраться до кнопок было нельзя.
+const imgPicked = !!(typeof currentImgBox !== 'undefined' && currentImgBox);
 if (!editor.matches(':focus')
 && !inTextBox
+&& !imgPicked
 && active !== qbWordColor
 && active !== document.getElementById('qbFontSelect')
 && active !== document.getElementById('qbImageInput')) {
