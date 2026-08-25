@@ -377,8 +377,20 @@ if (document.fonts) { try { await document.fonts.ready; } catch (e) {} }
 await new Promise(function(r) { requestAnimationFrame(function() { requestAnimationFrame(r); }); });
 
 let canvas = null;
+// На iPhone и iPad рисуем через html2canvas — тем же способом, каким это
+// работало в прошлой версии редактора. Причина: WebKit не рисует картинки
+// внутри foreignObject, и фотографии в готовый PNG не попадали.
+// На Chrome, Android и компьютере остаётся foreignObject: он точно передаёт
+// подложку (box-decoration-break), которую html2canvas не умеет.
+if (isIOS) {
+  try {
+    canvas = await exportFallbackCanvas();
+  } catch (errIOS) {
+    console.warn('PNG: html2canvas не смог, пробую браузерный экспорт:', errIOS && errIOS.message);
+  }
+}
 try {
-  canvas = await exportNativeCanvas();
+  if (!canvas) canvas = await exportNativeCanvas();
 } catch (err) {
   console.warn('PNG: браузерный экспорт не удался, пробую html2canvas:', err && err.message);
   try {
