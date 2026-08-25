@@ -193,6 +193,68 @@ async function warmUpFonts(fontCss) {
   }
 }
 
+// Уменьшение картинок перед съёмкой.
+//
+// Фото с телефона — это 12-24 Мп и 6-12 МБ в виде data URL. В посте оно
+// показано полосой шириной 150-800 px, то есть в разметку тащится в десятки
+// раз больше данных, чем нужно. Строка SVG раздувается до многих мегабайт,
+// и WebKit (Safari, все iPhone) перестаёт её рисовать: текст ещё выводит,
+// а картинки молча пропадают. Именно поэтому на iOS в готовом PNG не было
+// фотографий. Chromium такие объёмы переваривал, поэтому на компьютере и
+// на Android дефект не проявлялся.
+//
+// Поэтому перед съёмкой каждое фото пережимается до того размера, в котором
+// оно реально видно, с запасом на масштаб экспорта. Качество не страдает:
+// на выходе ровно столько пикселей, сколько попадёт в PNG.
+function shrinkImages(clone) {
+  const live = exportNode.querySelectorAll('img');
+  const copies = clone.querySelectorAll('img');
+  const jobs = [];
+
+  copies.forEach((img, i) => {
+    const src = img.getAttribute('src') || '';
+    if (!src.startsWith('data:')) return;
+
+    const src0 = live[i];
+    if (!src0) return;
+    const r = src0.getBoundingClientRect();
+    const needW = Math.max(1, Math.round(r.width  * EXPORT_SCALE));
+    const needH = Math.max(1, Math.round(r.height * EXPORT_SCALE));
+    if (!needW || !needH) return;
+
+    jobs.push(new Promise(resolve => {
+      const probe = new Image();
+      probe.onload = () => {
+        try {
+          // уже мелкое — не трогаем
+          if (probe.naturalWidth <= needW * 1.1 &&
+              probe.naturalHeight <= needH * 1.1) { resolve(); return; }
+
+          const c = document.createElement('canvas');
+          c.width = needW; c.height = needH;
+          const cx = c.getContext('2d');
+          cx.imageSmoothingEnabled = true;
+          cx.imageSmoothingQuality = 'high';
+          cx.drawImage(probe, 0, 0, needW, needH);
+
+          // прозрачность важна только для PNG, фото отдаём как JPEG
+          const hasAlpha = /^data:image\/(png|webp|gif)/i.test(src);
+          const out = hasAlpha ? c.toDataURL('image/png')
+                               : c.toDataURL('image/jpeg', 0.92);
+          if (out && out.length < src.length) img.setAttribute('src', out);
+        } catch (e) {
+          console.warn('PNG: не удалось уменьшить картинку:', e && e.message);
+        }
+        resolve();
+      };
+      probe.onerror = () => resolve();
+      probe.src = src;
+    }));
+  });
+
+  return Promise.all(jobs);
+}
+
 function buildExportClone() {
   const clone = exportNode.cloneNode(true);
   clone.style.margin = '0';
@@ -217,6 +279,10 @@ async function exportNativeCanvas() {
   if (!width || !height) throw new Error('нулевой размер холста');
 
   const clone = buildExportClone();
+  // Пережимаем фото до видимого размера: иначе строка SVG становится
+  // слишком большой и WebKit перестаёт рисовать картинки.
+  await shrinkImages(clone);
+
   const results = await Promise.all([collectPageCss(), buildFontCss()]);
   const pageCss = results[0];
   const fontCss = results[1];
