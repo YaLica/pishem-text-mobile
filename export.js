@@ -226,9 +226,18 @@ async function exportNativeCanvas() {
     '\n#export-node{margin:0 !important;box-shadow:none !important;transform:none !important;}' +
     '\n*{-webkit-text-size-adjust:100%;text-size-adjust:100%;}';
 
+  // SVG строится в логическом размере, БЕЗ растяжения через viewBox.
+  // Причина: WebKit (Safari, все iPhone) не применяет масштаб viewBox к
+  // содержимому foreignObject. При width=1600 viewBox="0 0 800 328" он
+  // рисовал разметку как 800x328 и сажал её в левый верхний угол, а три
+  // четверти картинки оставались прозрачными — на iOS это выглядело как
+  // чёрное поле и «пост в 4 раза меньше». Chrome масштаб применял, поэтому
+  // на компьютере и на Android дефекта не было видно.
+  // Увеличение теперь делает drawImage при переносе на холст: там масштаб
+  // задаётся явными числами и работает одинаково во всех браузерах.
   const svg =
-    '<svg xmlns="http://www.w3.org/2000/svg" width="' + (width * EXPORT_SCALE) +
-    '" height="' + (height * EXPORT_SCALE) + '" viewBox="0 0 ' + width + ' ' + height + '">' +
+    '<svg xmlns="http://www.w3.org/2000/svg" width="' + width +
+    '" height="' + height + '" viewBox="0 0 ' + width + ' ' + height + '">' +
     '<foreignObject x="0" y="0" width="' + width + '" height="' + height + '">' +
     '<div xmlns="http://www.w3.org/1999/xhtml">' +
     '<style><![CDATA[' + css + ']]></style>' +
@@ -254,11 +263,16 @@ async function exportNativeCanvas() {
   const ctx = canvas.getContext('2d');
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-  // Пустой результат означает, что браузер не отрисовал разметку.
-  const probe = ctx.getImageData(0, 0, Math.min(canvas.width, 40), Math.min(canvas.height, 40)).data;
-  let filled = false;
-  for (let i = 3; i < probe.length; i += 4) { if (probe[i] !== 0) { filled = true; break; } }
-  if (!filled) throw new Error('пустая картинка');
+  // Проверка результата. Раньше читался только угол 40x40 — этого мало:
+  // при скруглённых углах и при недорисованной картинке угол может быть
+  // и пустым, и заполненным, вводя в заблуждение. Сканируем весь холст
+  // с шагом и требуем, чтобы содержимое занимало разумную его часть.
+  const shot = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+  let opaque = 0, total = 0;
+  for (let i = 3; i < shot.length; i += 4 * 16) { total++; if (shot[i] !== 0) opaque++; }
+  if (!total || opaque === 0) throw new Error('пустая картинка');
+  // Меньше половины холста непрозрачно — разметка отрисована частично.
+  if (opaque / total < 0.5) throw new Error('картинка отрисована частично');
 
   return canvas;
 }
