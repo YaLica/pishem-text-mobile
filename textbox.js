@@ -305,7 +305,7 @@ function insertImageIntoTextBox(event) {
 function addTextBox() {
   if (isMobile()) { showTbToast(); return; }
   const count = exportNode.querySelectorAll('.text-box').length;
-  if (count >= 10) { alert('Максимум 10 надписей'); return; }
+  if (count >= 20) { alert('Максимум 20 надписей'); return; }
   const box = document.createElement('div');
   box.className = 'text-box';
   box.style.left = (30 + count * 20) + 'px';
@@ -446,7 +446,7 @@ function deleteTextBox(box) {
 function duplicateTextBox(box) {
   if (!box) return;
   const count = exportNode.querySelectorAll('.text-box').length;
-  if (count >= 10) { alert('Максимум 10 надписей'); return; }
+  if (count >= 20) { alert('Максимум 20 надписей'); return; }
 
   const srcContent = box.querySelector('.tb-content');
 
@@ -833,4 +833,3 @@ function selectTextBox(box) {
   currentImgBox = null;
   syncTbSettings();
 }
-
