@@ -113,6 +113,12 @@
       var blockBase = makeBlock('base', 'Платформа и текст', 'pbCollapsed_base');
       panel.insertBefore(blockBase, kids[from]);
       for (var j = from; j <= to; j++) blockBase._body.appendChild(kids[j]);
+
+      // Тулбар форматирования переезжает внутрь блока, чтобы сворачивался
+      // вместе с остальными настройками основного текста.
+      var mainBar = panel.querySelector('.toolbar');
+      if (mainBar) blockBase._body.appendChild(mainBar);
+
       tintSubLabels(blockBase);
     }
 
