@@ -238,7 +238,7 @@ function miniDelete() {
 
 function miniDuplicate() {
   if (!currentImgBox) return;
-  if (updateImgCounter() >= 10) { alert('Максимум 10 картинок'); return; }
+  if (updateImgCounter() >= 20) { alert('Максимум 20 картинок'); return; }
   const clone = currentImgBox.cloneNode(true);
   clone.classList.remove('selected');
   currentImgBox.parentNode.insertBefore(clone, currentImgBox.nextSibling);
