@@ -1,0 +1,86 @@
+/* Полупрозрачный список шрифтов для телефона.
+ * Размытия позади нет намеренно — холст под списком виден как есть,
+ * чтобы сразу оценить, как ляжет шрифт.
+ */
+
+#fontSheet {
+  position: fixed;
+  left: 8px;
+  right: 8px;
+  bottom: 0;               /* точную высоту ставит JS, над клавиатурой */
+  z-index: 100001;         /* выше quickBar (99999) */
+  display: none;
+  flex-direction: column;
+  max-height: 52vh;
+  border-radius: 16px 16px 12px 12px;
+  border: 1px solid rgba(122, 162, 255, 0.55);
+  /* полупрозрачный фон, БЕЗ backdrop-filter */
+  background: rgba(18, 22, 30, 0.72);
+  box-shadow: 0 -6px 28px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+#fontSheet.open { display: flex; }
+
+.fs-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(122, 162, 255, 0.28);
+  background: rgba(12, 16, 24, 0.55);
+}
+
+.fs-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #e9eefb;
+  letter-spacing: 0.2px;
+}
+
+.fs-close {
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(122, 162, 255, 0.45);
+  border-radius: 9px;
+  background: rgba(38, 46, 62, 0.75);
+  color: #e9eefb;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.fs-close:active { background: rgba(61, 126, 255, 0.85); }
+
+.fs-list {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 6px;
+}
+
+.fs-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 13px 14px;
+  margin: 0 0 5px 0;
+  border: 1px solid rgba(122, 162, 255, 0.22);
+  border-radius: 11px;
+  background: rgba(30, 36, 50, 0.62);
+  color: #f0f4ff;
+  font-size: 16px;
+  line-height: 1.25;
+  cursor: pointer;
+  /* текст читается поверх любого холста */
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+}
+
+.fs-item:active {
+  background: rgba(61, 126, 255, 0.9);
+  border-color: rgba(160, 195, 255, 0.9);
+}
+
+/* На компьютере системный список удобнее — свой не показываем. */
+@media (min-width: 821px) {
+  #fontSheet { display: none !important; }
+}
