@@ -6,7 +6,7 @@
 <title>Генератор постов (Кроссплатформа)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Alice&family=Amatic+SC:wght@700&family=Bad+Script&family=Bebas+Neue&family=Caveat&family=Comfortaa&family=Cormorant+Garamond&family=Exo+2&family=Inter&family=Kelly+Slab&family=Lora&family=Marck+Script&family=Merriweather&family=Montserrat&family=Neucha&family=Nunito&family=Open+Sans&family=Oranienbaum&family=Oswald&family=PT+Serif&family=Pacifico&family=Philosopher&family=Playfair+Display&family=Raleway&family=Roboto&family=Rubik&family=Russo+One&family=Tenor+Sans&family=Ubuntu&family=Yeseva+One&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Alice&family=Amatic+SC:wght@700&family=Bad+Script&family=Bebas+Neue&family=Caveat&family=Comfortaa&family=Cormorant+Garamond&family=Exo+2&family=Inter&family=Kelly+Slab&family=Lora&family=Marck+Script&family=Merriweather&family=Montserrat&family=Neucha&family=Nunito&family=Open+Sans&family=Oranienbaum&family=Oswald&family=PT+Serif&family=Pacifico&family=Philosopher&family=Playfair+Display&family=Raleway&family=Roboto&family=Rubik&family=Russo+One&family=Tenor+Sans&family=Ubuntu&family=Yeseva+One&family=Roboto+Mono&family=PT+Mono&family=Podkova&family=Underdog&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="emoji-pro.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <link rel="stylesheet" href="styles.css">
@@ -42,6 +42,7 @@
 
 <div style="margin-bottom: 15px;">
 <label style="color: #fff; margin-top: 0;">🔤 Основной шрифт всего поста</label>
+<select id="fontFamilySelector" onchange="updateFontFamily(this.value)">
 <option value="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif">📱 Системный (Стандарт)</option>
 <option value="'Times New Roman', Times, serif" style="font-family: 'Times New Roman', Times, serif">🏛️ Классический: Times New Roman</option>
 <option value="'Roboto', sans-serif" style="font-family: 'Roboto', sans-serif">🤖 Современный: Roboto</option>
@@ -49,7 +50,7 @@
 <option value="'Montserrat', sans-serif" style="font-family: 'Montserrat', sans-serif">💎 Стильный: Montserrat</option>
 <option value="'Inter', sans-serif" style="font-family: 'Inter', sans-serif">✨ Чистый: Inter</option>
 <option value="'Oswald', sans-serif" style="font-family: 'Oswald', sans-serif">📏 Узкий: Oswald</option>
-<option value="'Raleway', sans-serif" style="font-family: 'Raleway', sans-serif">☜️ Элегантный: Raleway</option>
+<option value="'Raleway', sans-serif" style="font-family: 'Raleway', sans-serif">⚜️ Элегантный: Raleway</option>
 <option value="'Ubuntu', sans-serif" style="font-family: 'Ubuntu', sans-serif">🟢 Округлый: Ubuntu</option>
 <option value="'Nunito', sans-serif" style="font-family: 'Nunito', sans-serif">☁️ Мягкий: Nunito</option>
 <option value="'Rubik', sans-serif" style="font-family: 'Rubik', sans-serif">🟥 Плотный: Rubik</option>
@@ -77,7 +78,7 @@
 <option value="'Roboto Mono', monospace" style="font-family: 'Roboto Mono', monospace">💾 Код: Roboto Mono</option>
 <option value="'PT Mono', monospace" style="font-family: 'PT Mono', monospace">⌨️ Печатная машинка: PT Mono</option>
 <option value="'Podkova', serif" style="font-family: 'Podkova', serif">🐴 Уютный: Podkova</option>
-<option value="'Underdog', display" style="font-family: 'Underdog', sans-serif">💪 Жирный акцент: Underdog</option>
+<option value="'Underdog', sans-serif" style="font-family: 'Underdog', sans-serif">💪 Акцентный: Underdog</option>
 </select>
 </div>
 
@@ -145,6 +146,10 @@
 <option value="'Yeseva One', serif" style="font-family: 'Yeseva One', serif">🌸 Салон: Yeseva One</option>
 <option value="'Philosopher', sans-serif" style="font-family: 'Philosopher', sans-serif">🕊️ Изящный: Philosopher</option>
 <option value="'Oranienbaum', serif" style="font-family: 'Oranienbaum', serif">🏛️ Антиква: Oranienbaum</option>
+<option value="'Roboto Mono', monospace" style="font-family: 'Roboto Mono', monospace">💾 Код: Roboto Mono</option>
+<option value="'PT Mono', monospace" style="font-family: 'PT Mono', monospace">⌨️ Печатная машинка: PT Mono</option>
+<option value="'Podkova', serif" style="font-family: 'Podkova', serif">🐴 Уютный: Podkova</option>
+<option value="'Underdog', sans-serif" style="font-family: 'Underdog', sans-serif">💪 Акцентный: Underdog</option>
 </select>
 <button onclick="deleteSelection()" title="Удалить выделенное">❌</button>
 <button onclick="cleanFormat()" title="Сбросить стили выделенного (Метёлка)">🧹</button>
@@ -269,19 +274,21 @@
 </div>
 
 <button id="panelHandle" onclick="togglePanel()">›</button>
-<option value="inherit">Основной (из поста)</option>
-<option value="'Roboto', sans-serif">Roboto</option>
-<option value="'Montserrat', sans-serif">Montserrat</option>
-<option value="'Playfair Display', serif">Playfair Display</option>
-<option value="'Bebas Neue', sans-serif">Bebas Neue</option>
-<option value="'Russo One', sans-serif">Russo One</option>
-<option value="'Caveat', cursive">Caveat</option>
-<option value="'Pacifico', cursive">Pacifico</option>
-<option value="'Comfortaa', cursive">Comfortaa</option>
-<option value="'Roboto Mono', monospace">Roboto Mono</option>
-<option value="'PT Mono', monospace">PT Mono</option>
-<option value="'Podkova', serif">Podkova</option>
-<option value="'Underdog', display">Underdog</option>
+
+<div class="stage" id="stageArea">
+<div id="floatUndoRedo">
+<button id="floatUndo" onclick="undoAction()" title="Отменить">↩️</button>
+<button id="floatRedo" onclick="redoAction()" title="Повторить">↪️</button>
+</div>
+<button id="mobileToolsBtn" onclick="onMobileToolsClick()">⚙️ Инструменты</button>
+
+<div id="zoomControls">
+<button id="modeBtn" onclick="toggleMode()" title="Режим: Текст / Рука" style="min-width:auto; padding:0 8px; width:auto;">✍️</button>
+<div class="toolbar-divider" style="height:24px;"></div>
+<button onclick="zoomStep(-0.1)" title="Отдалить">➖</button>
+<span id="zoomLabel">100%</span>
+<button onclick="zoomStep(0.1)" title="Приблизить">➕</button>
+<button onclick="zoomFit()" title="По размеру экрана">⛶</button>
 </div>
 
 <div id="zoom-wrapper">
@@ -373,6 +380,8 @@
 <button onmousedown="qbLink(event)">🔗</button>
 <button onmousedown="qbClean(event)" title="Сбросить стили">🧹</button>
 <button onmousedown="qbImage(event)" title="Добавить картинку">🖼️</button>
+<select id="qbFontSelect" ontouchstart="freezeSelectionForFont(); event.stopPropagation();" onmousedown="freezeSelectionForFont(); event.stopPropagation();" onchange="qbFont(this.value); this.selectedIndex=0;" title="Шрифт выделенного слова" style="flex:0 0 auto; width:auto; min-width:90px; height:42px; padding:0 6px; border-radius:10px; background:#2a2f3a; color:#e6ebf2; border:1px solid #3a4150; font-size:13px;">
+<option value="">🔤 Шрифт</option>
 <option value="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif">📱 Системный (Стандарт)</option>
 <option value="'Times New Roman', Times, serif" style="font-family: 'Times New Roman', Times, serif">🏛️ Классический: Times New Roman</option>
 <option value="'Roboto', sans-serif" style="font-family: 'Roboto', sans-serif">🤖 Современный: Roboto</option>
@@ -380,7 +389,7 @@
 <option value="'Montserrat', sans-serif" style="font-family: 'Montserrat', sans-serif">💎 Стильный: Montserrat</option>
 <option value="'Inter', sans-serif" style="font-family: 'Inter', sans-serif">✨ Чистый: Inter</option>
 <option value="'Oswald', sans-serif" style="font-family: 'Oswald', sans-serif">📏 Узкий: Oswald</option>
-<option value="'Raleway', sans-serif" style="font-family: 'Raleway', sans-serif">☜️ Элегантный: Raleway</option>
+<option value="'Raleway', sans-serif" style="font-family: 'Raleway', sans-serif">⚜️ Элегантный: Raleway</option>
 <option value="'Ubuntu', sans-serif" style="font-family: 'Ubuntu', sans-serif">🟢 Округлый: Ubuntu</option>
 <option value="'Nunito', sans-serif" style="font-family: 'Nunito', sans-serif">☁️ Мягкий: Nunito</option>
 <option value="'Rubik', sans-serif" style="font-family: 'Rubik', sans-serif">🟥 Плотный: Rubik</option>
@@ -408,8 +417,7 @@
 <option value="'Roboto Mono', monospace" style="font-family: 'Roboto Mono', monospace">💾 Код: Roboto Mono</option>
 <option value="'PT Mono', monospace" style="font-family: 'PT Mono', monospace">⌨️ Печатная машинка: PT Mono</option>
 <option value="'Podkova', serif" style="font-family: 'Podkova', serif">🐴 Уютный: Podkova</option>
-<option value="'Underdog', display" style="font-family: 'Underdog', sans-serif">💪 Жирный акцент: Underdog</option>
-<option value="'Oranienbaum', serif" style="font-family: 'Oranienbaum', serif">🏛️ Антиква: Oranienbaum</option>
+<option value="'Underdog', sans-serif" style="font-family: 'Underdog', sans-serif">💪 Акцентный: Underdog</option>
 </select>
 <button class="tb-hide-mobile" onmousedown="event.preventDefault(); addTextBox();" title="Добавить надпись">📝</button>
 <input type="file" id="qbImageInput" accept="image/*" multiple style="display:none;" onchange="insertMultipleImages(event)">
