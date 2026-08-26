@@ -288,15 +288,55 @@ function clearDecoration(el, token) {
    Точка может указывать и на элемент, а не только на текст — тогда считаем
    символы до первого текста внутри этого элемента. */
 function offsetInScope(scope, container, offset) {
+  // Позиция границы в символах от начала области. Границей может быть как
+  // текст, так и элемент: например после применения формата выделение
+  // ставится на всю обёртку целиком, и тогда контейнер — сам элемент.
+  //
+  // Прежняя версия для элемента возвращала начало его первого текста и
+  // смещение не учитывала. Из-за этого начало и конец выделения давали одну
+  // и ту же позицию, снятие линий считало диапазон пустым и отказывалось
+  // работать: подчёркивание и зачёркивание переставали сниматься, пока
+  // выделение не переставишь заново.
+  //
+  // Теперь границу сначала приводим к точке в тексте, а потом считаем.
+  let node = container;
+  let shift = offset;
+
+  if (container.nodeType === Node.ELEMENT_NODE) {
+    const kids = container.childNodes;
+    if (offset >= kids.length) {
+      // Граница за последним ребёнком — это конец содержимого элемента.
+      node = container;
+      shift = container.textContent.length;
+      let count = 0;
+      const w = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT);
+      let n;
+      while ((n = w.nextNode())) {
+        if (container.contains(n)) break;
+        count += n.textContent.length;
+      }
+      return count + shift;
+    }
+    // Иначе — начало ребёнка с этим номером.
+    const target = kids[offset];
+    let count = 0;
+    const w = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT);
+    let n;
+    while ((n = w.nextNode())) {
+      if (n === target || (target.nodeType === Node.ELEMENT_NODE && target.contains(n))) {
+        return count;
+      }
+      count += n.textContent.length;
+    }
+    return count;
+  }
+
   let count = 0;
   const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT);
-  let node;
-  while ((node = walker.nextNode())) {
-    if (node === container) return count + offset;
-    if (container.nodeType === Node.ELEMENT_NODE && container.contains(node)) {
-      return count;
-    }
-    count += node.textContent.length;
+  let n;
+  while ((n = walker.nextNode())) {
+    if (n === node) return count + shift;
+    count += n.textContent.length;
   }
   return count;
 }
