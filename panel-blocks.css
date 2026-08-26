@@ -146,3 +146,40 @@
    только стрелкой в его заголовке.
    ========================================================================== */
 .pb-block #tbSettings { display: block !important; }
+
+/* ============================================================
+   Рамка для верхнего тулбара — блок «Текст и Холст»
+   ============================================================ */
+.toolbar {
+  border: 1px solid #EFD7B8 !important;
+  background: linear-gradient(#EFD7B812, #EFD7B806), #0f1115 !important;
+  border-radius: 10px !important;
+}
+.toolbar button:hover:not(:disabled) { background: #EFD7B8; color: #1a1d24; }
+
+/* ============================================================
+   Тулбар внутри блока плашки. Кнопки в тон блоку — зелёный #10b981.
+   ============================================================ */
+.tb-toolbar {
+  display: flex; flex-wrap: wrap; gap: 5px; align-items: center;
+  padding: 8px; margin: 8px 0 12px;
+  background: #10b98114;
+  border: 1px solid #10b981;
+  border-radius: 10px;
+}
+.tb-toolbar button {
+  flex: none; min-width: 32px; height: 32px; padding: 0 6px;
+  background: #1c3b32; color: #d7f5ea;
+  border: 1px solid #10b98155; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; cursor: pointer;
+}
+.tb-toolbar button:hover { background: #10b981; color: #08130f; }
+.tb-toolbar button:active { transform: translateY(1px); }
+.tb-toolbar input[type=color] {
+  width: 32px; height: 32px; padding: 0; border: 1px solid #10b98155;
+  border-radius: 6px; cursor: pointer; overflow: hidden; background: none;
+}
+.tb-toolbar .tb-toolbar-divider {
+  width: 1px; height: 22px; background: #10b98166; margin: 0 3px;
+}
