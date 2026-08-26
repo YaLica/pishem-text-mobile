@@ -1,6 +1,15 @@
 /* ================= ЭТАП 2: ТЕКСТОВЫЕ ПЛАШКИ (ТЕКСТ-БЛОКИ) ================= */
 let currentTextBox = null;
 
+/* Вернуть привязку к плашке из другого файла.
+   Напрямую записать её снаружи нельзя: переменная объявлена через let и
+   свойством window не является, поэтому window.currentTextBox = ... создавал
+   отдельное свойство и на настоящую привязку не влиял. Из-за этого страховка
+   в panel-fixes.js молча не работала. */
+window.setCurrentTextBox = function (node) {
+  currentTextBox = node || null;
+};
+
 /* ===== ЭТАП 2 (Часть Б): ФОН ПЛАШКИ (цвет + прозрачность) ===== */
 function hexToRgb(hex) {
   hex = (hex || '#000000').replace('#', '');
@@ -46,10 +55,57 @@ function applyTbBg(box) {
 /* Оборачивает текст плашки в span.tb-ribbon (для режима лент) */
 function wrapTbRibbon(content) {
   if (content.querySelector('.tb-ribbon')) return;
+
+  // Перекладывание детей в новую обёртку сбивает выделение, и браузер уводит
+  // фокус из плашки. Из-за этого привязка к плашке терялась, и следующее
+  // нажатие кнопки форматирования уходило в основной текст: в первой плашке
+  // это ещё сходило (там ещё жило прежнее выделение), а во второй и дальше
+  // кнопки уже не реагировали. Поэтому запоминаем позицию курсора числом
+  // символов и возвращаем её после обёртки.
+  const box = content.closest('.text-box');
+  const sel = window.getSelection();
+  let caretAt = null;
+  if (sel && sel.rangeCount) {
+    const r = sel.getRangeAt(0);
+    if (content.contains(r.startContainer)) {
+      let count = 0;
+      const walk = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
+      let n;
+      while ((n = walk.nextNode())) {
+        if (n === r.startContainer) { caretAt = count + r.startOffset; break; }
+        count += n.textContent.length;
+      }
+    }
+  }
+
   const span = document.createElement('span');
   span.className = 'tb-ribbon';
   while (content.firstChild) span.appendChild(content.firstChild);
   content.appendChild(span);
+
+  // Возвращаем привязку к плашке — на неё смотрят все кнопки форматирования.
+  if (box) currentTextBox = content;
+
+  if (caretAt !== null) {
+    let count = 0;
+    const walk = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
+    let n, target = null, offset = 0;
+    while ((n = walk.nextNode())) {
+      const len = n.textContent.length;
+      if (count + len >= caretAt) { target = n; offset = caretAt - count; break; }
+      count += len;
+      target = n; offset = len;
+    }
+    if (target) {
+      const back = document.createRange();
+      back.setStart(target, Math.min(offset, target.textContent.length));
+      back.collapse(true);
+      const s2 = window.getSelection();
+      s2.removeAllRanges();
+      s2.addRange(back);
+      if (typeof saveSelectionBeforeAction === 'function') saveSelectionBeforeAction();
+    }
+  }
 }
 
 /* Убирает обёртку span.tb-ribbon (возврат к плашке) */
@@ -156,6 +212,22 @@ function toggleRibbonMode() {
   box.dataset.mode = isRibbon ? 'plate' : 'ribbon';
   applyTbBg(box);
   syncTbSettings();
+
+  // Общий обработчик клика по документу срабатывает уже после этой функции и
+  // сбрасывает привязку к плашке, если сочтёт, что клик был мимо. Из-за этого
+  // после включения подложки кнопки форматирования уходили в основной текст.
+  // Возвращаем привязку и выделение в конце очереди — когда тот обработчик
+  // уже отработал.
+  const field = box.querySelector('.tb-content');
+  if (field) {
+    setTimeout(function () {
+      if (!field.isConnected) return;
+      currentTextBox = field;
+      box.classList.add('selected');
+      syncTbSettings();
+    }, 0);
+  }
+
   clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400);
 }
 
