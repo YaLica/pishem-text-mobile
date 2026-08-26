@@ -107,9 +107,18 @@ function formatCode() {
   if (!range) return;
   const node = nodeAtRangeStart(range);
   const activeCode = node && node.closest && node.closest('code');
-  const wrapper = activeCode
-    ? makeTextMark({ fontFamily: 'inherit', background: 'transparent', padding: '0' })
-    : document.createElement('code');
+
+  // Моноширинный снимается ненадёжно: обёртка <code> задаёт шрифт, и накрыть
+  // её сверху не получается — остаётся тот же monospace. Поэтому вместо
+  // пустого нажатия показываем подсказку и текст не трогаем.
+  if (activeCode) {
+    if (typeof showTbToast === 'function') {
+      showTbToast('⌨️ Моноширинный снимается через ↩️ Отмена');
+    }
+    return;
+  }
+
+  const wrapper = document.createElement('code');
   if (!activeCode) wrapper.setAttribute('data-text-mark', 'true');
   wrapRange(range, wrapper, true);
   finishTextOperation();
