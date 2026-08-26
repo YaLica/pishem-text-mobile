@@ -52,6 +52,19 @@ if (!sel || !sel.rangeCount) return false;
 const range = sel.getRangeAt(0);
 if (!editor.contains(range.commonAncestorContainer)) return false;
 
+// Если курсор находится внутри картинки, вынимаем его наружу.
+// Иначе Enter создаст разрыв внутри контейнера вместо нового параграфа.
+let ancestor = range.commonAncestorContainer;
+const imgBox = ancestor.nodeType === Node.ELEMENT_NODE
+  ? ancestor.closest('.img-box')
+  : ancestor.parentElement?.closest('.img-box');
+if (imgBox && editor.contains(imgBox)) {
+  range.setStartAfter(imgBox);
+  range.collapse(true);
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
 range.deleteContents();
 const br = document.createElement('br');
 range.insertNode(br);
