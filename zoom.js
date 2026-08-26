@@ -36,13 +36,15 @@ const padX = 30;
 const padY = 15;
 const availW = Math.max(0, stageW - padX * 2);
 
-// По горизонтали не даём потерять холст.
-if (scaledW <= availW) {
-panX = 0;
-} else {
-const maxX = (scaledW - availW) / 2;
-panX = Math.max(-maxX, Math.min(maxX, panX));
-}
+// По горизонтали раньше было жёстко: если холст влезал в ширину экрана,
+// сдвиг обнулялся и вбок подвинуть было нельзя вообще. Теперь работает так
+// же, как по вертикали — двигать можно всегда, лишь бы часть холста
+// осталась на виду. Это удобно, когда правишь дальний край или когда
+// картинка на холсте закрыта панелью.
+const minVisibleX = 72;
+const minX = minVisibleX - padX - scaledW;
+const maxX = stageW - minVisibleX - padX;
+panX = Math.max(minX, Math.min(maxX, panX));
 
 // По вертикали холст должен двигаться и коротким, и длинным.
 // При этом минимум 72 px всегда остаются на экране.
