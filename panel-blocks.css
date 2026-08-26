@@ -150,10 +150,14 @@
 /* ============================================================
    Рамка для верхнего тулбара — блок «Текст и Холст»
    ============================================================ */
-.toolbar {
-  border: 1px solid #EFD7B8 !important;
-  background: linear-gradient(#EFD7B812, #EFD7B806), #0f1115 !important;
+/* Тулбар живёт внутри блока «Платформа и текст», поэтому своя рамка ему
+   больше не нужна — она дублировала бы рамку блока. Оставляем отступ и фон
+   чуть темнее, чтобы кнопки читались как отдельная группа. */
+.pb-base .toolbar {
+  border: 1px solid #EFD7B840 !important;
+  background: #0d0f13 !important;
   border-radius: 10px !important;
+  margin-top: 10px;
 }
 .toolbar button:hover:not(:disabled) { background: #EFD7B8; color: #1a1d24; }
 
