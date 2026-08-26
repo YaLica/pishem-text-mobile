@@ -96,7 +96,13 @@
       try {
         if (typeof currentTextBox === 'undefined' ||
             !currentTextBox || !currentTextBox.isConnected) {
-          window.currentTextBox = box;
+          // Возвращаем именно поле для ввода внутри плашки: на него смотрят
+          // кнопки форматирования. Раньше здесь стояло присваивание
+          // window.currentTextBox, которое до настоящей привязки не доходило.
+          var field = box.querySelector('.tb-content') || box;
+          if (typeof window.setCurrentTextBox === 'function') {
+            window.setCurrentTextBox(field);
+          }
         }
         if (!box.classList.contains('selected')) {
           document.querySelectorAll('.text-box.selected').forEach(function (b) {
