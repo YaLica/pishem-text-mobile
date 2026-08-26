@@ -138,7 +138,25 @@ function selectionHasStyle(range, property, expected) {
   const node = nodeAtRangeStart(range);
   if (!node || node === getEditingScope()) return false;
   const value = getComputedStyle(node)[property];
-  return expected(value);
+  if (expected(value)) return true;
+
+  // Подчёркивание и зачёркивание не наследуются в вычисленном стиле: у вложенного
+  // узла всегда стоит none, даже когда линия видна и задана на родителе. Из-за
+  // этого повторное нажатие считало, что формата нет, и надевало его заново —
+  // кнопка не снималась. Оборачивание в подложку добавляет ещё один слой и делает
+  // это заметнее, но причина не в ней.
+  //
+  // Поэтому для линий дополнительно смотрим родителей вверх до самой плашки
+  // или редактора: если линия задана там, формат считается активным.
+  if (property !== 'textDecorationLine') return false;
+
+  const scope = getEditingScope();
+  let parent = node.parentElement;
+  while (parent && parent !== scope) {
+    if (expected(getComputedStyle(parent)[property] || '')) return true;
+    parent = parent.parentElement;
+  }
+  return false;
 }
 
 function applyRangeStyle(styles, inactiveStyles, isActive, scrub) {
