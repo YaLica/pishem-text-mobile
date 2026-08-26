@@ -367,14 +367,16 @@ window.addEventListener('scroll', () => currentImgBox && positionMiniBar());
 
 /* ЭТАП 2: тост-подсказка "плашки только с компьютера" */
 let _tbToastTimer = null;
-function showTbToast() {
+function showTbToast(message) {
   let t = document.getElementById('tbToast');
   if (!t) {
     t = document.createElement('div');
     t.id = 'tbToast';
-    t.textContent = '📝 Надписи управляются только с компьютера';
     document.body.appendChild(t);
   }
+  // Без аргумента — прежняя подсказка про компьютер, чтобы старые вызовы
+  // продолжали работать как раньше.
+  t.textContent = message || '📝 Надписи управляются только с компьютера';
   t.classList.add('show');
   clearTimeout(_tbToastTimer);
   _tbToastTimer = setTimeout(function(){ t.classList.remove('show'); }, 2200);
