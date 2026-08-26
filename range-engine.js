@@ -159,10 +159,207 @@ function selectionHasStyle(range, property, expected) {
   return false;
 }
 
+/* ---------- Снятие подчёркивания и зачёркивания ----------
+   Подчёркивание и зачёркивание в CSS ведут себя не как остальные свойства:
+   потомок НЕ может их отменить. Линия, заданная родителю, продолжает
+   рисоваться поверх вложенного текста, даже если поставить ему none.
+   Поэтому прежний способ «обернуть выделение в span с none» линию не убирал:
+   надеть формат получалось, снять — нет.
+
+   Здесь линия снимается с того элемента, который её задал, а сам элемент
+   при необходимости делится на части: до выделения, выделение и после.
+   Границы выделения запоминаются числом символов от начала плашки, потому
+   что перекладывание узлов делает прежние ссылки недействительными. */
+
+function declaresDecoration(el, token) {
+  if (!el || el.nodeType !== Node.ELEMENT_NODE) return false;
+  if (el.style && (el.style.textDecorationLine || '').indexOf(token) !== -1) return true;
+  if (token === 'underline' && el.tagName === 'U') return true;
+  if (token === 'line-through' && (el.tagName === 'S' || el.tagName === 'STRIKE')) return true;
+  return false;
+}
+
+function clearDecoration(el, token) {
+  const current = (el.style && el.style.textDecorationLine)
+    ? el.style.textDecorationLine
+    : (getComputedStyle(el).textDecorationLine || '');
+  const left = current.split(/\s+/).filter(function (t) {
+    return t && t !== 'none' && t !== token;
+  });
+  el.style.textDecorationLine = left.length ? left.join(' ') : 'none';
+  if (el.tagName === 'U' || el.tagName === 'S' || el.tagName === 'STRIKE') {
+    const plain = document.createElement('span');
+    plain.setAttribute('data-text-mark', 'true');
+    plain.style.textDecorationLine = el.style.textDecorationLine;
+    while (el.firstChild) plain.appendChild(el.firstChild);
+    el.replaceWith(plain);
+    return plain;
+  }
+  return el;
+}
+
+/* Сколько символов от начала области до точки выделения.
+   Точка может указывать и на элемент, а не только на текст — тогда считаем
+   символы до первого текста внутри этого элемента. */
+function offsetInScope(scope, container, offset) {
+  let count = 0;
+  const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT);
+  let node;
+  while ((node = walker.nextNode())) {
+    if (node === container) return count + offset;
+    if (container.nodeType === Node.ELEMENT_NODE && container.contains(node)) {
+      return count;
+    }
+    count += node.textContent.length;
+  }
+  return count;
+}
+
+/* Обратное действие: по числу символов находим узел и позицию в нём */
+function pointAtOffset(scope, target) {
+  let count = 0;
+  const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT);
+  let node, last = null;
+  while ((node = walker.nextNode())) {
+    const len = node.textContent.length;
+    if (count + len >= target) return { node: node, offset: target - count };
+    count += len;
+    last = node;
+  }
+  return last ? { node: last, offset: last.textContent.length } : null;
+}
+
+/* Оборачивает участок текста внутри элемента в span без линии.
+   Всё, что вне участка, остаётся с линией — соседние слова не страдают. */
+function markSpanInside(owner, from, to, token) {
+  const start = pointAtOffset(owner, from);
+  const end = pointAtOffset(owner, to);
+  if (!start || !end) return null;
+
+  const range = document.createRange();
+  range.setStart(start.node, start.offset);
+  range.setEnd(end.node, end.offset);
+
+  const plain = document.createElement('span');
+  plain.setAttribute('data-text-mark', 'true');
+  plain.appendChild(range.extractContents());
+
+  // внутри участка линию могли задавать и вложенные элементы
+  Array.prototype.forEach.call(plain.querySelectorAll('*'), function (el) {
+    if (declaresDecoration(el, token)) clearDecoration(el, token);
+  });
+  plain.style.textDecorationLine = 'none';
+
+  range.insertNode(plain);
+  return plain;
+}
+
+function removeDecorationFromRange(range, token) {
+  const scope = getEditingScope();
+
+  // Границы запоминаем числом символов от начала плашки: перекладывание
+  // узлов делает прежние ссылки на них недействительными.
+  const from = offsetInScope(scope, range.startContainer, range.startOffset);
+  const to = offsetInScope(scope, range.endContainer, range.endOffset);
+  if (to <= from) return null;
+
+  // Элементы, которые задают линию. Идём от внешних к внутренним.
+  let owners = [];
+  if (declaresDecoration(scope, token)) owners.push(scope);
+  Array.prototype.forEach.call(scope.querySelectorAll('*'), function (el) {
+    if (declaresDecoration(el, token)) owners.push(el);
+  });
+  if (!owners.length) return null;
+
+  owners.forEach(function (owner) {
+    if (!owner.isConnected) return;
+
+    // Начало этого элемента в символах от начала плашки
+    const base = offsetInScope(scope, owner, 0);
+    const total = owner.textContent.length;
+    const localFrom = Math.max(0, from - base);
+    const localTo = Math.min(total, to - base);
+    if (localTo <= localFrom) return;
+
+    // Линию с самого элемента снимаем...
+    const box = clearDecoration(owner, token) || owner;
+
+    // ...и заодно у вложенных элементов внутри выделения, иначе линия
+    // останется на них. Делаем это до возврата линии на края.
+    const q1 = pointAtOffset(box, localFrom);
+    const q2 = pointAtOffset(box, localTo);
+    if (q1 && q2) {
+      const inside = document.createRange();
+      inside.setStart(q1.node, q1.offset);
+      inside.setEnd(q2.node, q2.offset);
+      Array.prototype.slice.call(box.querySelectorAll('*')).forEach(function (el) {
+        let hit = false;
+        try { hit = inside.intersectsNode(el); } catch (e) { hit = false; }
+        if (hit && declaresDecoration(el, token)) clearDecoration(el, token);
+      });
+    }
+
+    // ...и возвращаем её тем частям, которые в выделение не попали.
+    // Куски считаем заранее и оборачиваем с конца, чтобы уже вставленные
+    // обёртки не сбивали отсчёт символов для следующего куска.
+    const parts = [];
+    if (localFrom > 0) parts.push([0, localFrom]);
+    if (localTo < total) parts.push([localTo, total]);
+    parts.reverse().forEach(function (p) {
+      wrapPartWithDecoration(box, p[0], p[1], token);
+    });
+
+
+  });
+
+  scope.normalize();
+
+  // Возвращаем выделение на прежнее место
+  const s1 = pointAtOffset(scope, from);
+  const s2 = pointAtOffset(scope, to);
+  let back = null;
+  if (s1 && s2) {
+    back = document.createRange();
+    back.setStart(s1.node, s1.offset);
+    back.setEnd(s2.node, s2.offset);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(back);
+    savedSelection = back.cloneRange();
+  }
+  return back || scope;
+}
+
+/* Оборачивает участок текста элемента в span с линией */
+function wrapPartWithDecoration(owner, from, to, token) {
+  const start = pointAtOffset(owner, from);
+  const end = pointAtOffset(owner, to);
+  if (!start || !end) return null;
+
+  const range = document.createRange();
+  range.setStart(start.node, start.offset);
+  range.setEnd(end.node, end.offset);
+  if (range.collapsed) return null;
+
+  const keep = document.createElement('span');
+  keep.setAttribute('data-text-mark', 'true');
+  keep.style.textDecorationLine = token;
+  keep.appendChild(range.extractContents());
+  range.insertNode(keep);
+  return keep;
+}
+
 function applyRangeStyle(styles, inactiveStyles, isActive, scrub) {
   const range = getUsableRange(true);
   if (!range) return null;
   const active = isActive ? isActive(range) : false;
+
+  // Линии снимаем отдельным путём: накрыть их сверху нельзя.
+  if (active && scrub && scrub.decorationToken) {
+    const cleared = removeDecorationFromRange(range, scrub.decorationToken);
+    if (cleared) return cleared;
+  }
+
   const mark = makeTextMark(active ? inactiveStyles : styles);
   return wrapRange(range, mark, true, scrub);
 }
