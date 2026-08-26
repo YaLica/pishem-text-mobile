@@ -10,13 +10,90 @@ function rangeInside(scope, range) {
   return !!(scope && range && scope.contains(range.commonAncestorContainer));
 }
 
+/* ---------- Удержание выделения ----------
+   Раньше выделение жило только до следующего события браузера. Обработчик
+   висит на selectionchange, а браузер посылает это событие и когда сам
+   схлопывает выделение в точку — например при уходе фокуса в панель. Тогда
+   вместо выделенного слова запоминалась точка, и выделение «слетало». Успеет
+   событие прийти или нет — дело случая, поэтому иногда выделение держалось
+   несколько нажатий, а иногда пропадало сразу.
+
+   Теперь осознанное выделение (не точка) хранится отдельно и переживает
+   схлопывание. Снимается по клику вне выделенного текста, по Escape и при
+   печати поверх — как везде. */
+
+let stickySelection = null;
+
+/* Запомнить выделение, если оно осознанное: не точка и с текстом */
+function holdSelection() {
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return;
+  const range = sel.getRangeAt(0);
+  if (range.collapsed || !sel.toString().trim()) return;
+  const inEditor = rangeInside(editor, range);
+  const inBox = typeof currentTextBox !== 'undefined' && currentTextBox
+                && rangeInside(currentTextBox, range);
+  if (inEditor || inBox) stickySelection = range.cloneRange();
+}
+
+function releaseSelection() {
+  stickySelection = null;
+}
+
+/* Живо ли удержанное выделение: узлы могли переложить или удалить */
+function stickyAlive() {
+  if (!stickySelection) return false;
+  const node = stickySelection.commonAncestorContainer;
+  const el = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
+  if (!el || !el.isConnected) { stickySelection = null; return false; }
+  return true;
+}
+
+/* Попала ли точка клика внутрь удержанного выделения */
+function pointInsideSticky(x, y) {
+  if (!stickyAlive()) return false;
+  const rects = stickySelection.getClientRects();
+  for (let i = 0; i < rects.length; i++) {
+    const r = rects[i];
+    if (x >= r.left - 2 && x <= r.right + 2 && y >= r.top - 2 && y <= r.bottom + 2) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/* Клик мимо выделенного текста — отпускаем. Клик по панели и тулбарам не
+   считается: там кнопки, которые с этим выделением и работают. */
+document.addEventListener('pointerdown', function (e) {
+  if (!stickyAlive()) return;
+  if (e.target.closest && (e.target.closest('.panel') || e.target.closest('.toolbar')
+      || e.target.closest('#quickBar') || e.target.closest('#imgMiniBar'))) return;
+  if (!pointInsideSticky(e.clientX, e.clientY)) releaseSelection();
+}, true);
+
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape') releaseSelection();
+}, true);
+
+/* Печать, вставка и удаление поверх выделения — отпускаем, как везде.
+   Стрелки и обычные нажатия сюда не попадают: beforeinput приходит только
+   когда текст действительно меняется. */
+document.addEventListener('beforeinput', function () {
+  releaseSelection();
+}, true);
+
 function saveSelectionBeforeAction() {
   const sel = window.getSelection();
   if (!sel || !sel.rangeCount) return;
   const range = sel.getRangeAt(0);
   const inEditor = rangeInside(editor, range);
   const inBox = typeof currentTextBox !== 'undefined' && currentTextBox && rangeInside(currentTextBox, range);
-  if (inEditor || inBox) savedSelection = range.cloneRange();
+  if (!inEditor && !inBox) return;
+  savedSelection = range.cloneRange();
+  // Осознанное выделение запоминаем, схлопнутой точкой его не перебиваем.
+  if (!range.collapsed && sel.toString().trim()) {
+    stickySelection = range.cloneRange();
+  }
 }
 
 document.addEventListener('selectionchange', saveSelectionBeforeAction);
@@ -38,7 +115,10 @@ editor.addEventListener('touchend', saveSelectionBeforeAction);
 
 function restoreSelection(preferredRange) {
   const scope = getEditingScope();
-  const candidate = preferredRange || savedSelection;
+  // Удержанное выделение важнее последнего положения курсора.
+  const candidate = preferredRange
+    || (stickyAlive() && rangeInside(scope, stickySelection) ? stickySelection : null)
+    || savedSelection;
   if (scope && scope.focus) scope.focus();
   if (!candidate || !rangeInside(scope, candidate)) return false;
   const sel = window.getSelection();
@@ -65,6 +145,8 @@ function selectNodeContents(node) {
   sel.removeAllRanges();
   sel.addRange(range);
   savedSelection = range.cloneRange();
+  // Удержанное выделение переезжает на новое место того же текста.
+  if (stickySelection) stickySelection = range.cloneRange();
 }
 
 function getUsableRange(requireText) {
@@ -115,12 +197,16 @@ function scrubFragmentStyle(fragment, property, decorationToken, all) {
 }
 
 function wrapRange(range, wrapper, collapseAfter, scrub) {
+  // Если выделение удерживается, после применения формата оно должно
+  // остаться на том же тексте, а не схлопнуться в точку.
+  const keep = stickyAlive();
   const fragment = range.extractContents();
   if (scrub) scrubFragmentStyle(fragment, scrub.property, scrub.decorationToken, scrub.all);
   wrapper.appendChild(fragment);
   range.insertNode(wrapper);
   getEditingScope().normalize();
-  if (collapseAfter !== false) setCaretAfter(wrapper);
+  if (keep) selectNodeContents(wrapper);
+  else if (collapseAfter !== false) setCaretAfter(wrapper);
   else selectNodeContents(wrapper);
   return wrapper;
 }
@@ -347,6 +433,84 @@ function wrapPartWithDecoration(owner, from, to, token) {
   keep.appendChild(range.extractContents());
   range.insertNode(keep);
   return keep;
+}
+
+/* ---------- Снятие моноширинного ----------
+   Моноширинный задаёт тег <code>, а не свойство стиля. Накрыть его сверху
+   нельзя: вложенный span наследует шрифт обёртки, и текст остаётся monospace.
+   Поэтому обёртку разбираем: части до и после выделения снова оборачиваем
+   в <code>, а выделенный участок остаётся без обёртки.
+   Границы считаем в символах — перекладывание узлов рвёт ссылки на них. */
+
+function wrapPartWithCode(owner, from, to) {
+  const start = pointAtOffset(owner, from);
+  const end = pointAtOffset(owner, to);
+  if (!start || !end) return null;
+  const range = document.createRange();
+  range.setStart(start.node, start.offset);
+  range.setEnd(end.node, end.offset);
+  if (range.collapsed) return null;
+  const keep = document.createElement('code');
+  keep.setAttribute('data-text-mark', 'true');
+  keep.appendChild(range.extractContents());
+  range.insertNode(keep);
+  return keep;
+}
+
+function removeCodeFromRange(range) {
+  const scope = getEditingScope();
+  let node = range.commonAncestorContainer;
+  if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+  const owner = node && node.closest ? node.closest('code') : null;
+  if (!owner || !scope.contains(owner)) return null;
+
+  const from = offsetInScope(scope, range.startContainer, range.startOffset);
+  const to = offsetInScope(scope, range.endContainer, range.endOffset);
+  if (to <= from) return null;
+
+  const base = offsetInScope(scope, owner, 0);
+  const total = owner.textContent.length;
+  const localFrom = Math.max(0, from - base);
+  const localTo = Math.min(total, to - base);
+  if (localTo <= localFrom) return null;
+
+  // Куски вне выделения снова оборачиваем в <code>. С конца, чтобы
+  // вставленные обёртки не сбивали отсчёт для следующего куска.
+  // Сначала разбираем вложенные <code>, которые уже были внутри обёртки.
+  // Делать это надо ДО возврата обёрток соседям, иначе мы разобрали бы и
+  // свои же только что созданные обёртки, и соседние слова потеряли бы
+  // моноширинный.
+  Array.prototype.slice.call(owner.querySelectorAll('code')).forEach(function (el) {
+    el.replaceWith.apply(el, Array.prototype.slice.call(el.childNodes));
+  });
+  owner.normalize();
+
+  const parts = [];
+  if (localFrom > 0) parts.push([0, localFrom]);
+  if (localTo < total) parts.push([localTo, total]);
+  parts.reverse().forEach(function (pr) {
+    wrapPartWithCode(owner, pr[0], pr[1]);
+  });
+
+  // Саму обёртку убираем, дети встают на её место.
+  const parent = owner.parentNode;
+  owner.replaceWith.apply(owner, Array.prototype.slice.call(owner.childNodes));
+  if (parent) parent.normalize();
+  scope.normalize();
+
+  const s1 = pointAtOffset(scope, from);
+  const s2 = pointAtOffset(scope, to);
+  if (s1 && s2) {
+    const back = document.createRange();
+    back.setStart(s1.node, s1.offset);
+    back.setEnd(s2.node, s2.offset);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(back);
+    savedSelection = back.cloneRange();
+    return back;
+  }
+  return scope;
 }
 
 function applyRangeStyle(styles, inactiveStyles, isActive, scrub) {
