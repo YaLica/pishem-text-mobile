@@ -93,6 +93,29 @@
     function keepSelected() {
       var box = (lastBox && lastBox.isConnected) ? lastBox : null;
       if (!box) return;
+
+      // Курсор в основном тексте — привязку к плашке возвращать нельзя,
+      // иначе кнопки верхнего тулбара уйдут в плашку вместо текста.
+      try {
+        var sel = window.getSelection();
+        if (sel && sel.rangeCount && typeof editor !== 'undefined' && editor) {
+          var node = sel.getRangeAt(0).commonAncestorContainer;
+          if (node.nodeType === 3) node = node.parentElement;
+          if (node && editor.contains(node) && !node.closest('.text-box')) return;
+        }
+      } catch (e) {}
+
+      // Если курсор стоит в основном тексте, привязку к плашке возвращать
+      // нельзя: иначе кнопки верхнего тулбара уйдут в плашку, а не в текст.
+      // Проверяем по живому выделению, а не по прошлому состоянию.
+      try {
+        var sel = window.getSelection();
+        if (sel && sel.rangeCount && typeof editor !== 'undefined' && editor) {
+          var node = sel.getRangeAt(0).commonAncestorContainer;
+          if (node.nodeType === 3) node = node.parentElement;
+          if (node && editor.contains(node) && !node.closest('.text-box')) return;
+        }
+      } catch (e) {}
       try {
         if (typeof currentTextBox === 'undefined' ||
             !currentTextBox || !currentTextBox.isConnected) {
