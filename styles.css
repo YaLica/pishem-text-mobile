@@ -1,11 +1,42 @@
-
 * { box-sizing: border-box; }
 body { margin: 0; background: #0f1115; color: #e8e8e8; display: flex; height: 100vh; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; }
 .panel { width: 380px; padding: 20px; background: #171a21; overflow-y: auto; height: 100vh; border-right: 1px solid #2a2f3a; flex-shrink: 0; position: sticky; top: 0; }
 h1 { font-size: 18px; margin: 0 0 16px; }
 label { display: block; font-size: 12px; color: #9aa4b2; margin: 14px 0 6px; font-weight: bold;}
-input, select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #2a2f3a; background: #0f1115; color: #e8e8e8; font-size: 14px; outline: none; }
+input, select {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #2a2f3a;
+  background: #0f1115;
+  color: #e8e8e8;
+  font-size: 14px;
+  outline: none;
+}
 select { cursor: pointer; }
+
+/* Лента с цветом слова (color picker) на мобильных слишком широкая и белая.
+ * На телефоне делаем полупрозрачную, узкую, как кнопка.
+ * На компьютере оставляем как есть — там она вписывается в панель.
+ */
+#qbWordColor {
+  width: 56px !important;
+  height: 42px !important;
+  padding: 4px !important;
+  background: rgba(42, 47, 58, 0.85) !important;
+  border: 1px solid rgba(122, 162, 255, 0.45) !important;
+  cursor: pointer;
+}
+
+@media (min-width: 821px) {
+  #qbWordColor {
+    width: 100% !important;
+    height: auto !important;
+    padding: 10px !important;
+    background: #0f1115 !important;
+    border: 1px solid #2a2f3a !important;
+  }
+}
 .row { display: flex; gap: 8px; flex-wrap: wrap; }
 .row > button { flex: 1 1 30%; }
 button { cursor: pointer; border: none; border-radius: 8px; padding: 10px; font-size: 13px; font-weight: 600; transition: 0.2s; }
@@ -295,9 +326,15 @@ body { display: block; height: 100vh; overflow: hidden; }
   left: calc(10px + env(safe-area-inset-left, 0px)) !important;
   right: auto !important;
   bottom: auto !important;
-  transform: none !important;
   z-index: 100000 !important;
   touch-action: manipulation;
+  /* transform здесь НЕ обнуляем: на iPhone им доводит положение core.js.
+     Раньше стояло transform:none !important, и доводка не срабатывала. */
+  transform-origin: top left;
+  /* кнопки не должны прокручиваться и подсвечиваться при касании */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 #mobileToolsBtn {
