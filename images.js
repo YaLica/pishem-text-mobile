@@ -9,7 +9,7 @@ const files = event.target.files;
 if (!files || files.length === 0) return;
 
 let currentCount = updateImgCounter();
-const maxImages = 10;
+const maxImages = 20;
 
 if (currentCount >= maxImages) {
 event.target.value = '';
