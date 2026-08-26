@@ -166,8 +166,29 @@
   <div id="tbSettings" class="tb-hide-mobile" style="display:none; background:#10b98120; padding:12px; border-radius:8px; margin-top:12px; border:1px solid #10b981;">
    <label style="color:#10b981; margin-top:0;">🎨 Настройки выбранной надписи</label>
 
+  <!-- Форматирование текста внутри плашки. Кнопки те же функции, что и в
+       верхнем тулбаре: они работают там, где стоит курсор. -->
+  <div class="tb-toolbar">
+    <button type="button" onclick="format('bold')" title="Жирный"><b>Ж</b></button>
+    <button type="button" onclick="format('italic')" title="Курсив"><i>К</i></button>
+    <button type="button" onclick="format('underline')" title="Подчеркнутый"><u>Ч</u></button>
+    <button type="button" onclick="format('strikeThrough')" title="Зачеркнутый"><s>S</s></button>
+    <button type="button" onclick="formatCode()" title="Моноширинный"><code>&lt;/&gt;</code></button>
+    <div class="tb-toolbar-divider"></div>
+    <button type="button" onclick="format('justifyLeft')" title="По левому краю">|≡</button>
+    <button type="button" onclick="format('justifyCenter')" title="По центру">≡</button>
+    <button type="button" onclick="format('justifyRight')" title="По правому краю">≡|</button>
+    <div class="tb-toolbar-divider"></div>
+    <input type="color" id="tbWordColor" value="#ffffff" oninput="applyTextColor(this.value)" title="Цвет выделенного текста">
+    <button type="button" onclick="changeWordSize(1.2)" title="Увеличить выделенное">A+</button>
+    <button type="button" onclick="changeWordSize(0.85)" title="Уменьшить выделенное">A-</button>
+  </div>
+
   <label>🔠 Размер текста: <span id="tbFontSizeLabel">24</span> px</label>
   <input type="range" id="tbFontSize" min="10" max="120" value="24" oninput="setTbFontSize(this.value)">
+
+  <label>↕️ Интервал строк: <span id="tbLineHeightLabel">1.25</span></label>
+  <input type="range" id="tbLineHeight" min="0.8" max="2.5" step="0.05" value="1.25" oninput="setTbLineHeight(this.value)">
 
   <label>🔤 Шрифт текста плашки</label>
   <select id="tbFontFamily" onchange="setTbFontFamily(this.value)">
@@ -178,8 +199,6 @@
   <input type="color" id="tbBgColor" value="#000000" oninput="setTbBgColor(this.value)">
     <label>👻 Прозрачность фона: <span id="tbBgOpacityLabel">55</span>%</label>
   <input type="range" id="tbBgOpacity" min="0" max="100" value="55" oninput="setTbBgOpacity(this.value)">
-    <label>↕️ Интервал строк: <span id="tbLineHeightLabel">1.25</span></label>
-  <input type="range" id="tbLineHeight" min="0.8" max="2.5" step="0.05" value="1.25" oninput="setTbLineHeight(this.value)">
 
   <button type="button" onclick="document.getElementById('tbImageInput').click()" style="width:100%; margin-top:10px; background:#10b981; color:#fff; padding:10px;">🖼️ Вставить картинку в плашку</button>
   <input type="file" id="tbImageInput" accept="image/*" style="display:none;" onchange="insertImageIntoTextBox(event)">
