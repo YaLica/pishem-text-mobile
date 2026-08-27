@@ -91,11 +91,6 @@ window.addEventListener('focus', function() {
 // Значение постоянное во всех актуальных версиях iOS.
 const IOS_ACCESSORY_BAR = 48;
 
-// Когда в холст вставлена картинка, расчёт отступа на iPhone даёт лишнюю высоту,
-// и панель встаёт выше полоски Safari, оставляя под собой пустую щель.
-// Сколько снять — подобрано по скриншотам. Больше число = панель ниже.
-const IMG_MODE_DROP = 30;
-
 function isIOSDevice() {
   return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
          (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -140,12 +135,7 @@ function positionQuickBar() {
   // Поэтому наша панель оказывалась ровно под ней и была недоступна.
   // В Android такой полоски нет, там ничего добавлять не нужно.
   // Прибавляем её высоту, только когда клавиатура действительно открыта.
-  if (gap > 0 && isIOSDevice()) {
-    gap += IOS_ACCESSORY_BAR;
-    // Только iPhone и только когда на холсте есть картинка.
-    if (editor.querySelector('.img-box')) gap -= IMG_MODE_DROP;
-    if (gap < 0) gap = 0;
-  }
+  if (gap > 0 && isIOSDevice()) gap += IOS_ACCESSORY_BAR;
 
   quickBar.style.bottom = Math.round(gap) + 'px';
 }
