@@ -105,7 +105,7 @@ function isIOSDevice() {
 // положение несколько раз, пока анимация не закончится.
 function scheduleQuickBarPosition() {
   positionQuickBar();
-  [60, 160, 320, 550, 850].forEach(function(ms) {
+ [60, 160, 320, 550, 850, 1300, 1900].forEach(function(ms) {
     setTimeout(positionQuickBar, ms);
   });
 }
