@@ -292,11 +292,6 @@ function syncTbSettings() {
   const panel = document.getElementById('tbSettings');
   if (!panel) return;
   const box = getTbTargetBox();
-  if (isMobile()) {
-    panel.style.display = 'none';
-    if (typeof syncTbMobilePanel === 'function') syncTbMobilePanel();
-    return;
-  }
   if (!box) { panel.style.display = 'none'; return; }
   panel.style.display = 'block';
   const hex = box.dataset.bgColor || '#000000';
@@ -371,7 +366,10 @@ function insertImageIntoTextBox(event) {
     img.className = 'tb-img';
     img.src = e.target.result;
     img.contentEditable = 'false';
+    // Вставляем вполовину ширины плашки — дальше растягивается за уголок.
+    img.style.width = TB_IMG_START_WIDTH;
     content.appendChild(img);
+    wrapTbImage(img);
     clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400);
   };
   reader.readAsDataURL(file);
@@ -433,6 +431,7 @@ function bindTextBox(box) {
   makeTextBoxRotatable(box);
   applyTbTypography(box);
   applyTbRotation(box);
+  rebindTbImages();
 }
 
 function ensureDragFrame(box) {
@@ -910,230 +909,201 @@ function selectTextBox(box) {
 
 
 /* ==========================================================================
-   МОБИЛЬНАЯ ПЛАШКА — отдельный блок. Настольная логика (хваталка, рёбра,
-   уголок, ручка вращения) на телефоне не используется: там всё делается
-   через плавающую панель, по образцу панели картинки.
+   МОБИЛЬНАЯ ПЛАШКА — отдельный блок, настольную логику не трогает.
+   Ручки те же, что на компьютере (хваталка, уголок, вращение, копия,
+   крестик), но события пальцевые. Настройки живут в боковой шторке.
    ========================================================================== */
-
-let tbMobPos = null;          // запомненное положение панели в этой сессии
-let tbMoveMode = false;       // включён ли режим перетаскивания плашки
-let tbMobSessionFirst = true; // первое выделение в сессии открывает панель само
-
-/* Тап по плашке: первый раз — выделить, дальше — выделить и открыть панель
-   по двойному тапу. Ровно как у картинки. */
-let _tbLastTap = 0, _tbLastBox = null;
 
 function bindTextBoxMobile(box, content) {
   if (content) {
     content.setAttribute('contenteditable', 'true');
-    content.addEventListener('input', function(){
+    content.addEventListener('input', function () {
       clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400);
     });
     content.addEventListener('touchend', saveSelectionBeforeAction);
   }
 
-  box.addEventListener('touchstart', function(e){
-    if (tbMoveMode) return;              // в режиме движения тап не выделяет
-    e.stopPropagation();
-  }, {passive: true});
-
-  box.addEventListener('click', function(e){
-    if (tbMoveMode) return;
+  box.addEventListener('click', function (e) {
+    if (e.target.closest('.tb-handle') || e.target.closest('.tb-delete') ||
+        e.target.closest('.tb-resize') || e.target.closest('.tb-rotate') ||
+        e.target.closest('.tb-copy')   || e.target.closest('.tb-edge')) return;
     e.stopPropagation();
     selectTextBox(box);
-
-    const now = Date.now();
-    if (tbMobSessionFirst) {
-      tbMobSessionFirst = false;
-      openTbMobilePanel();
-    } else if (_tbLastBox === box && (now - _tbLastTap) < 400) {
-      openTbMobilePanel();
-    }
-    _tbLastTap = now;
-    _tbLastBox = box;
   });
 
-  makeTextBoxTouchDraggable(box);
+  ensureDragFrame(box);
+  tbMobDrag(box);
+  tbMobResize(box);
+  tbMobRotate(box);
+  applyTbTypography(box);
+  applyTbRotation(box);
+  rebindTbImages();
 }
 
-/* Перетаскивание плашки пальцем. Работает ТОЛЬКО когда включён режим
-   «Двигать» — иначе палец нужен для установки курсора и выделения текста. */
-function makeTextBoxTouchDraggable(box) {
-  let sx = 0, sy = 0, ox = 0, oy = 0, moving = false;
+/* Общая обвязка ручек: гасим прокрутку и всплытие, выделяем плашку,
+   дальше отдаём управление шагу конкретной ручки. */
+function tbMobHandle(el, box, onStart) {
+  if (!el || el.dataset.tbmob) return;
+  el.dataset.tbmob = '1';
 
-  box.addEventListener('touchstart', function(e){
-    if (!tbMoveMode) return;
-    if (!box.classList.contains('selected')) selectTextBox(box);
-    const t = e.touches[0];
-    sx = t.clientX; sy = t.clientY;
-    ox = box.offsetLeft; oy = box.offsetTop;
-    moving = true;
+  el.addEventListener('touchstart', function (e) {
+    e.stopPropagation();
     if (e.cancelable) e.preventDefault();
-  }, {passive: false});
+    selectTextBox(box);
+    box.classList.add('tb-busy');
 
-  box.addEventListener('touchmove', function(e){
-    if (!tbMoveMode || !moving) return;
-    if (e.cancelable) e.preventDefault();
     const t = e.touches[0];
-    const z = (typeof currentZoom === 'number' && currentZoom > 0) ? currentZoom : 1;
-    let nl = ox + (t.clientX - sx) / z;
-    let nt = oy + (t.clientY - sy) / z;
+    const step = onStart(t.clientX, t.clientY);
+    if (!step) { box.classList.remove('tb-busy'); return; }
 
-    const maxL = exportNode.clientWidth  - box.offsetWidth;
-    const maxT = exportNode.clientHeight - box.offsetHeight;
-    if (nl < 0) nl = 0;
-    if (nt < 0) nt = 0;
-    if (nl > maxL) nl = maxL;
-    if (nt > maxT) nt = maxT;
-
-    box.style.left = nl + 'px';
-    box.style.top  = nt + 'px';
-  }, {passive: false});
-
-  box.addEventListener('touchend', function(){
-    if (!moving) return;
-    moving = false;
-    saveHistory();
-  });
-}
-
-/* Кнопка «✥ Двигать» — переключатель режима. */
-function toggleTbMoveMode() {
-  tbMoveMode = !tbMoveMode;
-  const btn = document.getElementById('tbmMoveBtn');
-  const box = getTbTargetBox();
-
-  if (btn) {
-    btn.textContent = tbMoveMode ? '✓ Двигаю' : '✥ Двигать';
-    btn.style.background = tbMoveMode ? '#ef4444' : '#10b981';
-  }
-  document.querySelectorAll('.text-box').forEach(function(b){
-    b.classList.toggle('tb-moving', tbMoveMode);
-  });
-
-  // В режиме движения текст не редактируем — иначе Safari начнёт выделять.
-  document.querySelectorAll('.text-box .tb-content').forEach(function(c){
-    c.setAttribute('contenteditable', tbMoveMode ? 'false' : 'true');
-  });
-
-  if (!tbMoveMode && box) {
-    const c = box.querySelector('.tb-content');
-    if (c) setTimeout(function(){ c.focus(); }, 30);
-  }
-}
-
-function openTbMobilePanel() {
-  const p = document.getElementById('tbMobilePanel');
-  if (!p || !getTbTargetBox()) return;
-  syncTbMobilePanel();
-  p.classList.add('visible');
-  requestAnimationFrame(function(){
-    const pw = p.offsetWidth  || 290;
-    const ph = p.offsetHeight || 360;
-    const peek = 40;
-    const minL = peek - pw, maxL = window.innerWidth  - peek;
-    const minT = peek - ph, maxT = window.innerHeight - peek;
-    let left, top;
-    if (tbMobPos) {
-      left = Math.max(minL, Math.min(tbMobPos.left, maxL));
-      top  = Math.max(minT, Math.min(tbMobPos.top,  maxT));
-    } else {
-      left = Math.max(0, (window.innerWidth - pw) / 2);
-      top  = 70;
+    function move(ev) {
+      if (ev.cancelable) ev.preventDefault();
+      const p = ev.touches[0];
+      step(p.clientX, p.clientY);
     }
-    p.style.left = left + 'px';
-    p.style.top  = top  + 'px';
-    tbMobPos = { left: left, top: top };
+    function end() {
+      document.removeEventListener('touchmove', move);
+      document.removeEventListener('touchend', end);
+      document.removeEventListener('touchcancel', end);
+      box.classList.remove('tb-busy');
+      saveHistory();
+    }
+    document.addEventListener('touchmove', move, { passive: false });
+    document.addEventListener('touchend', end);
+    document.addEventListener('touchcancel', end);
+  }, { passive: false });
+}
+
+/* ✥ Перетаскивание плашки по холсту. */
+function tbMobDrag(box) {
+  tbMobHandle(box.querySelector('.tb-handle'), box, function (sx, sy) {
+    const ox = box.offsetLeft, oy = box.offsetTop;
+    return function (x, y) {
+      const z = (typeof currentZoom === 'number' && currentZoom > 0) ? currentZoom : 1;
+      let nl = ox + (x - sx) / z;
+      let nt = oy + (y - sy) / z;
+      const maxL = exportNode.clientWidth  - box.offsetWidth;
+      const maxT = exportNode.clientHeight - box.offsetHeight;
+      if (nl < 0) nl = 0;
+      if (nt < 0) nt = 0;
+      if (nl > maxL) nl = maxL;
+      if (nt > maxT) nt = maxT;
+      box.style.left = nl + 'px';
+      box.style.top  = nt + 'px';
+    };
   });
 }
 
-function closeTbMobilePanel() {
-  const p = document.getElementById('tbMobilePanel');
-  if (p) p.classList.remove('visible');
-  if (tbMoveMode) toggleTbMoveMode();   // выходим из режима движения
+/* ⇲ Уголок: ширина и высота. */
+function tbMobResize(box) {
+  const content = box.querySelector('.tb-content');
+  tbMobHandle(box.querySelector('.tb-resize'), box, function (sx, sy) {
+    const w0 = box.offsetWidth;
+    const h0 = content ? content.offsetHeight : box.offsetHeight;
+    return function (x, y) {
+      const z = (typeof currentZoom === 'number' && currentZoom > 0) ? currentZoom : 1;
+      let nw = w0 + (x - sx) / z;
+      let nh = h0 + (y - sy) / z;
+      if (nw < 60) nw = 60;
+      if (nh < 30) nh = 30;
+      box.style.width = nw + 'px';
+      if (content) content.style.height = nh + 'px';
+    };
+  });
 }
 
-/* Подставляем в панель значения выбранной плашки. */
-function syncTbMobilePanel() {
-  const p = document.getElementById('tbMobilePanel');
-  if (!p) return;
-  const box = getTbTargetBox();
-  if (!box) { p.classList.remove('visible'); return; }
-
-  function put(id, val, labelId) {
-    const el = document.getElementById(id); if (el) el.value = val;
-    if (labelId) { const l = document.getElementById(labelId); if (l) l.textContent = val; }
-  }
-
-  put('tbmFontSize',  box.dataset.fontSize  || '24',   'tbmFontSizeLabel');
-  put('tbmLineHeight',box.dataset.lineHeight|| '1.25', 'tbmLineHeightLabel');
-  put('tbmBgColor',   box.dataset.bgColor   || '#000000');
-  put('tbmBgOpacity', (box.dataset.bgOpacity !== undefined ? box.dataset.bgOpacity : '55'), 'tbmBgOpacityLabel');
-
-  // шрифт плашки — тот же список, что и на компьютере
-  const sel = document.getElementById('tbmFontFamily');
-  const deskSel = document.getElementById('tbFontFamily');
-  if (sel && deskSel && sel.options.length <= 1 && deskSel.options.length > 1) {
-    sel.innerHTML = deskSel.innerHTML;
-  }
-  if (sel) sel.value = box.dataset.fontFamily || '';
-
-  // подложка
-  const isRib = (box.dataset.mode === 'ribbon');
-  const tgl = document.getElementById('tbmRibbonToggle');
-  if (tgl) {
-    tgl.textContent = isRib ? '❌ Убрать подложку' : '🎀 Подложка под текст';
-    tgl.style.background = isRib ? '#ef4444' : '#8b5cf6';
-  }
-  const ribBlock = document.getElementById('tbmRibbonSettings');
-  if (ribBlock) ribBlock.style.display = isRib ? 'block' : 'none';
-
-  put('tbmRibbonColor',   box.dataset.ribbonColor   || '#000000');
-  put('tbmRibbonOpacity', (box.dataset.ribbonOpacity !== undefined ? box.dataset.ribbonOpacity : '85'), 'tbmRibbonOpacityLabel');
-  put('tbmRibbonRadius',  box.dataset.ribbonRadius  || '6',    'tbmRibbonRadiusLabel');
-  put('tbmRibbonPadH',    box.dataset.ribbonPadH    || '0.3',  'tbmRibbonPadHLabel');
-  put('tbmRibbonPadV',    box.dataset.ribbonPadV    || '0.25', 'tbmRibbonPadVLabel');
+/* 🔄 Вращение. */
+function tbMobRotate(box) {
+  tbMobHandle(box.querySelector('.tb-rotate'), box, function () {
+    const r = box.getBoundingClientRect();
+    const cx = r.left + r.width / 2;
+    const cy = r.top  + r.height / 2;
+    return function (x, y) {
+      box.dataset.rot = Math.atan2(y - cy, x - cx) * 180 / Math.PI + 90;
+      applyTbRotation(box);
+    };
+  });
 }
 
-/* Дублировать / удалить выбранную плашку с телефона. */
-function tbMobDuplicate() {
-  const box = getTbTargetBox();
-  if (box) duplicateTextBox(box);
-}
-function tbMobDelete() {
-  const box = getTbTargetBox();
-  if (!box) return;
-  deleteTextBox(box);
-  closeTbMobilePanel();
-}
+/* ========== КАРТИНКА ВНУТРИ ПЛАШКИ ==========
+   Вставляется вполовину ширины плашки, дальше тянется за уголок —
+   и пальцем, и мышью. */
 
-/* Перетаскивание самой панели за шапку — копия механики панели картинки. */
-(function(){
-  const head  = document.getElementById('tbmHead');
-  const panel = document.getElementById('tbMobilePanel');
-  if (!head || !panel) return;
-  let dragging = false, sx = 0, sy = 0, ox = 0, oy = 0;
+const TB_IMG_START_WIDTH = '50%';
 
-  function start(x, y) {
-    dragging = true; head.classList.add('grabbing');
-    sx = x; sy = y; ox = panel.offsetLeft; oy = panel.offsetTop;
+function wrapTbImage(img) {
+  if (img.parentNode && img.parentNode.classList &&
+      img.parentNode.classList.contains('tb-img-wrap')) {
+    return img.parentNode;
   }
-  function move(x, y) {
-    if (!dragging) return;
-    let nl = ox + (x - sx), nt = oy + (y - sy);
-    const peek = 40, pw = panel.offsetWidth, ph = panel.offsetHeight;
-    nl = Math.max(peek - pw, Math.min(nl, window.innerWidth  - peek));
-    nt = Math.max(peek - ph, Math.min(nt, window.innerHeight - peek));
-    panel.style.left = nl + 'px';
-    panel.style.top  = nt + 'px';
-    tbMobPos = { left: nl, top: nt };
-  }
-  function end() { dragging = false; head.classList.remove('grabbing'); }
+  const wrap = document.createElement('span');
+  wrap.className = 'tb-img-wrap';
+  wrap.contentEditable = 'false';
+  img.parentNode.insertBefore(wrap, img);
+  wrap.appendChild(img);
 
-  head.addEventListener('touchstart', function(e){ const t = e.touches[0]; start(t.clientX, t.clientY); }, {passive: true});
-  head.addEventListener('touchmove',  function(e){ e.preventDefault(); const t = e.touches[0]; move(t.clientX, t.clientY); }, {passive: false});
-  head.addEventListener('touchend', end);
-  head.addEventListener('mousedown', function(e){ start(e.clientX, e.clientY); });
-  document.addEventListener('mousemove', function(e){ move(e.clientX, e.clientY); });
-  document.addEventListener('mouseup', end);
-})();
+  const grip = document.createElement('span');
+  grip.className = 'tb-img-grip';
+  grip.contentEditable = 'false';
+  wrap.appendChild(grip);
+
+  bindTbImageResize(wrap, img, grip);
+  return wrap;
+}
+
+function bindTbImageResize(wrap, img, grip) {
+  if (grip.dataset.bound) return;
+  grip.dataset.bound = '1';
+
+  function begin(sx) {
+    const w0 = img.offsetWidth;
+    const box = wrap.closest('.text-box');
+    const maxW = box ? box.offsetWidth : 600;
+    return function (x) {
+      const z = (typeof currentZoom === 'number' && currentZoom > 0) ? currentZoom : 1;
+      let nw = w0 + (x - sx) / z;
+      if (nw < 40) nw = 40;
+      if (nw > maxW) nw = maxW;
+      img.style.width = nw + 'px';
+      img.style.maxWidth = '100%';
+    };
+  }
+
+  grip.addEventListener('touchstart', function (e) {
+    e.stopPropagation();
+    if (e.cancelable) e.preventDefault();
+    const step = begin(e.touches[0].clientX);
+    function move(ev) {
+      if (ev.cancelable) ev.preventDefault();
+      step(ev.touches[0].clientX);
+    }
+    function end() {
+      document.removeEventListener('touchmove', move);
+      document.removeEventListener('touchend', end);
+      saveHistory();
+    }
+    document.addEventListener('touchmove', move, { passive: false });
+    document.addEventListener('touchend', end);
+  }, { passive: false });
+
+  grip.addEventListener('mousedown', function (e) {
+    e.stopPropagation();
+    e.preventDefault();
+    const step = begin(e.clientX);
+    function move(ev) { step(ev.clientX); }
+    function end() {
+      document.removeEventListener('mousemove', move);
+      document.removeEventListener('mouseup', end);
+      saveHistory();
+    }
+    document.addEventListener('mousemove', move);
+    document.addEventListener('mouseup', end);
+  });
+}
+
+/* После отмены и повтора обёртки создаются заново — навешиваем уголки. */
+function rebindTbImages() {
+  document.querySelectorAll('.text-box .tb-content img.tb-img').forEach(function (img) {
+    wrapTbImage(img);
+  });
+}
