@@ -439,7 +439,25 @@ transition: left 0.3s ease;
   width: 15px !important; height: 15px !important;
   border-right-width: 4px !important; border-bottom-width: 4px !important;
 }
-  
+
+  /* Выделение текста в плашке.
+   На .text-box стоит user-select: none — на компьютере он нужен, чтобы
+   перетаскивание мышью не выделяло текст. Пальцем тянут за ручки, а запрет
+   мешал Safari растягивать выделение: оставалось одно слово. */
+.text-box { -webkit-user-select: text !important; user-select: text !important; }
+.text-box .tb-content,
+.text-box .tb-content *:not(img) {
+  -webkit-user-select: text !important;
+  user-select: text !important;
+  -webkit-touch-callout: default;
+}
+
+/* Пока тянем ручку — выделения быть не должно. */
+.text-box.tb-busy,
+.text-box.tb-busy *:not(img) {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+}
 /* iPhone: разрешить курсор внутрь слова */
 #editor { word-break: break-word; }
 }
