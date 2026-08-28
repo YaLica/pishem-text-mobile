@@ -292,7 +292,12 @@ function syncTbSettings() {
   const panel = document.getElementById('tbSettings');
   if (!panel) return;
   const box = getTbTargetBox();
-  if (!box || isMobile()) { panel.style.display = 'none'; return; }
+  if (isMobile()) {
+    panel.style.display = 'none';
+    if (typeof syncTbMobilePanel === 'function') syncTbMobilePanel();
+    return;
+  }
+  if (!box) { panel.style.display = 'none'; return; }
   panel.style.display = 'block';
   const hex = box.dataset.bgColor || '#000000';
   const op = (box.dataset.bgOpacity !== undefined) ? parseInt(box.dataset.bgOpacity, 10) : 55;
@@ -375,7 +380,6 @@ function insertImageIntoTextBox(event) {
 }
 
 function addTextBox() {
-  if (isMobile()) { showTbToast(); return; }
   const count = exportNode.querySelectorAll('.text-box').length;
   if (count >= 20) { alert('Максимум 20 надписей'); return; }
   const box = document.createElement('div');
@@ -405,9 +409,7 @@ function addTextBox() {
 function bindTextBox(box) {
   const content = box.querySelector('.tb-content');
   if (isMobile()) {
-    if (content) content.setAttribute('contenteditable', 'false');
-    box.addEventListener('click', function(e){ e.stopPropagation(); showTbToast(); });
-    box.addEventListener('touchstart', function(e){ e.stopPropagation(); showTbToast(); }, {passive: true});
+    bindTextBoxMobile(box, content);
     return;
   }
 
@@ -905,3 +907,233 @@ function selectTextBox(box) {
   currentImgBox = null;
   syncTbSettings();
 }
+
+
+/* ==========================================================================
+   МОБИЛЬНАЯ ПЛАШКА — отдельный блок. Настольная логика (хваталка, рёбра,
+   уголок, ручка вращения) на телефоне не используется: там всё делается
+   через плавающую панель, по образцу панели картинки.
+   ========================================================================== */
+
+let tbMobPos = null;          // запомненное положение панели в этой сессии
+let tbMoveMode = false;       // включён ли режим перетаскивания плашки
+let tbMobSessionFirst = true; // первое выделение в сессии открывает панель само
+
+/* Тап по плашке: первый раз — выделить, дальше — выделить и открыть панель
+   по двойному тапу. Ровно как у картинки. */
+let _tbLastTap = 0, _tbLastBox = null;
+
+function bindTextBoxMobile(box, content) {
+  if (content) {
+    content.setAttribute('contenteditable', 'true');
+    content.addEventListener('input', function(){
+      clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400);
+    });
+    content.addEventListener('touchend', saveSelectionBeforeAction);
+  }
+
+  box.addEventListener('touchstart', function(e){
+    if (tbMoveMode) return;              // в режиме движения тап не выделяет
+    e.stopPropagation();
+  }, {passive: true});
+
+  box.addEventListener('click', function(e){
+    if (tbMoveMode) return;
+    e.stopPropagation();
+    selectTextBox(box);
+
+    const now = Date.now();
+    if (tbMobSessionFirst) {
+      tbMobSessionFirst = false;
+      openTbMobilePanel();
+    } else if (_tbLastBox === box && (now - _tbLastTap) < 400) {
+      openTbMobilePanel();
+    }
+    _tbLastTap = now;
+    _tbLastBox = box;
+  });
+
+  makeTextBoxTouchDraggable(box);
+}
+
+/* Перетаскивание плашки пальцем. Работает ТОЛЬКО когда включён режим
+   «Двигать» — иначе палец нужен для установки курсора и выделения текста. */
+function makeTextBoxTouchDraggable(box) {
+  let sx = 0, sy = 0, ox = 0, oy = 0, moving = false;
+
+  box.addEventListener('touchstart', function(e){
+    if (!tbMoveMode) return;
+    if (!box.classList.contains('selected')) selectTextBox(box);
+    const t = e.touches[0];
+    sx = t.clientX; sy = t.clientY;
+    ox = box.offsetLeft; oy = box.offsetTop;
+    moving = true;
+    if (e.cancelable) e.preventDefault();
+  }, {passive: false});
+
+  box.addEventListener('touchmove', function(e){
+    if (!tbMoveMode || !moving) return;
+    if (e.cancelable) e.preventDefault();
+    const t = e.touches[0];
+    const z = (typeof currentZoom === 'number' && currentZoom > 0) ? currentZoom : 1;
+    let nl = ox + (t.clientX - sx) / z;
+    let nt = oy + (t.clientY - sy) / z;
+
+    const maxL = exportNode.clientWidth  - box.offsetWidth;
+    const maxT = exportNode.clientHeight - box.offsetHeight;
+    if (nl < 0) nl = 0;
+    if (nt < 0) nt = 0;
+    if (nl > maxL) nl = maxL;
+    if (nt > maxT) nt = maxT;
+
+    box.style.left = nl + 'px';
+    box.style.top  = nt + 'px';
+  }, {passive: false});
+
+  box.addEventListener('touchend', function(){
+    if (!moving) return;
+    moving = false;
+    saveHistory();
+  });
+}
+
+/* Кнопка «✥ Двигать» — переключатель режима. */
+function toggleTbMoveMode() {
+  tbMoveMode = !tbMoveMode;
+  const btn = document.getElementById('tbmMoveBtn');
+  const box = getTbTargetBox();
+
+  if (btn) {
+    btn.textContent = tbMoveMode ? '✓ Двигаю' : '✥ Двигать';
+    btn.style.background = tbMoveMode ? '#ef4444' : '#10b981';
+  }
+  document.querySelectorAll('.text-box').forEach(function(b){
+    b.classList.toggle('tb-moving', tbMoveMode);
+  });
+
+  // В режиме движения текст не редактируем — иначе Safari начнёт выделять.
+  document.querySelectorAll('.text-box .tb-content').forEach(function(c){
+    c.setAttribute('contenteditable', tbMoveMode ? 'false' : 'true');
+  });
+
+  if (!tbMoveMode && box) {
+    const c = box.querySelector('.tb-content');
+    if (c) setTimeout(function(){ c.focus(); }, 30);
+  }
+}
+
+function openTbMobilePanel() {
+  const p = document.getElementById('tbMobilePanel');
+  if (!p || !getTbTargetBox()) return;
+  syncTbMobilePanel();
+  p.classList.add('visible');
+  requestAnimationFrame(function(){
+    const pw = p.offsetWidth  || 290;
+    const ph = p.offsetHeight || 360;
+    const peek = 40;
+    const minL = peek - pw, maxL = window.innerWidth  - peek;
+    const minT = peek - ph, maxT = window.innerHeight - peek;
+    let left, top;
+    if (tbMobPos) {
+      left = Math.max(minL, Math.min(tbMobPos.left, maxL));
+      top  = Math.max(minT, Math.min(tbMobPos.top,  maxT));
+    } else {
+      left = Math.max(0, (window.innerWidth - pw) / 2);
+      top  = 70;
+    }
+    p.style.left = left + 'px';
+    p.style.top  = top  + 'px';
+    tbMobPos = { left: left, top: top };
+  });
+}
+
+function closeTbMobilePanel() {
+  const p = document.getElementById('tbMobilePanel');
+  if (p) p.classList.remove('visible');
+  if (tbMoveMode) toggleTbMoveMode();   // выходим из режима движения
+}
+
+/* Подставляем в панель значения выбранной плашки. */
+function syncTbMobilePanel() {
+  const p = document.getElementById('tbMobilePanel');
+  if (!p) return;
+  const box = getTbTargetBox();
+  if (!box) { p.classList.remove('visible'); return; }
+
+  function put(id, val, labelId) {
+    const el = document.getElementById(id); if (el) el.value = val;
+    if (labelId) { const l = document.getElementById(labelId); if (l) l.textContent = val; }
+  }
+
+  put('tbmFontSize',  box.dataset.fontSize  || '24',   'tbmFontSizeLabel');
+  put('tbmLineHeight',box.dataset.lineHeight|| '1.25', 'tbmLineHeightLabel');
+  put('tbmBgColor',   box.dataset.bgColor   || '#000000');
+  put('tbmBgOpacity', (box.dataset.bgOpacity !== undefined ? box.dataset.bgOpacity : '55'), 'tbmBgOpacityLabel');
+
+  // шрифт плашки — тот же список, что и на компьютере
+  const sel = document.getElementById('tbmFontFamily');
+  const deskSel = document.getElementById('tbFontFamily');
+  if (sel && deskSel && sel.options.length <= 1 && deskSel.options.length > 1) {
+    sel.innerHTML = deskSel.innerHTML;
+  }
+  if (sel) sel.value = box.dataset.fontFamily || '';
+
+  // подложка
+  const isRib = (box.dataset.mode === 'ribbon');
+  const tgl = document.getElementById('tbmRibbonToggle');
+  if (tgl) {
+    tgl.textContent = isRib ? '❌ Убрать подложку' : '🎀 Подложка под текст';
+    tgl.style.background = isRib ? '#ef4444' : '#8b5cf6';
+  }
+  const ribBlock = document.getElementById('tbmRibbonSettings');
+  if (ribBlock) ribBlock.style.display = isRib ? 'block' : 'none';
+
+  put('tbmRibbonColor',   box.dataset.ribbonColor   || '#000000');
+  put('tbmRibbonOpacity', (box.dataset.ribbonOpacity !== undefined ? box.dataset.ribbonOpacity : '85'), 'tbmRibbonOpacityLabel');
+  put('tbmRibbonRadius',  box.dataset.ribbonRadius  || '6',    'tbmRibbonRadiusLabel');
+  put('tbmRibbonPadH',    box.dataset.ribbonPadH    || '0.3',  'tbmRibbonPadHLabel');
+  put('tbmRibbonPadV',    box.dataset.ribbonPadV    || '0.25', 'tbmRibbonPadVLabel');
+}
+
+/* Дублировать / удалить выбранную плашку с телефона. */
+function tbMobDuplicate() {
+  const box = getTbTargetBox();
+  if (box) duplicateTextBox(box);
+}
+function tbMobDelete() {
+  const box = getTbTargetBox();
+  if (!box) return;
+  deleteTextBox(box);
+  closeTbMobilePanel();
+}
+
+/* Перетаскивание самой панели за шапку — копия механики панели картинки. */
+(function(){
+  const head  = document.getElementById('tbmHead');
+  const panel = document.getElementById('tbMobilePanel');
+  if (!head || !panel) return;
+  let dragging = false, sx = 0, sy = 0, ox = 0, oy = 0;
+
+  function start(x, y) {
+    dragging = true; head.classList.add('grabbing');
+    sx = x; sy = y; ox = panel.offsetLeft; oy = panel.offsetTop;
+  }
+  function move(x, y) {
+    if (!dragging) return;
+    let nl = ox + (x - sx), nt = oy + (y - sy);
+    const peek = 40, pw = panel.offsetWidth, ph = panel.offsetHeight;
+    nl = Math.max(peek - pw, Math.min(nl, window.innerWidth  - peek));
+    nt = Math.max(peek - ph, Math.min(nt, window.innerHeight - peek));
+    panel.style.left = nl + 'px';
+    panel.style.top  = nt + 'px';
+    tbMobPos = { left: nl, top: nt };
+  }
+  function end() { dragging = false; head.classList.remove('grabbing'); }
+
+  head.addEventListener('touchstart', function(e){ const t = e.touches[0]; start(t.clientX, t.clientY); }, {passive: true});
+  head.addEventListener('touchmove',  function(e){ e.preventDefault(); const t = e.touches[0]; move(t.clientX, t.clientY); }, {passive: false});
+  head.addEventListener('touchend', end);
+  head.addEventListener('mousedown', function(e){ start(e.clientX, e.clientY); });
+  document.addEventListener('mousemove', function(e){ move(e.clientX, e.clientY); });
+  document.addEventListener('mouseup', end);
+})();
