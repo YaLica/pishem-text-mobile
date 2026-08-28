@@ -303,6 +303,30 @@ min-width: 52px; text-align: center; font-size: 14px; font-weight: bold; color: 
 #floatUndoRedo button:hover:not(:disabled) { background: #3d7eff; }
 #floatUndoRedo button:disabled { opacity: 0.4; cursor: not-allowed; }
 
+/* ===== КАРТИНКА ВНУТРИ ПЛАШКИ: обёртка и уголок растягивания ===== */
+.text-box .tb-img-wrap {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  line-height: 0;
+}
+.text-box .tb-img-wrap img.tb-img { margin: 4px 0; }
+.text-box .tb-img-grip {
+  position: absolute; right: -6px; bottom: 0;
+  width: 26px; height: 26px; z-index: 25;
+  display: none; cursor: nwse-resize;
+  touch-action: none; pointer-events: auto;
+}
+.text-box .tb-img-grip::after {
+  content: ''; position: absolute; right: 6px; bottom: 8px;
+  width: 12px; height: 12px;
+  border-right: 3px solid #10b981;
+  border-bottom: 3px solid #10b981;
+  border-radius: 2px;
+  filter: drop-shadow(0 0 2px rgba(0,0,0,.7));
+}
+.text-box.selected .tb-img-grip { display: block; }
+
 @media (max-width: 820px) {
 body { display: block; height: 100vh; overflow: hidden; }
   /* Телефон: ползунки размера и интервала — друг под другом на всю ширину */
@@ -374,75 +398,48 @@ transition: left 0.3s ease;
 .emoji-wrap, label[style*="😀 Эмодзи"] { display: none !important; }
 #imgMiniBar { display: none !important; }
 
-/* На телефоне плашка управляется плавающей панелью, а не ручками.
-   Сами ручки (хваталка, крестик, рёбра, уголок, вращение) не нужны —
-   остаются скрытыми. Кнопки создания плашки, наоборот, открываем. */
-.text-box .tb-handle,
-.text-box .tb-delete,
-.text-box .tb-drag-frame,
-.text-box .tb-resize,
-.text-box .tb-copy,
-.text-box .tb-rotate { display: none !important; }
+/* Ручки плашки на телефоне те же, что на компьютере, только крупнее:
+   палец уверенно попадает примерно с 40 пикселей. Рёбра рамки не нужны —
+   за них тянут мышью, пальцем для этого есть хваталка. */
+.text-box .tb-edge { display: none !important; }
 
-/* Панель настроек плашки в боковой шторке на телефоне не показываем —
-   для неё есть плавающая. */
-#tbSettings { display: none !important; }
+.text-box.selected .tb-handle,
+.text-box.selected .tb-delete {
+  width: 40px !important; height: 40px !important; font-size: 19px !important;
+}
+.text-box .tb-handle { top: -20px !important; right: -20px !important; }
+.text-box .tb-delete { top: -20px !important; left: -20px !important; }
 
-/* Выделенная плашка и режим перетаскивания */
-.text-box.selected { outline: 3px solid #10b981; outline-offset: 4px; }
-.text-box.tb-moving { outline: 3px dashed #ef4444; outline-offset: 4px; }
-.text-box.tb-moving .tb-content { pointer-events: none; }
+.text-box.selected .tb-rotate,
+.text-box.selected .tb-copy {
+  width: 38px !important; height: 38px !important;
+  font-size: 17px !important; top: -50px !important;
+}
+.text-box .tb-copy { transform: translateX(-50%) translateX(-44px) !important; }
+
+.text-box .tb-resize {
+  width: 40px !important; height: 40px !important;
+  right: -12px !important; bottom: -12px !important;
+}
+.text-box .tb-resize::after {
+  right: 6px !important; bottom: 6px !important;
+  width: 16px !important; height: 16px !important;
+  border-right-width: 4px !important; border-bottom-width: 4px !important;
+}
+
+/* Пока тянем ручку — текст внутри не должен перехватывать палец. */
+.text-box.tb-busy .tb-content { pointer-events: none; }
+
+/* Уголок картинки в плашке — тоже под палец. */
+.text-box .tb-img-grip {
+  width: 40px !important; height: 40px !important; right: -10px !important;
+}
+.text-box .tb-img-grip::after {
+  right: 8px !important; bottom: 12px !important;
+  width: 15px !important; height: 15px !important;
+  border-right-width: 4px !important; border-bottom-width: 4px !important;
+}
   
-/* ===== ТЕЛЕФОННАЯ ПЛАВАЮЩАЯ ПАНЕЛЬ ПЛАШКИ ===== */
-#tbMobilePanel {
-  position: fixed; z-index: 6000; display: none;
-  width: 290px; max-width: 92vw;
-  max-height: 70vh; overflow-y: auto;
-  background: rgba(23, 26, 33, 0.78);
-  border: 1px solid #10b981; border-radius: 14px;
-  box-shadow: 0 8px 30px rgba(0,0,0,.6);
-  padding: 0 12px 12px; color: #e8e8e8;
-  touch-action: none;
-}
-#tbMobilePanel.visible { display: block; }
-#tbMobilePanel .tbm-head {
-  position: sticky; top: 0; z-index: 2;
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 0 8px; cursor: grab; user-select: none; touch-action: none;
-  border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 8px;
-  background: rgba(23, 26, 33, 0.95);
-}
-#tbMobilePanel .tbm-head.grabbing { cursor: grabbing; }
-#tbMobilePanel .tbm-title { font-size: 13px; font-weight: bold; color: #10b981; }
-#tbMobilePanel .tbm-close {
-  width: 26px; height: 26px; border-radius: 6px; background: #2a2f3a; color: #fff;
-  font-size: 15px; display: flex; align-items: center; justify-content: center; cursor: pointer;
-}
-#tbMobilePanel label {
-  color: #cdd5df; font-size: 11px; margin: 8px 0 3px; font-weight: bold; display: block;
-}
-#tbMobilePanel input[type=range] { width: 100%; margin: 0; height: 30px; }
-#tbMobilePanel input[type=color] { width: 100%; height: 32px; border-radius: 6px; padding: 0; }
-#tbMobilePanel select {
-  width: 100%; height: 34px; border-radius: 6px;
-  background: #2a2f3a; color: #e8e8e8; border: 1px solid #3a4150; font-size: 13px;
-}
-#tbMobilePanel .tbm-btns { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
-#tbMobilePanel .tbm-btns button {
-  flex: 1 1 auto; min-width: 44px; height: 40px; padding: 0 8px; margin: 0;
-  background: #2a2f3a; color: #fff; border-radius: 8px; font-size: 15px;
-  display: flex; align-items: center; justify-content: center;
-}
-#tbMobilePanel .tbm-btns button:active { background: #10b981; }
-#tbMobilePanel .tbm-wide {
-  width: 100%; margin-top: 10px; padding: 11px;
-  color: #fff; border-radius: 8px; font-size: 13px; font-weight: 600;
-}
-#tbMobilePanel .tbm-ribbon-block {
-  background: #8b5cf620; padding: 10px; border-radius: 8px;
-  margin-top: 10px; border: 1px solid #8b5cf6;
-}
-
 /* iPhone: разрешить курсор внутрь слова */
 #editor { word-break: break-word; }
 }
