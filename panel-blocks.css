@@ -127,7 +127,7 @@
   .pb-block { padding: 10px 11px 12px; margin-bottom: 13px; border-radius: 12px; }
   .pb-title { font-size: 12px; }
   .pb-arrow { width: 30px; height: 30px; }
-  .pb-block.pb-plate { display: none !important; }
+/* Плашка на телефоне работает — блок настроек нужен. */
 }
 
 @supports not (background: color-mix(in srgb, red 50%, blue)) {
