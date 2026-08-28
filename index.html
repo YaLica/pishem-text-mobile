@@ -363,6 +363,55 @@
   </div>
 </div>
 
+<!-- ТЕЛЕФОННАЯ ПЛАВАЮЩАЯ ПАНЕЛЬ ПЛАШКИ -->
+<div id="tbMobilePanel">
+  <div class="tbm-head" id="tbmHead">
+    <span class="tbm-title">📝 Плашка</span>
+    <span class="tbm-close" onclick="closeTbMobilePanel()">✕</span>
+  </div>
+
+  <button type="button" id="tbmMoveBtn" class="tbm-wide" onclick="toggleTbMoveMode()" style="background:#10b981; margin-top:0;">✥ Двигать</button>
+
+  <label>🔠 Размер текста: <span id="tbmFontSizeLabel">24</span> px</label>
+  <input type="range" id="tbmFontSize" min="10" max="240" value="24" oninput="setTbFontSize(this.value)">
+
+  <label>↕️ Интервал строк: <span id="tbmLineHeightLabel">1.25</span></label>
+  <input type="range" id="tbmLineHeight" min="0.8" max="2.5" step="0.05" value="1.25" oninput="setTbLineHeight(this.value)">
+
+  <label>🔤 Шрифт плашки</label>
+  <select id="tbmFontFamily" onchange="setTbFontFamily(this.value)">
+    <option value="">Как основной текст</option>
+  </select>
+
+  <label>🎨 Цвет фона плашки</label>
+  <input type="color" id="tbmBgColor" value="#000000" oninput="setTbBgColor(this.value)">
+
+  <label>👻 Прозрачность фона: <span id="tbmBgOpacityLabel">55</span>%</label>
+  <input type="range" id="tbmBgOpacity" min="0" max="100" value="55" oninput="setTbBgOpacity(this.value)">
+
+  <button type="button" class="tbm-wide" style="background:#10b981;" onclick="document.getElementById('tbImageInput').click()">🖼️ Картинку в плашку</button>
+
+  <button type="button" id="tbmRibbonToggle" class="tbm-wide" style="background:#8b5cf6;" onclick="toggleRibbonMode()">🎀 Подложка под текст</button>
+
+  <div id="tbmRibbonSettings" class="tbm-ribbon-block" style="display:none;">
+    <label style="color:#a78bfa;">🎨 Цвет подложки</label>
+    <input type="color" id="tbmRibbonColor" value="#000000" oninput="setTbRibbonColor(this.value)">
+    <label>👻 Прозрачность: <span id="tbmRibbonOpacityLabel">85</span>%</label>
+    <input type="range" id="tbmRibbonOpacity" min="0" max="100" value="85" oninput="setTbRibbonOpacity(this.value)">
+    <label>⬜ Скругление: <span id="tbmRibbonRadiusLabel">6</span> px</label>
+    <input type="range" id="tbmRibbonRadius" min="0" max="30" value="6" oninput="setTbRibbonRadius(this.value)">
+    <label>↔️ Плотность: <span id="tbmRibbonPadHLabel">0.3</span> em</label>
+    <input type="range" id="tbmRibbonPadH" min="0" max="1.5" step="0.05" value="0.3" oninput="setTbRibbonPadH(this.value)">
+    <label>↕️ Высота: <span id="tbmRibbonPadVLabel">0.25</span></label>
+    <input type="range" id="tbmRibbonPadV" min="0" max="0.5" step="0.01" value="0.25" oninput="setTbRibbonPadV(this.value)">
+  </div>
+
+  <div class="tbm-btns">
+    <button onclick="tbMobDuplicate()" title="Дублировать">📋</button>
+    <button onclick="tbMobDelete()" title="Удалить">🗑️</button>
+  </div>
+</div>
+
 <!-- QUICKBAR -->
 <div id="quickBar">
 <button onmousedown="undoAction(event)">↩️</button>
@@ -419,7 +468,7 @@
 <option value="'Podkova', serif" style="font-family: 'Podkova', serif">🐴 Уютный: Podkova</option>
 <option value="'Underdog', sans-serif" style="font-family: 'Underdog', sans-serif">💪 Акцентный: Underdog</option>
 </select>
-<button class="tb-hide-mobile" onmousedown="event.preventDefault(); addTextBox();" title="Добавить надпись">📝</button>
+<button onmousedown="event.preventDefault(); addTextBox();" title="Добавить надпись">📝</button>
 <input type="file" id="qbImageInput" accept="image/*" multiple style="display:none;" onchange="insertMultipleImages(event)">
 </div>
 
