@@ -16,7 +16,7 @@ if (isMobile()) showQuickBar();
 });
 
 document.addEventListener('focusin', function(e){
-  if (isMobile() && e.target.classList && e.target.classList.contains('text-box')) {
+  if (isMobile() && e.target.closest && e.target.closest('.text-box')) {
     showQuickBar();
   }
 });
@@ -42,7 +42,10 @@ document.addEventListener('click', function(e){
 editor.addEventListener('blur', function() {
 setTimeout(function() {
 const active = document.activeElement;
-const inTextBox = active && active.classList && active.classList.contains('text-box');
+// Фокус получает поле .tb-content внутри плашки, а не сама .text-box.
+// Проверка по классу самого элемента поэтому не срабатывала, и панель
+// пропадала прямо во время набора текста в плашке. Ищем предка.
+const inTextBox = !!(active && active.closest && active.closest('.text-box'));
 // Выбранная картинка — тоже работа в редакторе. Раньше она не попадала ни
 // в одно из условий, поэтому после нажатия на фото панель пропадала и
 // добраться до кнопок было нельзя.
