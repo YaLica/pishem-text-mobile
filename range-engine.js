@@ -1,5 +1,51 @@
 /* Единый движок Selection + Range. Не использует document.execCommand. */
+/* Где сейчас идёт правка текста.
+
+   Раньше здесь смотрели только на currentTextBox — привязку к последней
+   выбранной плашке. Беда в том, что привязка не снимается при возврате
+   в основной текст: она живёт, пока плашку не удалят. Поэтому после
+   работы с плашкой кнопки форматирования считали своей областью плашку,
+   выделение в основном тексте в неё не попадало, и нажатие просто
+   не срабатывало. Отсюда и было «иногда работает, иногда нет».
+
+   Теперь опираемся на само выделение: где текст выделен, там и правим.
+   Порядок проверки — удержанное выделение, живое, последнее сохранённое.
+   Привязку currentTextBox не трогаем: на неё смотрят настройки плашки
+   в шторке, и сбрасывать её нельзя. */
 function getEditingScope() {
+  var range = null;
+
+  try {
+    if (typeof stickySelection !== 'undefined' && stickySelection && stickyAlive()) {
+      range = stickySelection;
+    }
+  } catch (e) {}
+
+  if (!range) {
+    var sel = window.getSelection();
+    if (sel && sel.rangeCount) range = sel.getRangeAt(0);
+  }
+
+  if (!range) {
+    try {
+      if (typeof savedSelection !== 'undefined' && savedSelection) range = savedSelection;
+    } catch (e) {}
+  }
+
+  if (range) {
+    var node = range.commonAncestorContainer;
+    if (node && node.nodeType === 3) node = node.parentElement;
+    if (node && node.closest) {
+      var box = node.closest('.text-box');
+      if (box) {
+        var field = box.querySelector('.tb-content');
+        return (field && field.isConnected) ? field : box;
+      }
+      if (typeof editor !== 'undefined' && editor && editor.contains(node)) return editor;
+    }
+  }
+
+  // Выделения нет вовсе — держимся за последнюю выбранную плашку, как раньше.
   if (typeof currentTextBox !== 'undefined' && currentTextBox && currentTextBox.isConnected) {
     return currentTextBox;
   }
