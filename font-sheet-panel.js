@@ -1,13 +1,18 @@
 /* font-sheet-panel.js
- * Открывает красивую шрифтовую панель для трёх select'ов в шторке.
- * Только мобайл. Компьютер — нативный select, не трогаем.
  *
- * Ключевое: перехватываем pointerdown на document в capture-фазе,
- * чтобы сработать до нативного открытия select. НЕ вызываем
- * stopPropagation — panel-fixes.js должен получить событие и
- * восстановить currentTextBox через keepSelected().
+ * Подключает красивую шрифтовую панель (из font-sheet.js) к трём
+ * select'ам в боковой шторке, которые раньше открывали нативный список.
  *
- * Подключать после font-sheet.js.
+ * Три источника и их callback'ы:
+ *   fontFamilySelector  → updateFontFamily(v)   — шрифт всего поста
+ *   <select без id>     → applyWordFont(v)       — шрифт выделенного слова
+ *   tbFontFamily        → setTbFontFamily(v)     — шрифт плашки
+ *
+ * Каждой панели даётся уникальный id (fsPanelMain, fsPanelWord,
+ * fsPanelTb). Стили задаются через font-sheet.css — нужно добавить
+ * одну строку в существующий файл (см. инструкцию по подключению).
+ *
+ * Подключать ПОСЛЕ font-sheet.js.
  */
 (function () {
   'use strict';
@@ -16,6 +21,7 @@
     return typeof isMobile === 'function' ? isMobile() : window.innerWidth <= 820;
   }
 
+  /* Собираем опции из <select> */
   function getOptions(sel) {
     var opts = [];
     Array.prototype.forEach.call(sel.options, function (opt) {
@@ -24,6 +30,8 @@
     return opts;
   }
 
+  /* Создаём панель с заданным id — CSS подхватывает через #fsPanelMain и т.д.
+     Структура идентична #fontSheet из font-sheet.js. */
   function buildPanel(panelId, titleText) {
     var existing = document.getElementById(panelId);
     if (existing) return existing;
@@ -42,7 +50,7 @@
     close.type = 'button';
     close.className = 'fs-close';
     close.setAttribute('aria-label', 'Закрыть список шрифтов');
-    close.textContent = '\u2715';
+    close.textContent = '✕';
     close.addEventListener('click', function (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -51,12 +59,15 @@
 
     head.appendChild(title);
     head.appendChild(close);
+
     var list = document.createElement('div');
     list.className = 'fs-list';
+
     sheet.appendChild(head);
     sheet.appendChild(list);
     document.body.appendChild(sheet);
 
+    /* Закрытие по клику снаружи */
     document.addEventListener('click', function (e) {
       if (!sheet.classList.contains('open')) return;
       if (e.target.closest && e.target.closest('#' + panelId)) return;
@@ -65,9 +76,11 @@
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && sheet.classList.contains('open')) hide(sheet);
     });
+
     return sheet;
   }
 
+  /* Позиция: над quickBar, как у оригинального #fontSheet */
   function place(panel) {
     var qb = document.getElementById('quickBar');
     var gap = 6;
@@ -81,12 +94,15 @@
 
   function schedulePlace(panel) {
     place(panel);
-    [60, 180, 360, 600].forEach(function (ms) { setTimeout(function () { place(panel); }, ms); });
+    [60, 180, 360, 600].forEach(function (ms) {
+      setTimeout(function () { place(panel); }, ms);
+    });
   }
 
   if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', function () {
-      document.querySelectorAll('#fsPanelMain.open,#fsPanelWord.open,#fsPanelTb.open').forEach(place);
+      document.querySelectorAll('#fsPanelMain.open, #fsPanelWord.open, #fsPanelTb.open')
+        .forEach(place);
     });
   }
 
@@ -112,37 +128,31 @@
     schedulePlace(panel);
   }
 
-  function hide(panel) { panel.classList.remove('open'); }
+  function hide(panel) {
+    panel.classList.remove('open');
+  }
 
   function hideAll() {
     ['fsPanelMain', 'fsPanelWord', 'fsPanelTb'].forEach(function (id) {
       var p = document.getElementById(id);
       if (p) hide(p);
     });
+    /* Закрываем и оригинальную панель quickBar, если открыта */
     var orig = document.getElementById('fontSheet');
     if (orig) orig.classList.remove('open');
   }
 
+  /* Перехватываем нажатие на <select>, показываем свою панель */
   function attachToSelect(selEl, panelId, panelTitle, callback, needsFreeze) {
     if (!selEl) return;
     var panel = buildPanel(panelId, panelTitle);
 
-    /* Вешаем на document в capture-фазе через pointerdown.
-     * pointerdown срабатывает до нативного открытия <select>.
-     * НЕ вызываем stopPropagation — panel-fixes.js должен получить
-     * событие и сделать keepSelected() чтобы currentTextBox остался
-     * актуальным перед применением шрифта. */
-    document.addEventListener('pointerdown', function (e) {
-      if (!mobile()) return;
-      if (e.target !== selEl && !selEl.contains(e.target)) return;
-
-      /* preventDefault блокирует нативное открытие select */
+    function intercept(e) {
+      if (!mobile()) return;  /* на компе нативный select остаётся */
       e.preventDefault();
+      e.stopPropagation();
 
-      if (panel.classList.contains('open')) {
-        hide(panel);
-        return;
-      }
+      if (panel.classList.contains('open')) { hide(panel); return; }
 
       if (needsFreeze) {
         if (typeof freezeSelectionForFont === 'function') freezeSelectionForFont();
@@ -150,40 +160,41 @@
       }
 
       hideAll();
-      var opts = getOptions(selEl);
+      show(panel, getOptions(selEl), callback);
+    }
 
-      /* Задержка 30мс: panel-fixes делает setTimeout(keepSelected,0),
-       * нам нужно открыться после того как currentTextBox восстановлен */
-      setTimeout(function () { show(panel, opts, callback); }, 30);
-    }, true); /* capture:true — срабатываем до panel-fixes */
+    selEl.addEventListener('touchstart', intercept, { passive: false });
+    selEl.addEventListener('mousedown', intercept);
   }
 
   function init() {
     /* 1. Основной шрифт поста */
     var selMain = document.getElementById('fontFamilySelector');
     if (selMain) {
-      attachToSelect(selMain, 'fsPanelMain', '\u0428\u0440\u0438\u0444\u0442 \u043f\u043e\u0441\u0442\u0430', function (v) {
+      attachToSelect(selMain, 'fsPanelMain', 'Шрифт поста', function (v) {
         if (typeof updateFontFamily === 'function') updateFontFamily(v);
         selMain.value = v;
       }, false);
     }
 
-    /* 2. Шрифт выделенного слова */
+    /* 2. Шрифт выделенного слова — select без id, ищем по onchange */
     var selWord = null;
     document.querySelectorAll('select').forEach(function (s) {
-      if (!s.id && (s.getAttribute('onchange') || '').indexOf('applyWordFont') !== -1) selWord = s;
+      if (!s.id && (s.getAttribute('onchange') || '').indexOf('applyWordFont') !== -1) {
+        selWord = s;
+      }
     });
     if (selWord) {
-      attachToSelect(selWord, 'fsPanelWord', '\u0428\u0440\u0438\u0444\u0442 \u0441\u043b\u043e\u0432\u0430', function (v) {
+      attachToSelect(selWord, 'fsPanelWord', 'Шрифт слова', function (v) {
         if (typeof applyWordFont === 'function') applyWordFont(v);
         selWord.selectedIndex = 0;
-      }, true);
+      }, true);  /* нужно сохранить выделение перед открытием */
     }
 
     /* 3. Шрифт плашки */
     var selTb = document.getElementById('tbFontFamily');
     if (selTb) {
-      attachToSelect(selTb, 'fsPanelTb', '\u0428\u0440\u0438\u0444\u0442 \u043f\u043b\u0430\u0448\u043a\u0438', function (v) {
+      attachToSelect(selTb, 'fsPanelTb', 'Шрифт плашки', function (v) {
         if (typeof setTbFontFamily === 'function') setTbFontFamily(v);
         selTb.value = v;
       }, false);
