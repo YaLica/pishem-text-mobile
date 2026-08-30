@@ -21,6 +21,8 @@
 }
 
 #fontSheet.open { display: flex; }
+#fsPanelMain, #fsPanelWord, #fsPanelTb { display: none; }
+#fsPanelMain.open, #fsPanelWord.open, #fsPanelTb.open { display: flex; }
 
 .fs-head {
   display: flex;
