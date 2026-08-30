@@ -28,11 +28,28 @@
   /* На компьютере индикаторы цвета остаются синхронизированными.
      На телефоне не переписываем value у системных color-input:
      это конфликтует с мобильной палитрой и повторным применением цвета. */
-  var COLOR_FIELDS = (typeof isMobile === 'function' && isMobile()) ? [] : [
+  var COLOR_FIELDS = [
     { id: 'wordColor'   },
     { id: 'qbWordColor' },
     { id: 'tbWordColor' },
   ];
+
+  /* Пока пользователь работает с палитрой, индикаторы цвета не трогаем.
+     Раньше модуль перезаписывал только что выбранный цвет обратно на прежний,
+     и цвет менялся ровно один раз. Замок снимается через 900 мс после
+     последнего события от любого input[type=color]. */
+  var colorLockUntil = 0;
+  function isColorInput(el) {
+    return !!(el && el.tagName === 'INPUT' && el.type === 'color');
+  }
+  ['input', 'change'].forEach(function (ev) {
+    document.addEventListener(ev, function (e) {
+      if (isColorInput(e.target)) colorLockUntil = Date.now() + 900;
+    }, true);
+  });
+  function colorsLocked() {
+    return Date.now() < colorLockUntil || isColorInput(document.activeElement);
+  }
 
   /* ── получить узел под курсором или в начале выделения ──────────── */
   function getAnchorNode() {
@@ -102,7 +119,9 @@
       SIZE_FIELDS.forEach(function (f) { setField(f.id, size); setLabel(f.labelId, size); });
     }
     if (color !== null) {
-      COLOR_FIELDS.forEach(function (f) { setColor(f.id, color); });
+      if (!colorsLocked()) {
+        COLOR_FIELDS.forEach(function (f) { setColor(f.id, color); });
+      }
     }
   }
 
@@ -120,9 +139,12 @@
   document.addEventListener('keyup',     schedule);
   /* На телефоне не слушаем input: это событие приходит от color-picker.
      На компьютере сохраняем прежнюю синхронизацию после форматирования. */
-  if (!(typeof isMobile === 'function' && isMobile())) {
-    document.addEventListener('input', function () { setTimeout(schedule, 50); });
-  }
+  /* input от палитры пропускаем: он приходит непрерывно, пока водят пальцем
+     по цветам, и раньше сбивал выбор. Остальные input обрабатываем как прежде. */
+  document.addEventListener('input', function (e) {
+    if (isColorInput(e.target)) return;
+    setTimeout(schedule, 50);
+  });
 
   /* Публичный вызов после программного форматирования */
   window.syncSelectionUI = sync;
