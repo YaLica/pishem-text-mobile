@@ -198,10 +198,12 @@
   <label>↕️ Интервал строк: <span id="tbLineHeightLabel">1.25</span></label>
   <input type="range" id="tbLineHeight" min="0.8" max="2.5" step="0.05" value="1.25" oninput="setTbLineHeight(this.value)">
 
-  <label>🔤 Шрифт текста плашки</label>
-  <select id="tbFontFamily" onchange="setTbFontFamily(this.value)">
-    <option value="">Как основной текст</option>
-  </select>
+  <div class="tb-font-row">
+    <label>🔤 Шрифт текста плашки</label>
+    <select id="tbFontFamily" onchange="setTbFontFamily(this.value)">
+      <option value="">Как основной текст</option>
+    </select>
+  </div>
 
   <label>🎨 Цвет фона плашки</label>
   <input type="color" id="tbBgColor" value="#000000" oninput="setTbBgColor(this.value)">
