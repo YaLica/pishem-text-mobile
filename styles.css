@@ -460,6 +460,26 @@ transition: left 0.3s ease;
 }
 /* iPhone: разрешить курсор внутрь слова */
 #editor { word-break: break-word; }
+
+  /* Тулбар и шрифты плашки не нужны на мобайле — есть quickBar */
+  #tbSettings .tb-toolbar { display: none !important; }
+  #tbSettings label[for="tbFontFamily"],
+  #tbSettings label + select#tbFontFamily,
+  #tbSettings select#tbFontFamily { display: none !important; }
+  /* Также скрываем label перед select#tbFontFamily */
+  #tbSettings .pb-block select#tbFontFamily,
+  #tbSettings .pb-block select#tbFontFamily + *,
+  select#tbFontFamily { display: none !important; }
+
+  /* === Мобайл: убираем тулбар и шрифты из блока плашки в шторке ===
+     На телефоне для этих функций используется quickBar — дублировать не нужно. */
+  #tbSettings .tb-toolbar,
+  #tbSettings .tb-toolbar + label,
+  #tbSettings select#tbFontFamily { display: none !important; }
+  /* Скрываем label «Шрифт текста плашки» (предшествует select#tbFontFamily).
+     CSS не умеет предшествующий селектор, поэтому используем :has() */
+  #tbSettings label:has(+ select#tbFontFamily) { display: none !important; }
+
 }
 
 #quickBar {
