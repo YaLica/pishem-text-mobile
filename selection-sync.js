@@ -25,7 +25,10 @@
     { id: 'tbFontSize',     labelId: 'tbFontSizeLabel'   },
   ];
 
-  var COLOR_FIELDS = [
+  /* На компьютере индикаторы цвета остаются синхронизированными.
+     На телефоне не переписываем value у системных color-input:
+     это конфликтует с мобильной палитрой и повторным применением цвета. */
+  var COLOR_FIELDS = (typeof isMobile === 'function' && isMobile()) ? [] : [
     { id: 'wordColor'   },
     { id: 'qbWordColor' },
     { id: 'tbWordColor' },
@@ -115,7 +118,11 @@
   document.addEventListener('mouseup',   schedule);
   document.addEventListener('touchend',  schedule);
   document.addEventListener('keyup',     schedule);
-  document.addEventListener('input', function () { setTimeout(schedule, 50); });
+  /* На телефоне не слушаем input: это событие приходит от color-picker.
+     На компьютере сохраняем прежнюю синхронизацию после форматирования. */
+  if (!(typeof isMobile === 'function' && isMobile())) {
+    document.addEventListener('input', function () { setTimeout(schedule, 50); });
+  }
 
   /* Публичный вызов после программного форматирования */
   window.syncSelectionUI = sync;
