@@ -148,7 +148,10 @@
     var panel = buildPanel(panelId, panelTitle);
 
     function intercept(e) {
-      if (!mobile()) return;  /* на компе нативный select остаётся */
+      /* Реагируем только на наш select */
+      if (e.target !== selEl && !selEl.contains(e.target)) return;
+      if (!mobile()) return;
+
       e.preventDefault();
       e.stopPropagation();
 
@@ -160,11 +163,16 @@
       }
 
       hideAll();
-      show(panel, getOptions(selEl), callback);
+      /* Открываем через setTimeout, чтобы panel-fixes успел отработать keepSelected()
+         и восстановить currentTextBox — иначе шрифт применится не туда */
+      var opts = getOptions(selEl);
+      setTimeout(function () { show(panel, opts, callback); }, 20);
     }
 
-    selEl.addEventListener('touchstart', intercept, { passive: false });
-    selEl.addEventListener('mousedown', intercept);
+    /* Вешаем на document в capture-фазе — это гарантирует срабатывание
+       до любого обработчика на panel или select, включая panel-fixes.js */
+    document.addEventListener('touchstart', intercept, { capture: true, passive: false });
+    document.addEventListener('mousedown', intercept, true);
   }
 
   function init() {
