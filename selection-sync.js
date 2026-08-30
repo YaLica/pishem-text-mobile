@@ -1,67 +1,122 @@
-/* selection-sync.js — только размер шрифта, цвет не трогаем.
+/* selection-sync.js
  *
- * Синхронизирует fontSize выделенного (или подкурсорного) текста
- * с ползунками baseFontSlider и tbFontSize + их метками.
+ * Синхронизирует размер и цвет выделенного (или подкурсорного) текста
+ * с числовыми полями и color-input'ами во всех панелях:
  *
- * Цвет намеренно НЕ синхронизируется: это ломает color picker
- * потому что 'touchend' при закрытии палитры вызывает sync(),
- * которая перезаписывает el.value обратно на старый цвет.
+ *   Размер → baseFontSlider / baseFontSizeLabel  (основной текст, шторка)
+ *            tbFontSize / tbFontSizeLabel          (плашка, шторка)
  *
- * Только мобайл и компьютер — работает одинаково.
- * Подключать последним.
+ *   Цвет  → wordColor          (тулбар в шторке)
+ *            qbWordColor        (quickBar)
+ *            tbWordColor        (тулбар плашки)
+ *
+ * Слушает selectionchange, mouseup, touchend, keyup.
+ * Не изменяет DOM и не трогает обработчики — только читает и обновляет UI.
+ * Работает одинаково на компьютере и на телефоне.
+ *
+ * Подключать после всех остальных скриптов.
  */
 (function () {
   'use strict';
 
+  /* ── конфигурация полей ─────────────────────────────────────────── */
   var SIZE_FIELDS = [
     { id: 'baseFontSlider', labelId: 'baseFontSizeLabel' },
     { id: 'tbFontSize',     labelId: 'tbFontSizeLabel'   },
   ];
 
+  var COLOR_FIELDS = [
+    { id: 'wordColor'   },
+    { id: 'qbWordColor' },
+    { id: 'tbWordColor' },
+  ];
+
+  /* ── получить узел под курсором или в начале выделения ──────────── */
   function getAnchorNode() {
     var sel = window.getSelection();
     if (sel && sel.rangeCount) {
-      var n = sel.getRangeAt(0).startContainer;
-      return n.nodeType === 3 ? n.parentElement : n;
+      var node = sel.getRangeAt(0).startContainer;
+      return node.nodeType === 3 ? node.parentElement : node;
     }
     var a = document.activeElement;
     return (a && a.isContentEditable) ? a : null;
   }
 
+  /* ── проверяем, что узел внутри редактируемой области ───────────── */
   function isEditable(node) {
     if (!node) return false;
-    var ed = document.getElementById('editor');
-    if (ed && ed.contains(node)) return true;
+    var editor = document.getElementById('editor');
+    if (editor && editor.contains(node)) return true;
     return !!(node.closest && node.closest('.text-box'));
   }
 
+  /* ── читаем fontSize в px → целое ──────────────────────────────── */
+  function readSize(node) {
+    var px = parseFloat(window.getComputedStyle(node).fontSize);
+    return isNaN(px) ? null : Math.round(px);
+  }
+
+  /* ── читаем color → hex ─────────────────────────────────────────── */
+  function readColor(node) {
+    var raw = window.getComputedStyle(node).color;
+    var m = raw.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+    if (!m) return null;
+    return '#' + [m[1], m[2], m[3]].map(function (v) {
+      return ('0' + parseInt(v, 10).toString(16)).slice(-2);
+    }).join('');
+  }
+
+  /* ── обновить поле (range или number) ───────────────────────────── */
+  function setField(id, val) {
+    var el = document.getElementById(id);
+    if (!el || document.activeElement === el) return;
+    if (Math.abs(parseFloat(el.value) - val) < 0.5) return;
+    el.value = val;
+  }
+
+  function setLabel(id, text) {
+    if (!id) return;
+    var el = document.getElementById(id);
+    if (el && el.textContent !== String(text)) el.textContent = text;
+  }
+
+  function setColor(id, hex) {
+    var el = document.getElementById(id);
+    if (!el || document.activeElement === el) return;
+    if (el.value === hex) return;
+    el.value = hex;
+  }
+
+  /* ── основная синхронизация ─────────────────────────────────────── */
   function sync() {
     var node = getAnchorNode();
     if (!isEditable(node)) return;
-    var px = parseFloat(window.getComputedStyle(node).fontSize);
-    if (isNaN(px)) return;
-    var size = Math.round(px);
-    SIZE_FIELDS.forEach(function (f) {
-      var el = document.getElementById(f.id);
-      if (el && document.activeElement !== el &&
-          Math.abs(parseFloat(el.value) - size) >= 0.5) {
-        el.value = size;
-      }
-      var lbl = f.labelId && document.getElementById(f.labelId);
-      if (lbl && lbl.textContent !== String(size)) lbl.textContent = size;
-    });
+
+    var size  = readSize(node);
+    var color = readColor(node);
+
+    if (size !== null) {
+      SIZE_FIELDS.forEach(function (f) { setField(f.id, size); setLabel(f.labelId, size); });
+    }
+    if (color !== null) {
+      COLOR_FIELDS.forEach(function (f) { setColor(f.id, color); });
+    }
   }
 
+  /* ── дебаунс через RAF — не чаще одного раза за кадр ───────────── */
   var _raf = null;
   function schedule() {
     if (_raf) return;
     _raf = requestAnimationFrame(function () { _raf = null; sync(); });
   }
 
+  /* ── подписки ───────────────────────────────────────────────────── */
   document.addEventListener('selectionchange', schedule);
-  document.addEventListener('mouseup', schedule);
-  document.addEventListener('touchend', schedule);
-  document.addEventListener('keyup', schedule);
+  document.addEventListener('mouseup',   schedule);
+  document.addEventListener('touchend',  schedule);
+  document.addEventListener('keyup',     schedule);
+  document.addEventListener('input', function () { setTimeout(schedule, 50); });
 
+  /* Публичный вызов после программного форматирования */
   window.syncSelectionUI = sync;
 })();
