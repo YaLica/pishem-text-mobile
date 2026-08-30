@@ -25,11 +25,7 @@
     { id: 'tbFontSize',     labelId: 'tbFontSizeLabel'   },
   ];
 
-  var COLOR_FIELDS = [
-    { id: 'wordColor'   },
-    { id: 'qbWordColor' },
-    { id: 'tbWordColor' },
-  ];
+  var COLOR_FIELDS = []; // Синхронизация цвета отключена — мешает color picker
 
   /* ── получить узел под курсором или в начале выделения ──────────── */
   function getAnchorNode() {
@@ -115,7 +111,7 @@
   document.addEventListener('mouseup',   schedule);
   document.addEventListener('touchend',  schedule);
   document.addEventListener('keyup',     schedule);
-  document.addEventListener('input', function () { setTimeout(schedule, 50); });
+  // 'input' не слушаем — иначе sync() срабатывает во время работы color picker
 
   /* Публичный вызов после программного форматирования */
   window.syncSelectionUI = sync;
