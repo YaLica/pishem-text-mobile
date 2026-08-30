@@ -442,6 +442,29 @@ transition: left 0.3s ease;
   
 /* iPhone: разрешить курсор внутрь слова */
 #editor { word-break: break-word; }
+
+  /* ===== ПЛАШКА НА ТЕЛЕФОНЕ (только мобайл, компьютер не затрагивается) =====
+
+     1. Выделение текста. На .text-box стоит user-select: none — на компьютере
+        он нужен, чтобы перетаскивание мышью не выделяло текст. Пальцем тянут
+        за ручки, а запрет мешал растянуть выделение дальше одного слова. */
+  .text-box { -webkit-user-select: text; user-select: text; }
+  .text-box .tb-content,
+  .text-box .tb-content *:not(img) {
+    -webkit-user-select: text; user-select: text;
+    -webkit-touch-callout: default;
+  }
+  /* Пока тянем ручку — выделения быть не должно. */
+  .text-box.tb-busy,
+  .text-box.tb-busy *:not(img) {
+    -webkit-user-select: none !important; user-select: none !important;
+  }
+
+  /* 2. Тулбар и выбор шрифта плашки не нужны в шторке: текстом управляет
+        quickBar. Размер, интервал, цвет, прозрачность, картинка и подложка
+        остаются на месте. */
+  #tbSettings .tb-toolbar { display: none !important; }
+  #tbSettings .tb-font-row { display: none !important; }
 }
 
 #quickBar {
