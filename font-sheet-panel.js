@@ -71,6 +71,10 @@
     document.addEventListener('click', function (e) {
       if (!sheet.classList.contains('open')) return;
       if (e.target.closest && e.target.closest('#' + panelId)) return;
+      /* После touchstart мобильный браузер посылает click по тому же select.
+         Это не внешний клик: иначе панель откроется и тут же закроется. */
+      if (sheet._fontTrigger &&
+          (e.target === sheet._fontTrigger || sheet._fontTrigger.contains(e.target))) return;
       hide(sheet);
     });
     document.addEventListener('keydown', function (e) {
@@ -146,6 +150,7 @@
   function attachToSelect(selEl, panelId, panelTitle, callback, needsFreeze) {
     if (!selEl) return;
     var panel = buildPanel(panelId, panelTitle);
+    panel._fontTrigger = selEl;
 
     function intercept(e) {
       if (!mobile()) return;  /* на компе нативный select остаётся */
