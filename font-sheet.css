@@ -3,7 +3,10 @@
  * чтобы сразу оценить, как ляжет шрифт.
  */
 
-#fontSheet {
+#fontSheet,
+#fsPanelMain,
+#fsPanelWord,
+#fsPanelTb {
   position: fixed;
   left: 8px;
   right: 8px;
@@ -20,9 +23,10 @@
   overflow: hidden;
 }
 
-#fontSheet.open { display: flex; }
-#fsPanelMain, #fsPanelWord, #fsPanelTb { display: none; }
-#fsPanelMain.open, #fsPanelWord.open, #fsPanelTb.open { display: flex; }
+#fontSheet.open,
+#fsPanelMain.open,
+#fsPanelWord.open,
+#fsPanelTb.open { display: flex; }
 
 .fs-head {
   display: flex;
@@ -84,5 +88,8 @@
 
 /* На компьютере системный список удобнее — свой не показываем. */
 @media (min-width: 821px) {
-  #fontSheet { display: none !important; }
+  #fontSheet,
+  #fsPanelMain,
+  #fsPanelWord,
+  #fsPanelTb { display: none !important; }
 }
