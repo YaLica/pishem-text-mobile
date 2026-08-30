@@ -133,7 +133,26 @@ function saveSelectionBeforeAction() {
   if (!sel || !sel.rangeCount) return;
   const range = sel.getRangeAt(0);
   const inEditor = rangeInside(editor, range);
-  const inBox = typeof currentTextBox !== 'undefined' && currentTextBox && rangeInside(currentTextBox, range);
+  let inBox = typeof currentTextBox !== 'undefined' && currentTextBox && rangeInside(currentTextBox, range);
+
+  // Плашка лежит в #export-node, а не в #editor, поэтому inEditor для неё всегда
+  // false. Раньше выделение внутри плашки сохранялось только если currentTextBox
+  // уже указывала на эту же плашку. На телефоне порядок событий обратный:
+  // выделение пальцем возникает раньше, чем click успевает выставить привязку,
+  // и выделение терялось целиком. Отсюда неработающие Ж, К, Ч и цвет,
+  // меняющийся ровно один раз. Ветка только добавляет ранее терявшиеся случаи:
+  // если inBox уже true (компьютер), она не выполняется.
+  if (!inEditor && !inBox) {
+    const anchor = range.commonAncestorContainer;
+    const el = (anchor && anchor.nodeType === Node.TEXT_NODE) ? anchor.parentElement : anchor;
+    const box = (el && el.closest) ? el.closest('.text-box') : null;
+    if (box) {
+      const field = box.querySelector('.tb-content') || box;
+      if (typeof window.setCurrentTextBox === 'function') window.setCurrentTextBox(field);
+      inBox = true;
+    }
+  }
+
   if (!inEditor && !inBox) return;
   savedSelection = range.cloneRange();
   // Осознанное выделение запоминаем, схлопнутой точкой его не перебиваем.
