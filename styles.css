@@ -246,30 +246,46 @@ font-weight: 400;
 }
 .text-box.selected .tb-rotate { display: flex; }
 
-.text-box .tb-reset-rot,
-.text-box .tb-90-rot {
-  position: absolute;
-  bottom: -44px;
-  width: 34px; height: 34px;
-  border-radius: 50%;
-  background: rgba(239, 68, 68, 0.92);
-  color: #fff;
-  border: 2px solid rgba(255,255,255,0.85);
-  font-size: 18px;
-  line-height: 30px;
-  text-align: center;
-  cursor: pointer;
-  z-index: 32;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.35);
-  touch-action: manipulation;
-  user-select: none; -webkit-user-select: none;
-  pointer-events: auto;
-  padding: 0;
+/* Дополнительные кнопки поворота — только телефон. */
+@media (max-width: 820px) {
+  .text-box .tb-reset-rot,
+  .text-box .tb-90-rot {
+    position: absolute;
+    bottom: -44px;
+    height: 34px;
+    border-radius: 18px;
+    background: rgba(239, 68, 68, 0.94);
+    color: #fff;
+    border: 2px solid rgba(255,255,255,0.85);
+    text-align: center;
+    cursor: pointer;
+    z-index: 32;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+    touch-action: manipulation;
+    user-select: none; -webkit-user-select: none;
+    pointer-events: auto;
+    padding: 0;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .text-box .tb-reset-rot {
+    left: calc(50% - 50px);
+    width: 38px;
+    font-size: 21px;
+    line-height: 30px;
+  }
+  .text-box .tb-90-rot {
+    left: calc(50% - 6px);
+    width: 62px;
+    font-size: 13px;
+    line-height: 30px;
+  }
+  .text-box .tb-reset-rot:active,
+  .text-box .tb-90-rot:active {
+    background: rgba(220,38,38,1);
+    transform: scale(0.93);
+  }
 }
-.text-box .tb-reset-rot { left: calc(50% - 42px); }
-.text-box .tb-90-rot   { left: calc(50% + 8px); }
-.text-box .tb-reset-rot:active { background: rgba(220,38,38,1); transform: scale(0.93); }
-.text-box .tb-90-rot:active   { background: rgba(220,38,38,1); transform: scale(0.93); }
 
 #imgMiniBar {
   position: fixed; z-index: 5000; display: none;
