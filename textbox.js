@@ -531,8 +531,8 @@ function ensureDragFrame(box) {
     const rot90Btn = document.createElement('button');
     rot90Btn.className = 'tb-90-rot';
     rot90Btn.type = 'button';
-    rot90Btn.textContent = '↶ 90°';
-    rot90Btn.title = 'Повернуть на 90°';
+    rot90Btn.textContent = '90°';
+    rot90Btn.title = 'Повернуть влево на 90°';
     rot90Btn.style.display = 'none';
     rot90Btn.addEventListener('click', function(e) {
       e.stopPropagation();
@@ -984,12 +984,30 @@ function bindTextBoxMobile(box, content) {
   box.addEventListener('click', function (e) {
     if (e.target.closest('.tb-handle') || e.target.closest('.tb-delete') ||
         e.target.closest('.tb-resize') || e.target.closest('.tb-rotate') ||
-        e.target.closest('.tb-copy')   || e.target.closest('.tb-edge')) return;
+        e.target.closest('.tb-copy')   || e.target.closest('.tb-edge') ||
+        e.target.closest('.tb-reset-rot') || e.target.closest('.tb-90-rot')) return;
     e.stopPropagation();
     selectTextBox(box);
   });
 
   ensureDragFrame(box);
+  // Зелёная рамка — вторая зона захвата: у неё четыре невидимых,
+  // но широких для пальца ребра. Текст в центре рамки не перехватывается.
+  const frame = box.querySelector('.tb-drag-frame');
+  if (frame && !frame.dataset.tbmobdrag) {
+    frame.dataset.tbmobdrag = '1';
+    frame.querySelectorAll('.tb-edge').forEach(function(edge) {
+      tbMobHandle(edge, box, function (sx, sy) {
+        const ox = box.offsetLeft, oy = box.offsetTop;
+        return function (x, y) {
+          const z = (typeof currentZoom === 'number' && currentZoom > 0) ? currentZoom : 1;
+          box.style.left = (ox + (x - sx) / z) + 'px';
+          box.style.top  = (oy + (y - sy) / z) + 'px';
+        };
+      });
+    });
+  }
+
   tbMobDrag(box);
   tbMobResize(box);
   tbMobRotate(box);
@@ -1038,18 +1056,11 @@ function tbMobDrag(box) {
     const ox = box.offsetLeft, oy = box.offsetTop;
     return function (x, y) {
       const z = (typeof currentZoom === 'number' && currentZoom > 0) ? currentZoom : 1;
-      // transform: rotate() меняет только вид плашки. left/top всегда идут
-      // по осям холста, поэтому плашка должна брать прямую дельту пальца.
-      let nl = ox + (x - sx) / z;
-      let nt = oy + (y - sy) / z;
-      const maxL = exportNode.clientWidth  - box.offsetWidth;
-      const maxT = exportNode.clientHeight - box.offsetHeight;
-      if (nl < 0) nl = 0;
-      if (nt < 0) nt = 0;
-      if (nl > maxL) nl = maxL;
-      if (nt > maxT) nt = maxT;
-      box.style.left = nl + 'px';
-      box.style.top  = nt + 'px';
+      // left/top принадлежат холсту, а не визуально повёрнутой плашке.
+      // Никаких поправок на угол и никаких границ: плашку можно поставить
+      // вплотную к любому краю, а ручки остаются только интерфейсом поверх неё.
+      box.style.left = (ox + (x - sx) / z) + 'px';
+      box.style.top  = (oy + (y - sy) / z) + 'px';
     };
   });
 }
