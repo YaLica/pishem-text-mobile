@@ -265,6 +265,7 @@ function buildExportClone() {
   // Убираем всё служебное: рамки, ручки, кнопки, выделение.
   clone.querySelectorAll(
     '.tb-drag-frame, .tb-handle, .tb-copy, .tb-delete, .tb-resize, .tb-rotate,' +
+    '.tb-edge, .tb-img-grip, .tb-reset-rot, .tb-90-rot,' +
     '.img-resizer, .img-rotate-handle, #snapGuideV, #snapGuideH'
   ).forEach(el => el.remove());
   clone.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
@@ -351,7 +352,8 @@ async function exportNativeCanvas() {
 }
 
 function exportFallbackCanvas() {
-  return html2canvas(exportNode, {
+  exportNode.classList.add('exporting');
+  const result = html2canvas(exportNode, {
     backgroundColor: null,
     scale: EXPORT_SCALE,
     useCORS: true,
@@ -362,6 +364,9 @@ function exportFallbackCanvas() {
     scrollY: 0,
     x: 0,
     y: 0
+  });
+  return Promise.resolve(result).finally(function () {
+    exportNode.classList.remove('exporting');
   });
 }
 

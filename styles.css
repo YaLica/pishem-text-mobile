@@ -245,6 +245,26 @@ font-weight: 400;
   pointer-events: auto;
 }
 .text-box.selected .tb-rotate { display: flex; }
+.text-box:not(.selected) .tb-reset-rot,
+.text-box:not(.selected) .tb-90-rot { display: none !important; }
+
+
+/* Кнопки поворота плашки на компьютере: те же две функции, что на телефоне. */
+@media (min-width: 821px) {
+  .text-box .tb-reset-rot,
+  .text-box .tb-90-rot {
+    position: absolute; bottom: -40px; height: 30px;
+    border-radius: 15px; background: rgba(239, 68, 68, 0.94); color: #fff;
+    border: 2px solid rgba(255,255,255,0.85); text-align: center;
+    cursor: pointer; z-index: 32; box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+    touch-action: manipulation; user-select: none; pointer-events: auto;
+    padding: 0; font-weight: 700; white-space: nowrap; line-height: 26px;
+  }
+  .text-box .tb-reset-rot { left: calc(50% - 40px); width: 32px; font-size: 18px; }
+  .text-box .tb-90-rot { left: calc(50% + 5px); width: 38px; font-size: 13px; }
+  .text-box .tb-reset-rot:active,
+  .text-box .tb-90-rot:active { background: rgba(220,38,38,1); transform: scale(0.93); }
+}
 
 /* Дополнительные кнопки поворота — только телефон. */
 @media (max-width: 820px) {
@@ -608,3 +628,10 @@ cursor: pointer; overflow: hidden;
 .snap-guide.visible { opacity: 0.9; }
 .snap-guide.vertical { width: 2px; top: 0; bottom: 0; }
 .snap-guide.horizontal { height: 2px; left: 0; right: 0; }
+
+
+/* Редакторские кнопки и ручки никогда не попадают в PNG. */
+.exporting .tb-handle, .exporting .tb-copy, .exporting .tb-delete,
+.exporting .tb-resize, .exporting .tb-rotate, .exporting .tb-drag-frame,
+.exporting .tb-edge, .exporting .tb-img-grip,
+.exporting .tb-reset-rot, .exporting .tb-90-rot { display: none !important; }

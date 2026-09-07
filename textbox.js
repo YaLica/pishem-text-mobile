@@ -412,7 +412,8 @@ function bindTextBox(box) {
   }
 
   box.addEventListener('click', function(e){
-    if (e.target.closest('.tb-edge') || e.target.closest('.tb-handle') || e.target.closest('.tb-delete') || e.target.closest('.tb-resize')) return;
+    if (e.target.closest('.tb-edge') || e.target.closest('.tb-handle') || e.target.closest('.tb-delete') || e.target.closest('.tb-resize') ||
+        e.target.closest('.tb-rotate') || e.target.closest('.tb-reset-rot') || e.target.closest('.tb-90-rot')) return;
     e.stopPropagation();
     selectTextBox(box);
     if (content) content.focus();
@@ -431,6 +432,7 @@ function bindTextBox(box) {
   makeTextBoxRotatable(box);
   applyTbTypography(box);
   applyTbRotation(box);
+  updateRotationButtons(box);
   rebindTbImages();
 }
 
@@ -504,7 +506,7 @@ function ensureDragFrame(box) {
     rot.title = 'Вращать плашку';
     box.appendChild(rot);
   }
-  if (isMobile() && !box.querySelector('.tb-reset-rot')) {
+  if (!box.querySelector('.tb-reset-rot')) {
     const resetBtn = document.createElement('button');
     resetBtn.className = 'tb-reset-rot';
     resetBtn.type = 'button';
@@ -527,7 +529,7 @@ function ensureDragFrame(box) {
     }, { passive: false });
     box.appendChild(resetBtn);
   }
-  if (isMobile() && !box.querySelector('.tb-90-rot')) {
+  if (!box.querySelector('.tb-90-rot')) {
     const rot90Btn = document.createElement('button');
     rot90Btn.className = 'tb-90-rot';
     rot90Btn.type = 'button';
@@ -936,6 +938,7 @@ function makeTextBoxRotatable(box) {
       const angle = Math.atan2(t.clientY - cy, t.clientX - cx) * 180 / Math.PI + 90;
       box.dataset.rot = angle;
       applyTbRotation(box);
+      updateRotationButtons(box);
     }
 
     function onEnd() {
@@ -958,8 +961,12 @@ function makeTextBoxRotatable(box) {
 
 function selectTextBox(box) {
   editor.querySelectorAll('.img-box').forEach(function(b){ b.classList.remove('selected'); });
-  document.querySelectorAll('.text-box').forEach(function(b){ b.classList.remove('selected'); });
+  document.querySelectorAll('.text-box').forEach(function(b){
+    b.classList.remove('selected');
+    updateRotationButtons(b);
+  });
   box.classList.add('selected');
+  updateRotationButtons(box);
   currentTextBox = box.querySelector('.tb-content') || box;
   currentImgBox = null;
   syncTbSettings();
