@@ -760,13 +760,8 @@ function makeTextBoxDraggable(box) {
         let newLeft = origLeft + dx / z;
         let newTop = origTop + dy / z;
 
-        const maxLeft = exportNode.clientWidth - box.offsetWidth;
-        const maxTop = exportNode.clientHeight - box.offsetHeight;
-
-        if (newLeft < 0) newLeft = 0;
-        if (newTop < 0) newTop = 0;
-        if (newLeft > maxLeft) newLeft = maxLeft;
-        if (newTop > maxTop) newTop = maxTop;
+        // Плашка и все её ручки могут выходить за края холста.
+        // Это позволяет ставить повёрнутую плашку вплотную к любому краю.
 
                 // === ПРИВЯЗКА К ЦЕНТРУ ХОЛСТА (Путь А) ===
         const canvasCX = exportNode.clientWidth / 2;
