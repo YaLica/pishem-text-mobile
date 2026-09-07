@@ -504,7 +504,7 @@ function ensureDragFrame(box) {
     rot.title = 'Вращать плашку';
     box.appendChild(rot);
   }
-  if (!box.querySelector('.tb-reset-rot')) {
+  if (isMobile() && !box.querySelector('.tb-reset-rot')) {
     const resetBtn = document.createElement('button');
     resetBtn.className = 'tb-reset-rot';
     resetBtn.type = 'button';
@@ -527,17 +527,17 @@ function ensureDragFrame(box) {
     }, { passive: false });
     box.appendChild(resetBtn);
   }
-  if (!box.querySelector('.tb-90-rot')) {
+  if (isMobile() && !box.querySelector('.tb-90-rot')) {
     const rot90Btn = document.createElement('button');
     rot90Btn.className = 'tb-90-rot';
     rot90Btn.type = 'button';
-    rot90Btn.textContent = '⤳';
+    rot90Btn.textContent = '↶ 90°';
     rot90Btn.title = 'Повернуть на 90°';
     rot90Btn.style.display = 'none';
     rot90Btn.addEventListener('click', function(e) {
       e.stopPropagation();
       const cur = parseFloat(box.dataset.rot || '0');
-      box.dataset.rot = String((Math.round(cur / 90) * 90 + 90) % 360);
+      box.dataset.rot = String(Math.round(cur / 90) * 90 - 90);
       applyTbRotation(box);
       updateRotationButtons(box);
       saveHistory();
@@ -545,7 +545,7 @@ function ensureDragFrame(box) {
     rot90Btn.addEventListener('touchstart', function(e) {
       e.stopPropagation(); e.preventDefault();
       const cur = parseFloat(box.dataset.rot || '0');
-      box.dataset.rot = String((Math.round(cur / 90) * 90 + 90) % 360);
+      box.dataset.rot = String(Math.round(cur / 90) * 90 - 90);
       applyTbRotation(box);
       updateRotationButtons(box);
       saveHistory();
@@ -995,9 +995,9 @@ function bindTextBoxMobile(box, content) {
   tbMobRotate(box);
   applyTbTypography(box);
   applyTbRotation(box);
+  updateRotationButtons(box);
   rebindTbImages();
 }
-
 /* Общая обвязка ручек: гасим прокрутку и всплытие, выделяем плашку,
    дальше отдаём управление шагу конкретной ручки. */
 function tbMobHandle(el, box, onStart) {
@@ -1036,15 +1036,12 @@ function tbMobHandle(el, box, onStart) {
 function tbMobDrag(box) {
   tbMobHandle(box.querySelector('.tb-handle'), box, function (sx, sy) {
     const ox = box.offsetLeft, oy = box.offsetTop;
-    const angle = parseFloat(box.dataset.rot || '0') * Math.PI / 180;
     return function (x, y) {
       const z = (typeof currentZoom === 'number' && currentZoom > 0) ? currentZoom : 1;
-      const dx = (x - sx) / z;
-      const dy = (y - sy) / z;
-      const cos = Math.cos(-angle);
-      const sin = Math.sin(-angle);
-      let nl = ox + dx * cos - dy * sin;
-      let nt = oy + dx * sin + dy * cos;
+      // transform: rotate() меняет только вид плашки. left/top всегда идут
+      // по осям холста, поэтому плашка должна брать прямую дельту пальца.
+      let nl = ox + (x - sx) / z;
+      let nt = oy + (y - sy) / z;
       const maxL = exportNode.clientWidth  - box.offsetWidth;
       const maxT = exportNode.clientHeight - box.offsetHeight;
       if (nl < 0) nl = 0;
