@@ -504,6 +504,54 @@ function ensureDragFrame(box) {
     rot.title = 'Вращать плашку';
     box.appendChild(rot);
   }
+  if (!box.querySelector('.tb-reset-rot')) {
+    const resetBtn = document.createElement('button');
+    resetBtn.className = 'tb-reset-rot';
+    resetBtn.type = 'button';
+    resetBtn.textContent = '↺';
+    resetBtn.title = 'Сбросить поворот';
+    resetBtn.style.display = 'none';
+    resetBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      box.dataset.rot = '0';
+      applyTbRotation(box);
+      updateRotationButtons(box);
+      saveHistory();
+    });
+    resetBtn.addEventListener('touchstart', function(e) {
+      e.stopPropagation(); e.preventDefault();
+      box.dataset.rot = '0';
+      applyTbRotation(box);
+      updateRotationButtons(box);
+      saveHistory();
+    }, { passive: false });
+    box.appendChild(resetBtn);
+  }
+  if (!box.querySelector('.tb-90-rot')) {
+    const rot90Btn = document.createElement('button');
+    rot90Btn.className = 'tb-90-rot';
+    rot90Btn.type = 'button';
+    rot90Btn.textContent = '⤳';
+    rot90Btn.title = 'Повернуть на 90°';
+    rot90Btn.style.display = 'none';
+    rot90Btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const cur = parseFloat(box.dataset.rot || '0');
+      box.dataset.rot = String((Math.round(cur / 90) * 90 + 90) % 360);
+      applyTbRotation(box);
+      updateRotationButtons(box);
+      saveHistory();
+    });
+    rot90Btn.addEventListener('touchstart', function(e) {
+      e.stopPropagation(); e.preventDefault();
+      const cur = parseFloat(box.dataset.rot || '0');
+      box.dataset.rot = String((Math.round(cur / 90) * 90 + 90) % 360);
+      applyTbRotation(box);
+      updateRotationButtons(box);
+      saveHistory();
+    }, { passive: false });
+    box.appendChild(rot90Btn);
+  }
 }
 
 function deleteTextBox(box) {
@@ -859,6 +907,16 @@ function applyTbRotation(box) {
   box.style.transformOrigin = 'center center';
 }
 
+function updateRotationButtons(box) {
+  if (!box) return;
+  const angle = parseFloat(box.dataset.rot || '0');
+  const reset = box.querySelector('.tb-reset-rot');
+  const rot90 = box.querySelector('.tb-90-rot');
+  const visible = Math.abs(angle) >= 0.1;
+  if (reset) reset.style.display = visible ? 'block' : 'none';
+  if (rot90)  rot90.style.display  = visible ? 'block' : 'none';
+}
+
 function makeTextBoxRotatable(box) {
   const handle = box.querySelector('.tb-rotate');
   if (!handle) return;
@@ -978,10 +1036,15 @@ function tbMobHandle(el, box, onStart) {
 function tbMobDrag(box) {
   tbMobHandle(box.querySelector('.tb-handle'), box, function (sx, sy) {
     const ox = box.offsetLeft, oy = box.offsetTop;
+    const angle = parseFloat(box.dataset.rot || '0') * Math.PI / 180;
     return function (x, y) {
       const z = (typeof currentZoom === 'number' && currentZoom > 0) ? currentZoom : 1;
-      let nl = ox + (x - sx) / z;
-      let nt = oy + (y - sy) / z;
+      const dx = (x - sx) / z;
+      const dy = (y - sy) / z;
+      const cos = Math.cos(-angle);
+      const sin = Math.sin(-angle);
+      let nl = ox + dx * cos - dy * sin;
+      let nt = oy + dx * sin + dy * cos;
       const maxL = exportNode.clientWidth  - box.offsetWidth;
       const maxT = exportNode.clientHeight - box.offsetHeight;
       if (nl < 0) nl = 0;
@@ -1021,6 +1084,7 @@ function tbMobRotate(box) {
     return function (x, y) {
       box.dataset.rot = Math.atan2(y - cy, x - cx) * 180 / Math.PI + 90;
       applyTbRotation(box);
+      updateRotationButtons(box);
     };
   });
 }
