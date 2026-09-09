@@ -83,6 +83,16 @@
     if (sizeEl) sizeEl.textContent = w + ' × ' + h;
     var valEl = document.getElementById('ratioValue');
     if (valEl) valEl.textContent = r.ratio.toFixed(2);
+
+    // Полоску (ratioFill) красит своей логикой оригинальный updateRatio() —
+    // он всегда красит её в зелёный, потому что не знает про новые пороги.
+    // Красим поверх, сразу после оригинала, чтобы полоска совпадала со
+    // статусом, а не только заголовок с кружком.
+    var fillEl = document.getElementById('ratioFill');
+    if (fillEl) {
+      var color = (r.cls === 'ok') ? '#4ade80' : (r.cls === 'warn') ? '#facc15' : '#ef4444';
+      fillEl.style.background = color;
+    }
   }
 
   ready(function () {
