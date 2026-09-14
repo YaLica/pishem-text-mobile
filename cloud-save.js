@@ -28,6 +28,7 @@
 
   var currentUser = null;
   var currentWorkId = null;
+  var currentWorkTitle = null;
 
   function ready(fn) {
     if (document.readyState === 'loading') {
@@ -312,25 +313,55 @@
     api('/api/auth/logout', { method: 'POST' }).finally(function () {
       currentUser = null;
       currentWorkId = null;
+      currentWorkTitle = null;
       renderAuthState();
+    });
+  }
+
+  /* Автонумерация: "14.09.2026-1", "14.09.2026-2" и т.д. — считаем, сколько
+     постов с сегодняшней датой в названии уже есть, и предлагаем следующий
+     номер. Если пользователь ничего не поменяет в окошке — так и сохранится
+     с этим именем; если впишет своё — сохранится своё. */
+  function nextAutoTitle() {
+    var dateStr = new Date().toLocaleDateString('ru-RU');
+    return api('/api/works').then(function (data) {
+      var works = data.works || [];
+      var count = works.filter(function (w) {
+        return (w.title || '').indexOf(dateStr) === 0;
+      }).length;
+      return dateStr + '-' + (count + 1);
+    }).catch(function () {
+      return dateStr + '-1';
     });
   }
 
   function saveWork(update) {
     var data = captureSnapshot();
-    var title = prompt('Название поста:', 'Пост от ' + new Date().toLocaleDateString());
-    if (title === null) return;
 
-    var path = update && currentWorkId ? ('/api/works/' + currentWorkId) : '/api/works';
-    var method = update && currentWorkId ? 'PUT' : 'POST';
+    function proceed(defaultTitle) {
+      var title = prompt('Название поста:', defaultTitle);
+      if (title === null) return;
 
-    api(path, { method: method, body: JSON.stringify({ title: title, data: data }) })
-      .then(function (res) {
-        currentWorkId = res.id;
-        renderAuthState();
-        showStatus('Сохранено: ' + res.title);
-      })
-      .catch(function (err) { showStatus(err.message, true); });
+      var path = update && currentWorkId ? ('/api/works/' + currentWorkId) : '/api/works';
+      var method = update && currentWorkId ? 'PUT' : 'POST';
+
+      api(path, { method: method, body: JSON.stringify({ title: title, data: data }) })
+        .then(function (res) {
+          currentWorkId = res.id;
+          currentWorkTitle = res.title;
+          renderAuthState();
+          showStatus('Сохранено: ' + res.title);
+        })
+        .catch(function (err) { showStatus(err.message, true); });
+    }
+
+    if (update && currentWorkId) {
+      // Обновление существующего поста — по умолчанию оставляем его же имя.
+      proceed(currentWorkTitle || ('Пост №' + currentWorkId));
+    } else {
+      // Новый пост — предлагаем автоматическое "Дата-номер".
+      nextAutoTitle().then(proceed);
+    }
   }
 
   function loadWorksList() {
@@ -375,9 +406,11 @@
 
   function openWork(id) {
     if (!confirm('Открыть этот пост? Текущий несохранённый холст будет заменён.')) return;
+    showStatus('Загружаю…');
     api('/api/works/' + id).then(function (data) {
       restoreSnapshot(data.work.data);
       currentWorkId = id;
+      currentWorkTitle = data.work.title;
       renderAuthState();
       showStatus('Пост загружен');
     }).catch(function (err) { showStatus(err.message, true); });
