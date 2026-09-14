@@ -49,40 +49,75 @@
       });
   }
 
-  /* --------------------------- захват состояния --------------------------- */
+  /* --------------------------- захват состояния ---------------------------
+     Формат снимка сделан НАМЕРЕННО таким же, как снимок в history.js
+     (saveHistory/applySnapshot): { html, textBoxes, fontSize, lineHeight,
+     fontFamily }. Это не совпадение — так можно переиспользовать готовую,
+     уже проверенную функцию applySnapshot() для восстановления вместо
+     собственной реализации через exportNode.innerHTML, которая ломала
+     ссылку на #editor (см. пояснение у restoreSnapshot).
+     Сверх этого формата добавлены только 3 поля, которых сама история не
+     помнит: платформа/ширина холста и цвет фона — Undo/Redo их тоже не
+     восстанавливает, это не только наше ограничение. */
 
   function captureSnapshot() {
-    var clone = (typeof buildExportClone === 'function')
-      ? buildExportClone()
-      : exportNode.cloneNode(true);
+    var textBoxesData = Array.prototype.map.call(exportNode.querySelectorAll('.text-box'), function (b) {
+      var contentEl = b.querySelector('.tb-content');
+      return {
+        html: contentEl ? contentEl.innerHTML : '',
+        left: b.style.left,
+        top: b.style.top,
+        width: b.style.width || '',
+        height: (contentEl && contentEl.style.height) ? contentEl.style.height : '',
+        bgColor: b.dataset.bgColor || '#000000',
+        bgOpacity: (b.dataset.bgOpacity !== undefined) ? b.dataset.bgOpacity : '55',
+        lineHeight: b.dataset.lineHeight || '1.25',
+        fontSize: b.dataset.fontSize || '',
+        fontFamily: b.dataset.fontFamily || '',
+        mode: b.dataset.mode || 'plate',
+        ribbonColor: b.dataset.ribbonColor || '#000000',
+        ribbonOpacity: (b.dataset.ribbonOpacity !== undefined) ? b.dataset.ribbonOpacity : '85',
+        ribbonRadius: b.dataset.ribbonRadius || '6',
+        ribbonPadH: b.dataset.ribbonPadH || '0.3',
+        ribbonPadV: b.dataset.ribbonPadV || '0.25',
+        rot: b.dataset.rot || '0'
+      };
+    });
 
     var activeBtn = document.querySelector('.preset.active');
     var presetKey = 'telegram';
     if (activeBtn) {
-      var oc = activeBtn.getAttribute('onclick') || '';
-      var m = oc.match(/setPreset\('([^']+)'/);
+      var m = (activeBtn.getAttribute('onclick') || '').match(/setPreset\('([^']+)'/);
       if (m) presetKey = m[1];
     }
 
-    var byId = function (id) { return document.getElementById(id); };
-
     var snap = {
-      v: 1,
-      exportStyle: exportNode.getAttribute('style') || '',
-      exportHTML: clone.innerHTML,
-      controls: {
-        preset: presetKey,
-        customWidth: byId('width') ? byId('width').value : '',
-        font: byId('fontFamilySelector') ? byId('fontFamilySelector').value : '',
-        baseFontSize: byId('baseFontSlider') ? byId('baseFontSlider').value : '',
-        lineHeight: byId('lineHeightSlider') ? byId('lineHeightSlider').value : '',
-        bgColor: byId('bgColorPicker') ? byId('bgColorPicker').value : ''
-      }
+      html: editor.innerHTML,
+      textBoxes: textBoxesData,
+      fontSize: baseFontSlider.value,
+      lineHeight: lineHeightSlider.value,
+      fontFamily: fontFamilySelector.value,
+      presetKey: presetKey,
+      customWidth: document.getElementById('width') ? document.getElementById('width').value : '',
+      bgColor: document.getElementById('bgColorPicker') ? document.getElementById('bgColorPicker').value : ''
     };
     return JSON.stringify(snap);
   }
 
-  /* ------------------------- восстановление состояния ------------------------- */
+  /* ------------------------- восстановление состояния -------------------------
+     ПОЧЕМУ ЗДЕСЬ БЫЛ БАГ (для памяти, если решишь что-то менять дальше):
+     раньше здесь стояло `exportNode.innerHTML = ...`. Это уничтожало и
+     пересоздавало сам узел #editor из HTML-строки, а глобальная переменная
+     `const editor = document.getElementById('editor')` из core.js
+     продолжала указывать на старый, уже удалённый узел. Пост появлялся на
+     экране, но был полностью «мёртвым» — ни один обработчик событий на
+     новый узел не смотрел.
+
+     Теперь используется applySnapshot() из history.js — та же функция,
+     что стоит за Undo/Redo. Она меняет editor.innerHTML (содержимое
+     существующего узла, не сам узел) и пересоздаёт .text-box через
+     createElement + bindTextBox(), а не через сырой HTML. Это гарантированно
+     рабочий путь, потому что именно так работает Undo/Redo прямо сейчас. */
 
   function restoreSnapshot(json) {
     var snap;
@@ -91,53 +126,28 @@
       return;
     }
 
-    var c = snap.controls || {};
-    var byId = function (id) { return document.getElementById(id); };
-
-    if (c.preset && typeof setPreset === 'function') {
-      var btn = document.querySelector('.preset[onclick*="' + c.preset + '"]');
-      setPreset(c.preset, btn || undefined);
-    }
-    if (c.preset === 'custom' && c.customWidth && byId('width')) {
-      byId('width').value = c.customWidth;
-      if (typeof updateCustomWidth === 'function') updateCustomWidth();
-    }
-    if (c.font && byId('fontFamilySelector')) {
-      byId('fontFamilySelector').value = c.font;
-      if (typeof updateFontFamily === 'function') updateFontFamily(c.font);
-    }
-    if (c.baseFontSize && byId('baseFontSlider')) {
-      byId('baseFontSlider').value = c.baseFontSize;
-      if (typeof updateBaseFontSize === 'function') updateBaseFontSize(c.baseFontSize);
-    }
-    if (c.lineHeight && byId('lineHeightSlider')) {
-      byId('lineHeightSlider').value = c.lineHeight;
-      if (typeof updateLineHeight === 'function') updateLineHeight(c.lineHeight);
-    }
-    if (c.bgColor && byId('bgColorPicker')) {
-      byId('bgColorPicker').value = c.bgColor;
-      if (typeof updateBgColor === 'function') updateBgColor(c.bgColor);
+    if (typeof applySnapshot !== 'function') {
+      alert('Не найдена функция applySnapshot (обычно живёт в history.js). Обнови страницу и попробуй снова.');
+      return;
     }
 
-    if (snap.exportStyle) exportNode.setAttribute('style', snap.exportStyle);
-    exportNode.innerHTML = snap.exportHTML || '';
+    // То, что Undo/Redo не помнит: платформа/ширина холста, цвет фона.
+    if (snap.presetKey && typeof setPreset === 'function') {
+      var btn = document.querySelector('.preset[onclick*="' + snap.presetKey + '"]');
+      setPreset(snap.presetKey, btn || undefined);
+    }
+    if (snap.presetKey === 'custom' && snap.customWidth) {
+      var wEl = document.getElementById('width');
+      if (wEl) { wEl.value = snap.customWidth; if (typeof updateCustomWidth === 'function') updateCustomWidth(); }
+    }
+    if (snap.bgColor) {
+      var cEl = document.getElementById('bgColorPicker');
+      if (cEl) { cEl.value = snap.bgColor; if (typeof updateBgColor === 'function') updateBgColor(snap.bgColor); }
+    }
 
-    // Простая замена innerHTML сбрасывает обработчики — навешиваем заново.
-    Array.prototype.forEach.call(exportNode.querySelectorAll('.img-box'), function (box) {
-      if (typeof ensureRotor === 'function') ensureRotor(box);
-      if (typeof applyImgStyles === 'function') applyImgStyles(box);
-      if (typeof bindResizer === 'function') bindResizer(box);
-      box.addEventListener('click', function (e) {
-        e.stopPropagation();
-        if (typeof selectImgBox === 'function') selectImgBox(box);
-      });
-    });
-    Array.prototype.forEach.call(exportNode.querySelectorAll('.text-box'), function (box) {
-      if (typeof bindTextBox === 'function') bindTextBox(box);
-      if (typeof applyTbBg === 'function') applyTbBg(box);
-    });
-
-    if (typeof updateImgCounter === 'function') updateImgCounter();
+    // Дальше — тем же путём, что обычный Undo/Redo.
+    applySnapshot(snap);
+    if (typeof restoreAfterHistoryChange === 'function') restoreAfterHistoryChange();
     if (typeof updateRatio === 'function') updateRatio();
     if (typeof saveHistory === 'function') saveHistory();
   }
