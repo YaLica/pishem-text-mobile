@@ -1,0 +1,93 @@
+/* Тексttура · Gloss. Только оформление интерфейса.
+   Геометрия, раскрытие панелей, холст и стили постов — в исходных файлах. */
+:root {
+  --gl-panel:#151821; --gl-card:#1b1f29; --gl-field:#232834;
+  --gl-field-hover:#292f3d; --gl-text:#f5f1ea; --gl-muted:#b8bec9;
+  --gl-line:rgba(255,255,255,.075); --gl-champagne:#efd7b8;
+  --gl-rose:#fa9ebc; --gl-cherry:#c73459; --gl-sage:#90b48f; --gl-blue:#69a7df;
+  --gl-font:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+.panel { background:var(--gl-panel); color:var(--gl-text); font-family:var(--gl-font); border-right-color:var(--gl-line); scrollbar-color:#404755 transparent; }
+.panel h1.texttura-brand { color:var(--gl-text); font-family:var(--gl-font); letter-spacing:-.45px; }
+.texttura-brand img { width:1em; height:1em; object-fit:contain; vertical-align:middle; }
+.texttura-brand span { color:var(--gl-champagne); }
+.panel .pb-block { border-color:color-mix(in srgb,var(--blk) 35%,transparent); border-radius:17px; background:linear-gradient(145deg,color-mix(in srgb,var(--blk) 5%,var(--gl-card)),var(--gl-card)); box-shadow:0 8px 24px rgba(0,0,0,.22); }
+.panel .pb-title { color:var(--blk); letter-spacing:.035em; }
+.panel label { color:var(--gl-muted); }
+.panel .pb-block .pb-sub { color:var(--blk) !important; }
+.panel .pb-plate > .pb-head .pb-title { color:var(--gl-rose); }
+.panel :is(button,input,select),
+:is(#quickBar,#zoomControls,#floatUndoRedo,#imgMiniBar,#imgMobilePanel,.modal) :is(button,input,select),
+:is(.fs-head,.emoji-pop-head,.emoji-tabs) { font-family:var(--gl-font); }
+/* Не меняем шрифт примеров в списках выбора шрифта. */
+.panel :is(input:not([type=range]):not([type=color]):not([type=checkbox]),select),
+:is(#quickBar,#imgMobilePanel) select,
+.emoji-search {
+  background:var(--gl-field) !important; color:var(--gl-text) !important;
+  border-color:var(--gl-line) !important; border-radius:11px !important;
+}
+.panel input::placeholder { color:var(--gl-muted); }
+.panel :is(input,select):focus-visible,
+.emoji-search:focus-visible { outline:2px solid var(--gl-champagne); outline-offset:2px; }
+.panel button,
+:is(#quickBar,#zoomControls,#floatUndoRedo,#imgMiniBar,#imgMobilePanel,.modal) button,
+:is(.fs-close,.emoji-close,.emoji-tab,.emoji-more) {
+  background:linear-gradient(145deg,var(--gl-field-hover),var(--gl-field)) !important;
+  color:var(--gl-text) !important; border-color:var(--gl-line) !important;
+  border-radius:11px !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 3px 10px rgba(0,0,0,.14);
+}
+.panel .pb-block .pb-tinted { background:linear-gradient(145deg,color-mix(in srgb,var(--blk) 10%,var(--gl-field)),var(--gl-field)) !important; border-color:color-mix(in srgb,var(--blk) 30%,transparent) !important; }
+.panel .pb-arrow { color:var(--blk) !important; border-color:color-mix(in srgb,var(--blk) 35%,transparent) !important; border-radius:9px !important; }
+.panel :is(.toolbar,.tb-toolbar) { background:#11141b !important; border-color:var(--gl-line) !important; border-radius:12px !important; }
+.panel :is(.toolbar,.tb-toolbar) button { border-radius:9px !important; }
+.panel :is(.toolbar-divider,.tb-toolbar-divider) { background:var(--gl-line); }
+.panel button:hover:not(:disabled),
+:is(#quickBar,#zoomControls,#floatUndoRedo,#imgMiniBar,#imgMobilePanel,.modal) button:hover:not(:disabled),
+:is(.fs-close,.emoji-close,.emoji-tab,.emoji-more):hover {
+  background:var(--gl-field-hover) !important; border-color:var(--gl-champagne) !important;
+  box-shadow:inset 0 0 0 1px rgba(239,215,184,.3),0 4px 12px rgba(0,0,0,.2);
+}
+.panel .pb-block .pb-tinted:hover:not(:disabled) { background:color-mix(in srgb,var(--blk) 18%,var(--gl-field)) !important; border-color:var(--blk) !important; }
+.panel .preset.active,
+.panel .toolbar button.align-active,
+#quickBar button.align-active {
+  background:color-mix(in srgb,var(--gl-champagne) 20%,var(--gl-field)) !important;
+  color:var(--gl-champagne) !important; border-color:var(--gl-champagne) !important;
+  box-shadow:inset 0 0 0 1px rgba(239,215,184,.45),0 3px 12px rgba(0,0,0,.22);
+}
+.panel .primary,
+.panel #pbAddPlate,
+.modal .primary {
+  background:linear-gradient(135deg,#d55272,var(--gl-cherry)) !important;
+  color:#fff !important; border-color:var(--gl-cherry) !important;
+  border-radius:12px !important; box-shadow:0 8px 22px rgba(199,52,89,.24);
+}
+.panel .primary:hover:not(:disabled),
+.panel #pbAddPlate:hover:not(:disabled),
+.modal .primary:hover:not(:disabled) { background:linear-gradient(135deg,#df6080,#d13e63) !important; }
+.panel #copyTgBtn,
+.panel #cloudUpdateBtn { background:rgba(105,167,223,.1) !important; color:#cce8ff !important; border-color:rgba(105,167,223,.38) !important; box-shadow:inset 0 0 0 1px rgba(105,167,223,.25); }
+.panel button.danger,
+.panel #btnDeleteImg,
+.modal button.danger { background:rgba(199,52,89,.10) !important; color:var(--gl-rose) !important; border-color:rgba(250,158,188,.4) !important; }
+.panel button.danger:hover,
+.panel #btnDeleteImg:hover { background:rgba(199,52,89,.23) !important; }
+.panel button:focus-visible,
+:is(#quickBar,#zoomControls,#floatUndoRedo,#imgMiniBar,#imgMobilePanel,.modal) button:focus-visible { outline:2px solid var(--gl-champagne); outline-offset:2px; }
+.panel input[type=range] { accent-color:var(--blk,var(--gl-champagne)); }
+.panel input[type=color] { border-color:var(--gl-line); border-radius:9px; }
+.panel input[type=file]::file-selector-button { font-family:var(--gl-font); background:var(--gl-field-hover); color:var(--gl-rose); border-color:rgba(250,158,188,.35); border-radius:8px; cursor:pointer; }
+/* Встроенные цвета сообщений успеха и ошибки сохраняются. */
+#cloudBlock { background:linear-gradient(145deg,#1e2530,var(--gl-card)) !important; border-radius:17px !important; box-shadow:inset 0 0 0 1px rgba(105,167,223,.22),0 8px 24px rgba(0,0,0,.22); }
+#cloudBlock > label { color:var(--gl-blue) !important; }
+.panel .stats-box { background:var(--gl-card); color:var(--gl-muted); border-color:var(--gl-line); border-radius:11px; }
+/* Цвет предупреждений о пропорциях по-прежнему определяется редактором. */
+:is(#zoomControls,#imgMiniBar,#imgMobilePanel,#quickBar,.modal) { border-color:rgba(239,215,184,.22); }
+:is(#fontSheet,#fsPanelMain,#fsPanelWord,#fsPanelTb) { border-color:rgba(239,215,184,.35); }
+.fs-head { border-bottom-color:var(--gl-line); }
+.fs-title { color:var(--gl-champagne); }
+.fs-item { border-color:rgba(239,215,184,.18); color:var(--gl-text); }
+.fs-item:active { background:rgba(97,81,67,.9); border-color:var(--gl-champagne); }
+.emoji-pop { border-color:rgba(239,215,184,.25); }
+.emoji-tab.active { color:var(--gl-champagne) !important; box-shadow:inset 0 0 0 1px var(--gl-champagne); }
