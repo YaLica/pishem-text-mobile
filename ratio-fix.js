@@ -54,19 +54,19 @@
 
     if (getMode()) {
       if (ratio <= MSG_GREEN_MAX) {
-        return { ratio: ratio, cls: 'ok',  title: '🟢 В ленте видно целиком' };
+        return { ratio: ratio, cls: 'ok',  title: '🟢 Не обрежется при отправке в сообщении' };
       }
-      return { ratio: ratio, cls: 'bad', title: '🔴 В ленте часть картинки будет скрыта' };
+      return { ratio: ratio, cls: 'bad', title: '🔴 Обрежется — прикреплено к сообщению' };
     }
 
     var t = cleanThresholds(width);
     if (ratio <= t.greenMax) {
-      return { ratio: ratio, cls: 'ok',   title: '🟢 В ленте видно целиком' };
+      return { ratio: ratio, cls: 'ok',   title: '🟢 Идеальные пропорции для ленты (PNG)' };
     }
     if (ratio <= t.yellowMax) {
-      return { ratio: ratio, cls: 'warn', title: '🟡 В ленте небольшая часть картинки будет скрыта' };
+      return { ratio: ratio, cls: 'warn', title: '🟡 Слегка обрежется в компактном виде' };
     }
-    return { ratio: ratio, cls: 'bad', title: '🔴 В ленте часть картинки будет скрыта' };
+    return { ratio: ratio, cls: 'bad', title: '🔴 Будет заметно обрезан в мессенджере' };
   }
 
   function paint() {
@@ -106,17 +106,6 @@
     };
 
     var box = document.getElementById('ratioBox');
-    if (box && !document.getElementById('visibilityHeading')) {
-      var heading = document.createElement('label');
-      heading.id = 'visibilityHeading';
-      heading.textContent = 'Видимость в канале';
-      heading.style.cssText = 'margin-top:0;color:var(--gl-champagne,#efd7b8);';
-      box.prepend(heading);
-      var explanation = document.createElement('p');
-      explanation.textContent = 'При открытии картинка будет видна полностью.';
-      explanation.style.cssText = 'font-size:14px;line-height:1.4;color:var(--gl-muted,#b8bec9);margin:10px 0;';
-      box.appendChild(explanation);
-    }
     if (box && !document.getElementById('ratioModeRow')) {
       var row = document.createElement('div');
       row.id = 'ratioModeRow';
