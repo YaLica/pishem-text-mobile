@@ -187,6 +187,47 @@
     tintSubLabels(blockPlate);
     tintButtons(blockPlate, ['pbAddPlate']);
 
+    /* Результат объединяет существующие элементы, сохраняя их обработчики. */
+    var exportBtn = document.getElementById('exportBtn');
+    var copyBtn = document.getElementById('copyTgBtn');
+    if (exportBtn && copyBtn) {
+      var result = document.createElement('section');
+      result.id = 'readyResult';
+      result.style.cssText = 'margin:16px 0;padding:14px;border:1px solid rgba(239,215,184,.25);border-radius:17px;background:var(--gl-card,#1b1f29);';
+      var resultTitle = document.createElement('label');
+      resultTitle.textContent = 'Готовый результат';
+      resultTitle.style.cssText = 'margin-top:0;color:var(--gl-champagne,#efd7b8);';
+      panel.insertBefore(result, exportBtn);
+      result.appendChild(resultTitle);
+      var stats = panel.querySelector('.stats-box');
+      if (stats) result.appendChild(stats);
+      result.appendChild(exportBtn);
+      result.appendChild(copyBtn.parentElement);
+      var clearBtn = panel.querySelector('button[onclick="clearEditor()"]');
+      if (clearBtn) result.appendChild(clearBtn);
+    }
+
+    // Остальные модули создают облако при DOMContentLoaded: переносим после них.
+    setTimeout(function () {
+      var cloud = document.getElementById('cloudBlock');
+      if (!cloud) return;
+      panel.appendChild(cloud);
+      cloud.tabIndex = -1;
+      var shortcut = document.createElement('button');
+      shortcut.id = 'myPostsShortcut';
+      shortcut.type = 'button';
+      shortcut.textContent = '📂 Мои посты';
+      shortcut.setAttribute('aria-controls', 'cloudBlock');
+      shortcut.style.cssText = 'display:block;margin:0 0 16px;padding:8px 12px;';
+      shortcut.addEventListener('click', function () {
+        cloud.focus({preventScroll:true});
+        cloud.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',block:'start'});
+      });
+      var brand = panel.querySelector('h1');
+      if (brand) brand.insertAdjacentElement('afterend', shortcut);
+      else panel.prepend(shortcut);
+    }, 0);
+
     /* ---------- лишние разделители ---------- */
     Array.prototype.slice.call(panel.children).forEach(function (el, i, arr) {
       if (el.tagName !== 'HR') return;
