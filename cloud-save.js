@@ -24,7 +24,7 @@
 
   // Домен backend-а. Если переедет (например, на api.silver-x.ru) — поменять
   // только эту строку.
-  var API_BASE = 'https://texttura.silver-x.ru';
+  var API_BASE = 'https://api.silver-x.ru';
 
   var currentUser = null;
   var currentWorkId = null;
