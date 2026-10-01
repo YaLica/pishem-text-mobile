@@ -461,7 +461,7 @@ function ensureDragFrame(box) {
     const cp = document.createElement('div');
     cp.className = 'tb-copy';
     cp.contentEditable = 'false';
-    cp.textContent = '📋';
+    cp.textContent = '⧉';
     cp.title = 'Дублировать плашку';
     cp.addEventListener('click', function(e){
       e.stopPropagation();

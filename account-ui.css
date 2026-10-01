@@ -37,6 +37,26 @@
 #cloudWorksList { max-height:280px; overflow:auto; margin-top:8px; }
 #cloudWorksList button { min-width:40px; min-height:40px; }
 @media (max-width:820px) {
-  #accountToggle { padding:9px 15px; font-size:16px; }
+  #accountToggle { padding:7px 12px; min-height:36px; font-size:14px; border-radius:11px; z-index:100; }
+  #accountToggle.is-signed-in { opacity:.5; }
+  #accountToggle.is-signed-in:focus-visible { opacity:1; }
   #accountDialog { padding:22px 18px; }
+}
+
+/* Цвета основных действий, включая кнопку копирования в окне результата. */
+#readyResult #exportBtn,
+#readyResult #exportBtn:hover:not(:disabled) {
+  background:rgb(144,163,141) !important;
+  border-color:rgb(144,163,141) !important;
+  color:#172318 !important;
+  box-shadow:none !important;
+}
+#readyResult #copyTgBtn,
+#readyResult #copyTgBtn:hover:not(:disabled),
+#textModal button[onclick*="copyForTelegram"],
+#textModal button[onclick*="copyForTelegram"]:hover:not(:disabled) {
+  background:rgb(28,67,108) !important;
+  border-color:rgb(28,67,108) !important;
+  color:#f5f1ea !important;
+  box-shadow:none !important;
 }

@@ -189,7 +189,7 @@
   function buildUI() {
     var style = document.createElement('link');
     style.rel = 'stylesheet';
-    style.href = new URL('account-ui.css?v=20261001-1', document.baseURI).href;
+    style.href = new URL('account-ui.css?v=20261001-2', document.baseURI).href;
     document.head.appendChild(style);
 
     accountToggle = document.createElement('button');
@@ -294,6 +294,7 @@
 
   function renderAuthState() {
     accountToggle.textContent = currentUser ? 'Выйти' : 'Войти';
+    accountToggle.classList.toggle('is-signed-in', !!currentUser);
     accountToggle.disabled = authChecking;
     accountToggle.title = currentUser ? currentUser.email : 'Вход или регистрация';
     if (!userLabel) return;

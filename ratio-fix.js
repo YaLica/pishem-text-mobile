@@ -109,7 +109,7 @@
     if (box && !document.getElementById('visibilityHeading')) {
       var heading = document.createElement('label');
       heading.id = 'visibilityHeading';
-      heading.textContent = 'Видимость в мессенджере';
+      heading.textContent = 'Видимость поста в мессенджере';
       heading.style.cssText = 'margin-top:0;color:var(--gl-champagne,#efd7b8);';
       box.prepend(heading);
       var explanation = document.createElement('p');
