@@ -68,12 +68,13 @@
   function isLineBreaker(node) {
     if (!node || node.nodeType !== 1) return false;
     if (node.tagName === 'BR') return true;
-    return node.tagName === 'DIV' || node.tagName === 'P';
+    return isBlock(node);
   }
 
   function isBlock(node) {
     return node && node.nodeType === 1 &&
-           (node.tagName === 'DIV' || node.tagName === 'P');
+           (node.tagName === 'DIV' || node.tagName === 'P' || node.hasAttribute('data-para')) &&
+           !node.closest('.img-box');
   }
 
   // Ближайший блок, внутри которого лежит узел. Именно он отвечает за
@@ -126,7 +127,7 @@
 
   // Строки, которые нужно выровнять. Каждая — либо готовый блок,
   // либо набор соседних узлов между переносами.
-  function linesToAlign(range) {
+  function linesToAlign(range, caretMarker) {
     var lines = [];
 
     function addLine(nodes) {
@@ -141,21 +142,70 @@
     if (range.collapsed) {
       // курсор стоит в тексте: берём ближайший блок, а если его нет —
       // собираем строку из соседей вокруг курсора
-      var near = nearestBlock(range.startContainer);
-      if (near) { addLine([near]); return lines; }
-
-      var top = topLevel(range.startContainer);
-      if (!top) return lines;
-      if (isBlock(top)) addLine([top]);
-      else if (!isLineBreaker(top)) addLine(lineAround(top));
+      var near = nearestBlock(caretMarker) || editor;
+      var top = caretMarker;
+      while (top.parentNode !== near) top = top.parentNode;
+      var run = lineAround(top);
+      // Пустой перенос не превращаем в нулевой по высоте блок.
+      if (!run.some(function (n) {
+        return n.nodeType !== 8 && ((n.textContent || '').replace(/\u200B/g, '').length ||
+          (n.nodeType === 1 && (n.matches('.img-box,img') || n.querySelector('.img-box,img'))));
+      })) return lines;
+      if (near !== editor && run.length === near.childNodes.length) addLine([near]);
+      else addLine(run);
       return lines;
     }
 
-    nodesInRange(range).forEach(function (n) {
-      if (isBlock(n)) addLine([n]);
-      else if (!isLineBreaker(n) && !isBlank(n)) addLine(lineAround(n));
-    });
+    // Выделение может пересекать несколько строк внутри одного контейнера.
+    // Не берём контейнер целиком: проверяем каждую строку отдельно.
+    function visit(parent) {
+      var run = [];
+      function flush() {
+        if (!run.length) return;
+        var part = document.createRange();
+        part.setStartBefore(run[0]);
+        part.setEndAfter(run[run.length - 1]);
+        var overlap = part.cloneRange();
+        if (overlap.compareBoundaryPoints(Range.START_TO_START, range) < 0)
+          overlap.setStart(range.startContainer, range.startOffset);
+        if (overlap.compareBoundaryPoints(Range.END_TO_END, range) > 0)
+          overlap.setEnd(range.endContainer, range.endOffset);
+        if (!overlap.collapsed && overlap.toString().replace(/\u200B/g, '').length) {
+          addLine(parent !== editor && run.length === parent.childNodes.length ? [parent] : run);
+        }
+        run = [];
+      }
+      Array.prototype.slice.call(parent.childNodes).forEach(function (n) {
+        if (isLineBreaker(n)) {
+          flush();
+          if (isBlock(n)) visit(n);
+        } else run.push(n);
+      });
+      flush();
+    }
+    visit(editor);
     return lines;
+  }
+
+  // BR внутри жирного текста/ссылки тоже является границей строки.
+  // Разделяем только inline-обёртки затронутого контейнера, перемещая
+  // существующие узлы: картинки и их обработчики не пересоздаются.
+  function exposeLineBreaks(range, caretMarker) {
+    var scope = range.collapsed ? (nearestBlock(caretMarker) || editor) : null;
+    Array.prototype.slice.call(editor.querySelectorAll('br')).forEach(function (br) {
+      if (br.closest('.img-box')) return;
+      var parentBlock = nearestBlock(br) || editor;
+      if (scope ? parentBlock !== scope : !range.intersectsNode(parentBlock)) return;
+      while (br.parentNode !== parentBlock) {
+        var inline = br.parentNode;
+        var tail = inline.cloneNode(false);
+        tail.removeAttribute('id');
+        while (br.nextSibling) tail.appendChild(br.nextSibling);
+        inline.parentNode.insertBefore(br, inline.nextSibling);
+        if (tail.hasChildNodes()) br.parentNode.insertBefore(tail, br.nextSibling);
+        if (!inline.hasChildNodes()) inline.remove();
+      }
+    });
   }
 
   function setAlign(el, align) {
@@ -167,9 +217,13 @@
   // Оборачиваем строку в блок, чтобы у неё было своё выравнивание.
   // Картинки внутри остаются на своих местах — строка не распадается.
   function wrapLine(nodes) {
-    var div = document.createElement('div');
+    var parent = nodes[0].parentNode;
+    // В P допустим phrasing-элемент; display:block даёт отдельное выравнивание
+    // без невалидного вложения DIV в P при сохранении и повторном открытии.
+    var div = document.createElement(parent.tagName === 'P' ? 'span' : 'div');
+    if (div.tagName === 'SPAN') div.style.display = 'block';
     div.setAttribute('data-para', '1');
-    editor.insertBefore(div, nodes[0]);
+    parent.insertBefore(div, nodes[0]);
     nodes.forEach(function (n) { div.appendChild(n); });
 
     // Блок сам начинает новую строку и сам её заканчивает, поэтому перенос
@@ -194,12 +248,20 @@
     var range = sel.getRangeAt(0);
     if (!editor.contains(range.commonAncestorContainer)) return false;
 
-    var lines = linesToAlign(range);
-    if (!lines.length) return false;
-
-    // запоминаем курсор: узлы переезжают, но сами остаются теми же
-    var sc = range.startContainer, so = range.startOffset;
-    var ec = range.endContainer,   eo = range.endOffset;
+    // Закладки сохраняют и курсор между узлами (после вставки), и выделение
+    // при перемещении строк. В историю и PNG они не попадают.
+    var collapsed = range.collapsed;
+    var start = document.createComment('align-start');
+    var end = collapsed ? null : document.createComment('align-end');
+    if (end) { var endRange = range.cloneRange(); endRange.collapse(false); endRange.insertNode(end); }
+    var startRange = range.cloneRange(); startRange.collapse(true); startRange.insertNode(start);
+    range = document.createRange();
+    range.setStartAfter(start);
+    if (end) range.setEndBefore(end); else range.collapse(true);
+    exposeLineBreaks(range, start);
+    range.setStartAfter(start);
+    if (end) range.setEndBefore(end); else range.collapse(true);
+    var lines = linesToAlign(range, start);
 
     lines.forEach(function (nodes) {
       var box = (nodes.length === 1 && isBlock(nodes[0]))
@@ -210,13 +272,18 @@
 
     try {
       var r = document.createRange();
-      r.setStart(sc, Math.min(so, sc.length !== undefined ? sc.length : sc.childNodes.length));
-      r.setEnd(ec, Math.min(eo, ec.length !== undefined ? ec.length : ec.childNodes.length));
+      r.setStartAfter(start);
+      if (end) r.setEndBefore(end); else r.collapse(true);
+      start.remove();
+      if (end) end.remove();
       sel.removeAllRanges();
       sel.addRange(r);
-    } catch (e) { /* курсор восстановить не удалось — не критично */ }
+    } finally {
+      if (start.parentNode) start.remove();
+      if (end && end.parentNode) end.remove();
+    }
 
-    return true;
+    return lines.length > 0;
   }
 
   function patchAlignment() {
