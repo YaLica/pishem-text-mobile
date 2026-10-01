@@ -1,0 +1,42 @@
+/* Тексttура: вход и действия с постами. Не затрагивает холст и quickBar. */
+#accountToggle {
+  position:fixed; top:max(12px,env(safe-area-inset-top));
+  right:max(14px,env(safe-area-inset-right)); z-index:100010;
+  padding:10px 20px; min-height:44px; border:1px solid #c7a681;
+  border-radius:14px; background:linear-gradient(145deg,#efd7b8,#bd9372);
+  color:#291c15; font:700 17px "Times New Roman",Times,serif;
+  box-shadow:0 5px 18px #0003; cursor:pointer;
+}
+#accountToggle:disabled { opacity:.65; cursor:wait; }
+#accountDialog {
+  position:fixed; inset:0; margin:auto; box-sizing:border-box;
+  width:calc(100% - 32px); max-width:420px; max-height:calc(100dvh - 32px);
+  overflow:auto; padding:26px; border:1px solid #bda07a;
+  border-radius:20px; background:#1b1f29; color:#f5f1ea;
+  font:16px/1.4 "Times New Roman",Times,serif;
+  box-shadow:0 18px 70px #0009;
+}
+#accountDialog::backdrop { background:rgba(10,12,18,.72); }
+#accountDialog h2 { font:700 25px/1.2 "Times New Roman",Times,serif; margin:0 35px 20px 0; }
+#accountDialog .account-close { position:absolute; right:14px; top:12px; width:40px; height:40px; padding:0; font-size:26px; }
+#accountDialog button { font-family:inherit; color:#f5f1ea; background:#232834; border:1px solid #ffffff20; border-radius:10px; min-height:44px; }
+#accountDialog .account-tabs { display:flex; gap:8px; margin-bottom:20px; }
+#accountDialog .account-tabs button { flex:1; font-size:16px; padding:8px; }
+#accountDialog .account-tabs button[aria-pressed="true"] { color:#efd7b8; border-color:#c7a681; background:#39332f; }
+#accountDialog label { display:block; font-size:16px; color:#b8bec9; margin:12px 0 6px; }
+#accountDialog input { width:100%; min-height:44px; box-sizing:border-box; background:#232834; color:#f5f1ea; border:1px solid #ffffff25; border-radius:10px; padding:10px; font:16px "Times New Roman",Times,serif; }
+#accountDialog .account-submit { width:100%; margin-top:18px; padding:12px; background:#c73459; color:#fff; font-size:17px; }
+#accountDialog .account-status { min-height:20px; margin:12px 0 0; overflow-wrap:anywhere; }
+#accountDialog button:focus-visible, #accountDialog input:focus-visible,
+#accountToggle:focus-visible { outline:2px solid #efd7b8; outline-offset:3px; }
+#readyResult .account-save-row { display:flex; gap:8px; margin-top:12px; }
+#readyResult .account-save-row > button { flex:1; min-width:0; margin:0; padding:10px 6px; min-height:44px; overflow-wrap:break-word; }
+#readyResult .account-user { color:#b8bec9; font-size:14px; overflow-wrap:anywhere; margin:8px 0; }
+#readyResult .account-status { min-height:18px; font-size:14px; margin:8px 0; overflow-wrap:anywhere; }
+#cloudListBtn { width:100%; margin:12px 0 0; min-height:44px; }
+#cloudWorksList { max-height:280px; overflow:auto; margin-top:8px; }
+#cloudWorksList button { min-width:40px; min-height:40px; }
+@media (max-width:820px) {
+  #accountToggle { padding:9px 15px; font-size:16px; }
+  #accountDialog { padding:22px 18px; }
+}

@@ -207,26 +207,7 @@
       if (clearBtn) result.appendChild(clearBtn);
     }
 
-    // Остальные модули создают облако при DOMContentLoaded: переносим после них.
-    setTimeout(function () {
-      var cloud = document.getElementById('cloudBlock');
-      if (!cloud) return;
-      panel.appendChild(cloud);
-      cloud.tabIndex = -1;
-      var shortcut = document.createElement('button');
-      shortcut.id = 'myPostsShortcut';
-      shortcut.type = 'button';
-      shortcut.textContent = '📂 Мои посты';
-      shortcut.setAttribute('aria-controls', 'cloudBlock');
-      shortcut.style.cssText = 'display:block;margin:0 0 16px;padding:8px 12px;';
-      shortcut.addEventListener('click', function () {
-        cloud.focus({preventScroll:true});
-        cloud.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',block:'start'});
-      });
-      var brand = panel.querySelector('h1');
-      if (brand) brand.insertAdjacentElement('afterend', shortcut);
-      else panel.prepend(shortcut);
-    }, 0);
+    // Вход и действия с сохранёнными постами размещает cloud-save.js.
 
     /* ---------- лишние разделители ---------- */
     Array.prototype.slice.call(panel.children).forEach(function (el, i, arr) {

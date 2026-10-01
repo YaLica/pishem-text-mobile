@@ -2,7 +2,7 @@
    cloud-save.js — аккаунт и облачное сохранение постов.
 
    Отдельный изолированный блок, как ratio-fix.js: ничего из существующих
-   файлов не переписывает, только добавляет новый UI-блок в начало панели
+   файлов не переписывает, добавляет окно входа и действия в «Готовый результат»
    и общается с backend API (pishem-text-backend на Timeweb) через fetch.
 
    Что делает:
@@ -155,168 +155,211 @@
 
   /* ------------------------------- UI ------------------------------- */
 
-  var box, loggedOutView, loggedInView, userLabel, worksList, statusLine;
+  var userLabel, worksList, statusLine, authStatus, accountToggle, authDialog;
+  var btnSaveNew, btnUpdate, btnList, authSubmit, loginTab, registerTab;
+  var authMode = 'login', authBusy = false, authChecking = true, pendingAction = null;
+
+  function openAuth(action) {
+    pendingAction = action || null;
+    authStatus.textContent = '';
+    if (!authDialog.open) authDialog.showModal();
+    document.getElementById('cloudEmail').focus();
+  }
+
+  function requireAuth(action) {
+    if (authChecking) { showStatus('Проверяем вход…'); return; }
+    if (!currentUser) { openAuth(action); return; }
+    action();
+  }
+
+  function setAuthMode(mode) {
+    authMode = mode;
+    var register = mode === 'register';
+    document.getElementById('accountTitle').textContent = register ? 'Регистрация' : 'Вход в Тексttуру';
+    authSubmit.textContent = register ? 'Зарегистрироваться' : 'Войти';
+    loginTab.setAttribute('aria-pressed', String(!register));
+    registerTab.setAttribute('aria-pressed', String(register));
+    var password = document.getElementById('cloudPassword');
+    password.autocomplete = register ? 'new-password' : 'current-password';
+    password.minLength = register ? 8 : 1;
+    password.placeholder = register ? 'Минимум 8 символов' : 'Пароль';
+    authStatus.textContent = '';
+  }
 
   function buildUI() {
-    box = document.createElement('div');
-    box.id = 'cloudBlock';
-    box.style.cssText = 'background:#2a2f3a50;padding:12px;border-radius:8px;margin-bottom:15px;';
+    var style = document.createElement('link');
+    style.rel = 'stylesheet';
+    style.href = new URL('account-ui.css?v=20261001-1', document.baseURI).href;
+    document.head.appendChild(style);
 
-    var title = document.createElement('label');
-    title.style.cssText = 'color:#60a5fa;margin-top:0;';
-    title.textContent = '☁️ Облако';
-    box.appendChild(title);
+    accountToggle = document.createElement('button');
+    accountToggle.id = 'accountToggle';
+    accountToggle.type = 'button';
+    accountToggle.textContent = 'Войти';
+    accountToggle.disabled = true;
+    accountToggle.addEventListener('click', function () {
+      if (currentUser) logout(); else openAuth();
+    });
+    document.body.appendChild(accountToggle);
 
-    statusLine = document.createElement('div');
-    statusLine.style.cssText = 'font-size:11px;color:#f87171;min-height:14px;margin:4px 0;';
-    box.appendChild(statusLine);
+    authDialog = document.createElement('dialog');
+    authDialog.id = 'accountDialog';
+    authDialog.setAttribute('aria-labelledby', 'accountTitle');
+    authDialog.innerHTML = '<button type="button" class="account-close" aria-label="Закрыть">×</button>' +
+      '<h2 id="accountTitle">Вход в Тексttуру</h2>' +
+      '<div class="account-tabs"><button type="button" id="accountLoginTab" aria-pressed="true">Вход</button><button type="button" id="accountRegisterTab" aria-pressed="false">Регистрация</button></div>' +
+      '<form id="accountForm"><label for="cloudEmail">Email</label><input id="cloudEmail" type="email" autocomplete="username" required>' +
+      '<label for="cloudPassword">Пароль</label><input id="cloudPassword" type="password" autocomplete="current-password" required minlength="1" placeholder="Пароль">' +
+      '<button type="submit" class="account-submit">Войти</button></form>' +
+      '<p class="account-status" role="status" aria-live="polite"></p>';
+    document.body.appendChild(authDialog);
+    authStatus = authDialog.querySelector('.account-status');
+    authSubmit = authDialog.querySelector('.account-submit');
+    loginTab = document.getElementById('accountLoginTab');
+    registerTab = document.getElementById('accountRegisterTab');
+    loginTab.addEventListener('click', function () { setAuthMode('login'); });
+    registerTab.addEventListener('click', function () { setAuthMode('register'); });
+    authDialog.querySelector('.account-close').addEventListener('click', function () { authDialog.close(); });
+    authDialog.addEventListener('click', function (e) {
+      var r = authDialog.getBoundingClientRect();
+      if (e.target === authDialog && (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom)) authDialog.close();
+    });
+    authDialog.addEventListener('close', function () {
+      pendingAction = null;
+      document.getElementById('cloudPassword').value = '';
+    });
+    document.getElementById('accountForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      doAuth(authMode === 'register' ? '/api/auth/register' : '/api/auth/login');
+    });
 
-    /* ---- форма входа/регистрации ---- */
-    loggedOutView = document.createElement('div');
-
-    var emailInput = document.createElement('input');
-    emailInput.type = 'email';
-    emailInput.id = 'cloudEmail';
-    emailInput.placeholder = 'Email';
-    emailInput.style.cssText = 'width:100%;box-sizing:border-box;margin-bottom:6px;padding:8px;border-radius:6px;border:1px solid #3a4150;background:#1b1f27;color:#e8e8e8;';
-
-    var passInput = document.createElement('input');
-    passInput.type = 'password';
-    passInput.id = 'cloudPassword';
-    passInput.placeholder = 'Пароль (минимум 8 символов)';
-    passInput.style.cssText = emailInput.style.cssText;
-
-    var rowBtns = document.createElement('div');
-    rowBtns.style.cssText = 'display:flex;gap:8px;margin-top:4px;';
-
-    var btnLogin = document.createElement('button');
-    btnLogin.type = 'button';
-    btnLogin.className = 'primary';
-    btnLogin.style.cssText = 'flex:1;margin-top:0;padding:8px;font-size:13px;';
-    btnLogin.textContent = 'Войти';
-    btnLogin.addEventListener('click', function () { doAuth('/api/auth/login'); });
-
-    var btnRegister = document.createElement('button');
-    btnRegister.type = 'button';
-    btnRegister.style.cssText = 'flex:1;padding:8px;font-size:13px;background:#2a2f3a;color:#e8e8e8;border:1px solid #3a4150;border-radius:8px;cursor:pointer;';
-    btnRegister.textContent = 'Регистрация';
-    btnRegister.addEventListener('click', function () { doAuth('/api/auth/register'); });
-
-    rowBtns.appendChild(btnLogin);
-    rowBtns.appendChild(btnRegister);
-    loggedOutView.appendChild(emailInput);
-    loggedOutView.appendChild(passInput);
-    loggedOutView.appendChild(rowBtns);
-    box.appendChild(loggedOutView);
-
-    /* ---- вид для вошедшего пользователя ---- */
-    loggedInView = document.createElement('div');
-    loggedInView.style.display = 'none';
-
+    var result = document.getElementById('readyResult');
+    if (!result) return;
     userLabel = document.createElement('div');
-    userLabel.style.cssText = 'font-size:12px;color:#9aa4b2;margin-bottom:8px;';
-    loggedInView.appendChild(userLabel);
+    userLabel.className = 'account-user';
+    userLabel.hidden = true;
+    statusLine = document.createElement('div');
+    statusLine.className = 'account-status';
+    statusLine.setAttribute('role', 'status');
+    statusLine.setAttribute('aria-live', 'polite');
 
     var rowSave = document.createElement('div');
-    rowSave.style.cssText = 'display:flex;gap:8px;margin-bottom:8px;';
-
-    var btnSaveNew = document.createElement('button');
+    rowSave.className = 'account-save-row';
+    btnSaveNew = document.createElement('button');
+    btnSaveNew.id = 'cloudSaveNewBtn';
     btnSaveNew.type = 'button';
     btnSaveNew.className = 'primary';
-    btnSaveNew.style.cssText = 'flex:1;margin-top:0;padding:8px;font-size:12px;';
     btnSaveNew.textContent = '💾 Сохранить как новый';
-    btnSaveNew.addEventListener('click', function () { saveWork(false); });
-
-    var btnUpdate = document.createElement('button');
-    btnUpdate.type = 'button';
+    btnSaveNew.addEventListener('click', function () { requireAuth(function () { saveWork(false); }); });
+    btnUpdate = document.createElement('button');
     btnUpdate.id = 'cloudUpdateBtn';
-    btnUpdate.style.cssText = 'flex:1;padding:8px;font-size:12px;background:#2a2f3a;color:#e8e8e8;border:1px solid #3a4150;border-radius:8px;cursor:pointer;display:none;';
+    btnUpdate.type = 'button';
     btnUpdate.textContent = '🔄 Обновить открытый';
-    btnUpdate.addEventListener('click', function () { saveWork(true); });
-
+    btnUpdate.disabled = true;
+    btnUpdate.addEventListener('click', function () { requireAuth(function () { saveWork(true); }); });
     rowSave.appendChild(btnSaveNew);
     rowSave.appendChild(btnUpdate);
-    loggedInView.appendChild(rowSave);
+    var exportBtn = document.getElementById('exportBtn');
+    result.insertBefore(userLabel, exportBtn);
+    result.insertBefore(rowSave, exportBtn);
+    result.insertBefore(statusLine, exportBtn);
 
-    var btnList = document.createElement('button');
+    btnList = document.createElement('button');
     btnList.type = 'button';
-    btnList.style.cssText = 'width:100%;padding:8px;font-size:12px;background:#2a2f3a;color:#e8e8e8;border:1px solid #3a4150;border-radius:8px;cursor:pointer;margin-bottom:8px;';
+    btnList.id = 'cloudListBtn';
     btnList.textContent = '📂 Мои посты';
+    btnList.setAttribute('aria-expanded', 'false');
+    btnList.setAttribute('aria-controls', 'cloudWorksList');
     btnList.addEventListener('click', function () {
-      var visible = worksList.style.display !== 'none';
-      worksList.style.display = visible ? 'none' : 'block';
-      if (!visible) loadWorksList();
+      requireAuth(function () {
+        var visible = worksList.style.display !== 'none';
+        worksList.style.display = visible ? 'none' : 'block';
+        btnList.setAttribute('aria-expanded', String(!visible));
+        if (!visible) loadWorksList();
+      });
     });
-    loggedInView.appendChild(btnList);
-
+    result.appendChild(btnList);
     worksList = document.createElement('div');
-    worksList.style.cssText = 'display:none;max-height:200px;overflow:auto;margin-bottom:8px;';
-    loggedInView.appendChild(worksList);
-
-    var btnLogout = document.createElement('button');
-    btnLogout.type = 'button';
-    btnLogout.className = 'danger';
-    btnLogout.style.cssText = 'width:100%;padding:8px;font-size:12px;';
-    btnLogout.textContent = 'Выйти';
-    btnLogout.addEventListener('click', logout);
-    loggedInView.appendChild(btnLogout);
-
-    box.appendChild(loggedInView);
-
-    var panel = document.querySelector('.panel');
-    if (panel) panel.insertBefore(box, panel.firstChild);
+    worksList.id = 'cloudWorksList';
+    worksList.style.display = 'none';
+    result.appendChild(worksList);
   }
 
   function showStatus(text, isError) {
-    statusLine.textContent = text || '';
-    statusLine.style.color = isError ? '#f87171' : '#4ade80';
-    if (text) setTimeout(function () { if (statusLine.textContent === text) statusLine.textContent = ''; }, 4000);
+    var target = authDialog && authDialog.open ? authStatus : statusLine;
+    if (!target) return;
+    target.textContent = text || '';
+    target.style.color = isError ? '#f87171' : '#90b48f';
   }
 
   function renderAuthState() {
-    if (currentUser) {
-      loggedOutView.style.display = 'none';
-      loggedInView.style.display = 'block';
-      userLabel.textContent = 'Вошли как: ' + currentUser.email;
-      var updBtn = document.getElementById('cloudUpdateBtn');
-      if (updBtn) updBtn.style.display = currentWorkId ? 'block' : 'none';
-    } else {
-      loggedOutView.style.display = 'block';
-      loggedInView.style.display = 'none';
+    accountToggle.textContent = currentUser ? 'Выйти' : 'Войти';
+    accountToggle.disabled = authChecking;
+    accountToggle.title = currentUser ? currentUser.email : 'Вход или регистрация';
+    if (!userLabel) return;
+    userLabel.hidden = !currentUser;
+    userLabel.textContent = currentUser ? currentUser.email : '';
+    btnSaveNew.disabled = authChecking;
+    btnList.disabled = authChecking;
+    btnUpdate.disabled = !currentUser || !currentWorkId;
+    btnUpdate.title = currentWorkId ? 'Сохранить изменения в открытом посте' : 'Сначала откройте или сохраните пост';
+    if (!currentUser) {
+      worksList.style.display = 'none';
+      worksList.textContent = '';
+      btnList.setAttribute('aria-expanded', 'false');
     }
   }
 
   function refreshAuthUI() {
     api('/api/auth/me').then(function (data) {
       currentUser = data.user || null;
-      renderAuthState();
     }).catch(function () {
       currentUser = null;
+    }).finally(function () {
+      authChecking = false;
       renderAuthState();
     });
   }
 
   function doAuth(path) {
+    if (authBusy) return;
     var email = document.getElementById('cloudEmail').value.trim();
     var password = document.getElementById('cloudPassword').value;
-    if (!email || !password) { showStatus('Заполни email и пароль', true); return; }
+    if (!email || !password) { showStatus('Заполните email и пароль', true); return; }
+    authBusy = true;
+    authSubmit.disabled = loginTab.disabled = registerTab.disabled = true;
+    showStatus('Подождите…');
     api(path, { method: 'POST', body: JSON.stringify({ email: email, password: password }) })
       .then(function (data) {
         currentUser = data.user;
+        var action = authDialog.open ? pendingAction : null;
+        pendingAction = null;
+        authDialog.close();
+        document.getElementById('cloudPassword').value = '';
         renderAuthState();
-        showStatus('Готово');
+        showStatus('Вход выполнен');
+        if (action) action();
       })
-      .catch(function (err) { showStatus(err.message, true); });
+      .catch(function (err) { showStatus(err.message, true); })
+      .finally(function () {
+        authBusy = false;
+        authSubmit.disabled = loginTab.disabled = registerTab.disabled = false;
+      });
   }
 
   function logout() {
-    api('/api/auth/logout', { method: 'POST' }).finally(function () {
+    accountToggle.disabled = true;
+    api('/api/auth/logout', { method: 'POST' }).then(function () {
       currentUser = null;
       currentWorkId = null;
       currentWorkTitle = null;
       renderAuthState();
-    });
+      showStatus('Вы вышли из аккаунта');
+    }).catch(function (err) {
+      showStatus('Не удалось выйти: ' + err.message, true);
+    }).finally(function () { accountToggle.disabled = false; });
   }
+
 
   /* Автонумерация: "14.09.2026-1", "14.09.2026-2" и т.д. — считаем, сколько
      постов с сегодняшней датой в названии уже есть, и предлагаем следующий
