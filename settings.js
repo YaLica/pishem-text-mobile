@@ -69,14 +69,54 @@ saveHistory();
 });
 
 function clearEditor() {
+if (typeof imageImportBusy !== 'undefined' && imageImportBusy) {
+  imageImportNotice('Дождитесь окончания загрузки картинки, затем очистите холст.');
+  return;
+}
+if (!confirm('Очистить холст и начать новый пост?')) return;
+// Облако может остановить очистку, пока сервер подтверждает сохранение.
+if (!document.dispatchEvent(new CustomEvent('texttura:before-new-post', {cancelable:true}))) return;
+clearTimeout(typeTimer);
+typeTimer = null;
+savedSelection = null;
+savedSelectionForFont = null;
+releaseSelection();
+window.getSelection().removeAllRanges();
 editor.innerHTML = '';
+editor.removeAttribute('style');
+// Цвет выделения не должен оставаться от предыдущей работы.
+['wordColor', 'tbWordColor', 'qbWordColor'].forEach(function(id) {
+  var input = document.getElementById(id); if (input) input.value = input.defaultValue;
+});
 exportNode.querySelectorAll('.text-box').forEach(b => b.remove());
+currentImgBox = null;
+currentTextBox = null;
+baseFontSlider.value = baseFontSlider.defaultValue;
+lineHeightSlider.value = lineHeightSlider.defaultValue;
+fontFamilySelector.selectedIndex = 0;
+editor.style.fontSize = baseFontSlider.value + 'px';
+editor.style.lineHeight = lineHeightSlider.value;
+editor.style.fontFamily = fontFamilySelector.value;
+document.getElementById('baseFontSizeLabel').textContent = baseFontSlider.value;
+document.getElementById('lineHeightLabel').textContent = lineHeightSlider.value;
+document.getElementById('bgColorPicker').value = '#ffffff';
+document.getElementById('mainTextColorPicker').value = '#000000';
+updateBgColor('#ffffff');
+updateMainTextColor('#000000');
+if (typeof setPostBackground === 'function') setPostBackground('');
+// Убираем оставшиеся панели выделенной картинки/плашки.
+['imgSettings', 'imgMiniBar', 'imgMobilePanel', 'tbSettings', 'tbRibbonSettings'].forEach(function(id) {
+  var el = document.getElementById(id); if (el) el.style.display = 'none';
+});
+document.querySelectorAll('input[type="file"]').forEach(function(el) { el.value = ''; });
+var notice = document.getElementById('imageImportNotice'); if (notice) notice.hidden = true;
 updateImgCounter();
 document.getElementById('charCount').textContent = '0';
 updateRatio();
-currentImgBox = null;
-currentTextBox = null;
+historyStack = [];
+historyIndex = -1;
 saveHistory();
+document.dispatchEvent(new CustomEvent('texttura:new-post'));
 focusEditor();
 }
 

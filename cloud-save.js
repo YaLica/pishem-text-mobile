@@ -29,6 +29,7 @@
   var currentUser = null;
   var currentWorkId = null;
   var currentWorkTitle = null;
+  var openRequestVersion = 0;
   var saveBusy = false;
   var MAX_POST_BYTES = 6000000;
   var sizeMeter, sizeTimer;
@@ -149,6 +150,8 @@
       fontFamily: fontFamilySelector.value,
       presetKey: presetKey,
       customWidth: document.getElementById('width') ? document.getElementById('width').value : '',
+      customBackground: typeof getPostBackground === 'function' ? getPostBackground() : '',
+      mainTextColor: document.getElementById('mainTextColorPicker').value,
       bgColor: document.getElementById('bgColorPicker') ? document.getElementById('bgColorPicker').value : ''
     };
     return JSON.stringify(snap);
@@ -355,7 +358,7 @@
     quotaMeter.setAttribute('aria-live', 'polite');
     quotaMeter.style.cssText = 'font-size:14px;line-height:1.4;margin:8px 0';
     quotaMeter.hidden = true;
-    result.insertBefore(quotaMeter, rowSave);
+
     new MutationObserver(schedulePostSize).observe(exportNode, {subtree:true, childList:true, characterData:true, attributes:true});
     document.addEventListener('input', schedulePostSize);
     document.addEventListener('change', schedulePostSize);
@@ -366,20 +369,25 @@
     btnList.id = 'cloudListBtn';
     btnList.textContent = '📂 Мои посты';
     btnList.setAttribute('aria-expanded', 'false');
-    btnList.setAttribute('aria-controls', 'cloudWorksList');
+    btnList.setAttribute('aria-controls', 'cloudWorksSection');
     btnList.addEventListener('click', function () {
       requireAuth(function () {
-        var visible = worksList.style.display !== 'none';
-        worksList.style.display = visible ? 'none' : 'block';
+        var section = document.getElementById('cloudWorksSection');
+        var visible = section.style.display !== 'none';
+        section.style.display = visible ? 'none' : 'block';
         btnList.setAttribute('aria-expanded', String(!visible));
         if (!visible) loadWorksList();
       });
     });
     result.appendChild(btnList);
+    var worksSection = document.createElement('div');
+    worksSection.id = 'cloudWorksSection';
+    worksSection.style.display = 'none';
+    worksSection.appendChild(quotaMeter);
     worksList = document.createElement('div');
     worksList.id = 'cloudWorksList';
-    worksList.style.display = 'none';
-    result.appendChild(worksList);
+    worksSection.appendChild(worksList);
+    result.appendChild(worksSection);
   }
 
   function showStatus(text, isError) {
@@ -403,7 +411,7 @@
     btnUpdate.disabled = saveBusy || !currentUser || !currentWorkId;
     btnUpdate.title = currentWorkId ? 'Сохранить изменения в открытом посте' : 'Сначала откройте или сохраните пост';
     if (!currentUser) {
-      worksList.style.display = 'none';
+      document.getElementById('cloudWorksSection').style.display = 'none';
       worksList.textContent = '';
       btnList.setAttribute('aria-expanded', 'false');
     }
@@ -570,8 +578,11 @@
 
   function openWork(id) {
     if (!confirm('Открыть этот пост? Текущий несохранённый холст будет заменён.')) return;
+    if (saveBusy || (typeof imageImportBusy !== 'undefined' && imageImportBusy)) { showStatus('Дождитесь завершения сохранения или загрузки картинки.', true); return; }
+    var version = ++openRequestVersion;
     showStatus('Загружаю…');
     api('/api/works/' + id).then(function (data) {
+      if (version !== openRequestVersion) return;
       restoreSnapshot(data.work.data);
       currentWorkId = id;
       currentWorkTitle = data.work.title;
@@ -592,6 +603,18 @@
   ready(function () {
     if (typeof exportNode === 'undefined') return;
     buildUI();
+    document.addEventListener('texttura:before-new-post', function(e) {
+      if (saveBusy) { e.preventDefault(); showStatus('Дождитесь завершения сохранения, затем очистите холст.', true); }
+    });
+    document.addEventListener('texttura:new-post', function() {
+      openRequestVersion++;
+      currentWorkId = null;
+      currentWorkTitle = null;
+      pendingAction = null;
+      showStatus('Новый пост. Сохранённые работы остались в «Мои посты».');
+      renderAuthState();
+      updatePostSize();
+    });
     refreshAuthUI();
     document.addEventListener('visibilitychange', function () {
       if (!document.hidden && !authChecking && !saveBusy) refreshWorksQuota();

@@ -43,7 +43,10 @@ const snapshot = {
   textBoxes: textBoxesData,
   fontSize: baseFontSlider.value, 
   lineHeight: lineHeightSlider.value, 
-  fontFamily: fontFamilySelector.value 
+  fontFamily: fontFamilySelector.value,
+  customBackground: typeof getPostBackground === "function" ? getPostBackground() : "",
+  bgColor: document.getElementById("bgColorPicker").value,
+  mainTextColor: document.getElementById("mainTextColorPicker").value
 };
 return snapshot;
 }
@@ -54,7 +57,7 @@ typeTimer = null;
 const snapshot = captureHistorySnapshot();
 if (historyIndex >= 0) {
 const last = historyStack[historyIndex];
-if (last.html === snapshot.html && JSON.stringify(last.textBoxes) === JSON.stringify(snapshot.textBoxes) && last.fontSize === snapshot.fontSize && last.lineHeight === snapshot.lineHeight && last.fontFamily === snapshot.fontFamily) { updateUndoRedoButtons(); return; }
+if (JSON.stringify(last) === JSON.stringify(snapshot)) { updateUndoRedoButtons(); return; }
 }
 if (historyIndex < historyStack.length - 1) historyStack = historyStack.slice(0, historyIndex + 1);
 historyStack.push(snapshot);
@@ -70,6 +73,14 @@ savedSelectionForFont = null;
 if (typeof releaseSelection === 'function') releaseSelection();
 if (typeof currentTextBox !== 'undefined') currentTextBox = null;
 editor.innerHTML = snapshot.html;
+if (typeof setPostBackground === 'function') setPostBackground(snapshot.customBackground || '');
+if (snapshot.bgColor) {
+  document.getElementById('bgColorPicker').value = snapshot.bgColor;
+  updateBgColor(snapshot.bgColor);
+}
+var textColor = snapshot.mainTextColor || '#000000';
+document.getElementById('mainTextColorPicker').value = textColor;
+updateMainTextColor(textColor);
 baseFontSlider.value = snapshot.fontSize;
 document.getElementById('baseFontSizeLabel').textContent = snapshot.fontSize;
 editor.style.fontSize = snapshot.fontSize + 'px';

@@ -38,7 +38,16 @@
 </div>
 <div style="flex: 1;">
 <label style="color: #fff; margin-top: 0;">✍️ Текст (общий)</label>
-<input type="color" value="#000000" oninput="updateMainTextColor(this.value)">
+<input type="color" id="mainTextColorPicker" value="#000000" oninput="updateMainTextColor(this.value)">
+</div>
+</div>
+
+<div id="myBackgroundControls" style="margin-bottom:15px;">
+<button id="myBackgroundBtn" type="button" aria-expanded="false" aria-controls="myBackgroundMenu">Мой фон</button>
+<input id="myBackgroundFile" type="file" accept="image/*" hidden>
+<div id="myBackgroundMenu" hidden>
+<button id="replaceBackgroundBtn" type="button">Заменить фон</button>
+<button id="removeBackgroundBtn" type="button">Удалить фон</button>
 </div>
 </div>
 
@@ -103,6 +112,7 @@
 <button onclick="format('italic')" title="Курсив"><i>К</i></button>
 <button onclick="format('underline')" title="Подчеркнутый"><u>Ч</u></button>
 <button onclick="format('strikeThrough')" title="Зачеркнутый"><s>S</s></button>
+<button id="quoteBtn" type="button" onclick="togglePostQuote()" aria-pressed="false" title="Оформить абзац как цитату">❝ Цитата</button>
 <button onclick="formatCode()" title="Код"><code>&lt;/&gt;</code></button>
 <div class="toolbar-divider"></div>
 <button onclick="format('justifyLeft')" title="По левому краю">|≡</button>
@@ -427,9 +437,9 @@
 </div>
 
 <script src="core.js"></script>
-<script src="history.js"></script>
+<script src="history.js?v=20261003-post1"></script>
 <script src="zoom.js"></script>
-<script src="settings.js"></script>
+<script src="settings.js?v=20261003-post1"></script>
 <script src="range-engine.js"></script>
 <script src="format-range.js"></script>
 <script src="images.js?v=20261003-quota1"></script>
@@ -440,13 +450,14 @@
 <script src="image-ui.js"></script>
 <script src="panel-blocks.js"></script>
 <script src="collapse-on-load.js"></script>
-<script src="size-align.js"></script>
+<script src="size-align.js?v=20261003-post1"></script>
 <script src="panel-fixes.js"></script>
 <script src="ratio-fix.js"></script> 
 <script src="emoji-pro.js"></script>
 <script src="font-sheet.js"></script>
 <script src="font-sheet-panel.js"></script>
 <script src="selection-sync.js"></script>
-<script src="cloud-save.js?v=20261003-quota1"></script>
+<script src="post-tools.js?v=20261003-post1"></script>
+<script src="cloud-save.js?v=20261003-post1"></script>
 </body>
 </html>

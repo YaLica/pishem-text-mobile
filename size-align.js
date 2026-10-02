@@ -63,6 +63,8 @@
 
   /* ======================= 2. выравнивание ======================= */
 
+  var paragraphRoot;
+
   // Строку заканчивает перенос <br> или готовый блок.
   // Картинка НЕ заканчивает строку: она стоит в строке вместе с текстом.
   function isLineBreaker(node) {
@@ -83,7 +85,7 @@
   // задело бы соседний текст.
   function nearestBlock(node) {
     if (node && node.nodeType === 3) node = node.parentNode;
-    while (node && node !== editor) {
+    while (node && node !== paragraphRoot) {
       if (isBlock(node)) return node;
       node = node.parentNode;
     }
@@ -92,10 +94,10 @@
 
   // поднимаемся до прямого потомка редактора
   function topLevel(node) {
-    while (node && node.parentNode && node.parentNode !== editor) {
+    while (node && node.parentNode && node.parentNode !== paragraphRoot) {
       node = node.parentNode;
     }
-    return (node && node.parentNode === editor) ? node : null;
+    return (node && node.parentNode === paragraphRoot) ? node : null;
   }
 
   // строка целиком: соседи слева и справа до ближайшего переноса
@@ -111,7 +113,7 @@
   // верхнеуровневые узлы, попавшие в выделение
   function nodesInRange(range) {
     var out = [];
-    Array.prototype.slice.call(editor.childNodes).forEach(function (n) {
+    Array.prototype.slice.call(paragraphRoot.childNodes).forEach(function (n) {
       var hit = false;
       try { hit = range.intersectsNode(n); } catch (e) { hit = false; }
       if (hit) out.push(n);
@@ -142,7 +144,7 @@
     if (range.collapsed) {
       // курсор стоит в тексте: берём ближайший блок, а если его нет —
       // собираем строку из соседей вокруг курсора
-      var near = nearestBlock(caretMarker) || editor;
+      var near = nearestBlock(caretMarker) || paragraphRoot;
       var top = caretMarker;
       while (top.parentNode !== near) top = top.parentNode;
       var run = lineAround(top);
@@ -151,7 +153,7 @@
         return n.nodeType !== 8 && ((n.textContent || '').replace(/\u200B/g, '').length ||
           (n.nodeType === 1 && (n.matches('.img-box,img') || n.querySelector('.img-box,img'))));
       })) return lines;
-      if (near !== editor && run.length === near.childNodes.length) addLine([near]);
+      if (near !== paragraphRoot && run.length === near.childNodes.length) addLine([near]);
       else addLine(run);
       return lines;
     }
@@ -171,7 +173,7 @@
         if (overlap.compareBoundaryPoints(Range.END_TO_END, range) > 0)
           overlap.setEnd(range.endContainer, range.endOffset);
         if (!overlap.collapsed && overlap.toString().replace(/\u200B/g, '').length) {
-          addLine(parent !== editor && run.length === parent.childNodes.length ? [parent] : run);
+          addLine(parent !== paragraphRoot && run.length === parent.childNodes.length ? [parent] : run);
         }
         run = [];
       }
@@ -183,7 +185,7 @@
       });
       flush();
     }
-    visit(editor);
+    visit(paragraphRoot);
     return lines;
   }
 
@@ -191,10 +193,10 @@
   // Разделяем только inline-обёртки затронутого контейнера, перемещая
   // существующие узлы: картинки и их обработчики не пересоздаются.
   function exposeLineBreaks(range, caretMarker) {
-    var scope = range.collapsed ? (nearestBlock(caretMarker) || editor) : null;
-    Array.prototype.slice.call(editor.querySelectorAll('br')).forEach(function (br) {
+    var scope = range.collapsed ? (nearestBlock(caretMarker) || paragraphRoot) : null;
+    Array.prototype.slice.call(paragraphRoot.querySelectorAll('br')).forEach(function (br) {
       if (br.closest('.img-box')) return;
-      var parentBlock = nearestBlock(br) || editor;
+      var parentBlock = nearestBlock(br) || paragraphRoot;
       if (scope ? parentBlock !== scope : !range.intersectsNode(parentBlock)) return;
       while (br.parentNode !== parentBlock) {
         var inline = br.parentNode;
@@ -241,12 +243,13 @@
     return div;
   }
 
-  function alignSelection(align) {
+  function alignSelection(align, root) {
+    paragraphRoot = root || editor;
     var sel = window.getSelection();
     if (!sel || !sel.rangeCount) return false;
 
     var range = sel.getRangeAt(0);
-    if (!editor.contains(range.commonAncestorContainer)) return false;
+    if (!paragraphRoot.contains(range.commonAncestorContainer)) return false;
 
     // Закладки сохраняют и курсор между узлами (после вставки), и выделение
     // при перемещении строк. В историю и PNG они не попадают.
@@ -263,11 +266,38 @@
     if (end) range.setEndBefore(end); else range.collapse(true);
     var lines = linesToAlign(range, start);
 
+    // Кнопка работает и до ввода текста: создаёт пустой абзац-цитату.
+    if (align === 'quote' && !lines.length && collapsed) {
+      var emptyBlock = nearestBlock(start);
+      if (emptyBlock && !(emptyBlock.textContent || '').replace(/\u200B/g, '').trim()) {
+        lines.push([emptyBlock]);
+      } else {
+        var blank = document.createElement('br');
+        start.parentNode.insertBefore(blank, start.nextSibling);
+        lines.push([start, blank]);
+      }
+    }
+
+    var quoteMode = align === 'quote';
+    var removeQuotes = quoteMode && lines.length && lines.every(function(nodes) {
+      var node = nodes[0].nodeType === 1 ? nodes[0] : nodes[0].parentElement;
+      return !!(node && node.closest('[data-post-quote]'));
+    });
     lines.forEach(function (nodes) {
-      var box = (nodes.length === 1 && isBlock(nodes[0]))
-        ? nodes[0]
-        : wrapLine(nodes);
-      setAlign(box, align);
+      var box = (nodes.length === 1 && isBlock(nodes[0])) ? nodes[0] : wrapLine(nodes);
+      if (!quoteMode) { setAlign(box, align); return; }
+      var existing = box.closest('[data-post-quote]');
+      if (removeQuotes) {
+        if (existing) {
+          existing.removeAttribute('data-post-quote');
+          ['border-left', 'padding-left', 'margin-left'].forEach(function(p) { existing.style.removeProperty(p); });
+        }
+      } else if (!existing) {
+        box.setAttribute('data-post-quote', '1');
+        box.style.borderLeft = '0.12em solid currentColor';
+        box.style.paddingLeft = '0.65em';
+        box.style.marginLeft = '0.25em';
+      }
     });
 
     try {
@@ -320,6 +350,30 @@
       return true;
     };
   }
+
+  window.togglePostQuote = function() {
+    if (typeof restoreSelection === 'function') restoreSelection();
+    var scope = getEditingScope();
+    if (scope.classList.contains('text-box')) scope = scope.querySelector('.tb-content');
+    if (!scope) return;
+    // До операции фиксируем ввод, чтобы отмена снимала именно цитату.
+    saveHistory();
+    if (!alignSelection('quote', scope)) return;
+    releaseSelection();
+    saveSelectionBeforeAction();
+    updateRatio();
+    saveHistory();
+    updateQuoteButton();
+  };
+  function updateQuoteButton() {
+    var btn = document.getElementById('quoteBtn');
+    var sel = window.getSelection();
+    var node = sel && sel.anchorNode;
+    if (node && node.nodeType !== 1) node = node.parentElement;
+    if (btn) btn.setAttribute('aria-pressed', String(!!(node && node.closest && node.closest('[data-post-quote]'))));
+  }
+  document.addEventListener('selectionchange', updateQuoteButton);
+  document.addEventListener('texttura:new-post', updateQuoteButton);
 
   /* ==================== 3. подсветка кнопок ==================== */
 
