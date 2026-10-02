@@ -122,7 +122,7 @@ function setTbMode(mode) {
   box.dataset.mode = mode;
   applyTbBg(box);
   syncTbSettings();
-  clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400);
+  scheduleHistorySave();
 }
 
 function setTbBgColor(v) {
@@ -131,7 +131,7 @@ function setTbBgColor(v) {
   box.dataset.bgColor = v;
   const el = document.getElementById('tbBgColor'); if (el) el.value = v;
   applyTbBg(box);
-  clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400);
+  scheduleHistorySave();
 }
 
 function setTbBgOpacity(v) {
@@ -141,7 +141,7 @@ function setTbBgOpacity(v) {
   const lbl = document.getElementById('tbBgOpacityLabel'); if (lbl) lbl.textContent = v;
   const rng = document.getElementById('tbBgOpacity'); if (rng) rng.value = v;
   applyTbBg(box);
-  clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400);
+  scheduleHistorySave();
 }
   
 function populateTbFontSelector() {
@@ -181,7 +181,7 @@ function setTbLineHeight(v) {
   applyTbTypography(box);
   const lbl = document.getElementById('tbLineHeightLabel'); if (lbl) lbl.textContent = v;
   const rng = document.getElementById('tbLineHeight'); if (rng) rng.value = v;
-  clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400);
+  scheduleHistorySave();
 }
   
 function setTbFontSize(v) {
@@ -191,7 +191,7 @@ function setTbFontSize(v) {
   applyTbTypography(box);
   const lbl = document.getElementById('tbFontSizeLabel'); if (lbl) lbl.textContent = v;
   const rng = document.getElementById('tbFontSize'); if (rng) rng.value = v;
-  clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400);
+  scheduleHistorySave();
 }
 
 function setTbFontFamily(v) {
@@ -201,7 +201,7 @@ function setTbFontFamily(v) {
   applyTbTypography(box);
   const sel = document.getElementById('tbFontFamily');
   if (sel) sel.value = v || '';
-  clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400);
+  scheduleHistorySave();
 }
 
 /* ===== ПОДЛОЖКА (ЛЕНТЫ): вкл/выкл + настройки ===== */
@@ -228,7 +228,7 @@ function toggleRibbonMode() {
     }, 0);
   }
 
-  clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400);
+  scheduleHistorySave();
 }
 
 function applyRibbonStyles(box) {
@@ -247,7 +247,7 @@ function setTbRibbonColor(v) {
   box.dataset.ribbonColor = v;
   const el = document.getElementById('tbRibbonColor'); if (el) el.value = v;
   applyTbBg(box);
-  clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400);
+  scheduleHistorySave();
 }
 
 function setTbRibbonOpacity(v) {
@@ -257,7 +257,7 @@ function setTbRibbonOpacity(v) {
   const lbl = document.getElementById('tbRibbonOpacityLabel'); if (lbl) lbl.textContent = v;
   const rng = document.getElementById('tbRibbonOpacity'); if (rng) rng.value = v;
   applyTbBg(box);
-  clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400);
+  scheduleHistorySave();
 }
 
 function setTbRibbonRadius(v) {
@@ -266,7 +266,7 @@ function setTbRibbonRadius(v) {
   box.dataset.ribbonRadius = v;
   const lbl = document.getElementById('tbRibbonRadiusLabel'); if (lbl) lbl.textContent = v;
   applyRibbonStyles(box);
-  clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400);
+  scheduleHistorySave();
 }
 
 function setTbRibbonPadH(v) {
@@ -275,7 +275,7 @@ function setTbRibbonPadH(v) {
   box.dataset.ribbonPadH = v;
   const lbl = document.getElementById('tbRibbonPadHLabel'); if (lbl) lbl.textContent = v;
   applyRibbonStyles(box);
-  clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400);
+  scheduleHistorySave();
 }
 
 function setTbRibbonPadV(v) {
@@ -284,7 +284,7 @@ function setTbRibbonPadV(v) {
   box.dataset.ribbonPadV = v;
   const lbl = document.getElementById('tbRibbonPadVLabel'); if (lbl) lbl.textContent = v;
   applyRibbonStyles(box);
-  clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400);
+  scheduleHistorySave();
 }
 
 function syncTbSettings() {
@@ -347,7 +347,7 @@ function handleTbPaste(e) {
   if (text && insertTextAtSelection(text)) {
     content.dispatchEvent(new Event('input', { bubbles: true }));
   }
-  clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400);
+  scheduleHistorySave();
 }
 
 document.addEventListener('paste', handleTbPaste, true);
@@ -370,7 +370,7 @@ function insertImageIntoTextBox(event) {
     img.style.width = TB_IMG_START_WIDTH;
     content.appendChild(img);
     wrapTbImage(img);
-    clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400);
+    scheduleHistorySave();
   };
   reader.readAsDataURL(file);
 
@@ -420,7 +420,7 @@ function bindTextBox(box) {
   });
 
   if (content) {
-    content.addEventListener('input', function(){ clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400); });
+    content.addEventListener('input', function(){ scheduleHistorySave(); });
     content.addEventListener('keyup', saveSelectionBeforeAction);
     content.addEventListener('mouseup', saveSelectionBeforeAction);
     content.addEventListener('touchend', saveSelectionBeforeAction);
@@ -978,7 +978,7 @@ function bindTextBoxMobile(box, content) {
   if (content) {
     content.setAttribute('contenteditable', 'true');
     content.addEventListener('input', function () {
-      clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400);
+      scheduleHistorySave();
     });
     content.addEventListener('touchend', saveSelectionBeforeAction);
   }

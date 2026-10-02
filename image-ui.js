@@ -137,7 +137,7 @@ function setImgGap(v) {
   document.getElementById('imgGapRange').value = v; 
   const igl = document.getElementById('impGapLabel'); if (igl) igl.textContent = v;
   const igr = document.getElementById('impGapRange'); if (igr) igr.value = v;
-  applyImgStyles(currentImgBox); updateRatio(); clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400); 
+  applyImgStyles(currentImgBox); updateRatio(); scheduleHistorySave(); 
 }
 
 function setImgRadius(v) { 
@@ -147,7 +147,7 @@ function setImgRadius(v) {
   document.getElementById('imgRadiusRange').value = v; 
   const irl = document.getElementById('impRadiusLabel'); if (irl) irl.textContent = v;
   const irr = document.getElementById('impRadiusRange'); if (irr) irr.value = v;
-  applyImgStyles(currentImgBox); clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400); 
+  applyImgStyles(currentImgBox); scheduleHistorySave(); 
 }
 
 function setImgBorder(v) { 
@@ -157,7 +157,7 @@ function setImgBorder(v) {
   document.getElementById('imgBorderRange').value = v; 
   const ibl = document.getElementById('impBorderLabel'); if (ibl) ibl.textContent = v;
   const ibr = document.getElementById('impBorderRange'); if (ibr) ibr.value = v;
-  applyImgStyles(currentImgBox); clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400); 
+  applyImgStyles(currentImgBox); scheduleHistorySave(); 
 }
 
 function setImgBorderColor(v) { 
@@ -165,7 +165,7 @@ function setImgBorderColor(v) {
   currentImgBox.dataset.borderColor = v; 
   document.getElementById('imgBorderColor').value = v; 
   const ibc = document.getElementById('impBorderColor'); if (ibc) ibc.value = v;
-  applyImgStyles(currentImgBox); clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400); 
+  applyImgStyles(currentImgBox); scheduleHistorySave(); 
 }
 
 function setImgRot(v) {
@@ -178,7 +178,7 @@ function setImgRot(v) {
   const ilbl = document.getElementById('impRotLabel'); if (ilbl) ilbl.textContent = v;
   applyImgStyles(currentImgBox);
   updateRatio(); positionMiniBar();
-  clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400);
+  scheduleHistorySave();
 }
 
 function miniAlign(dir) {

@@ -2,8 +2,7 @@ function updateLineHeight(val) {
 document.getElementById('lineHeightLabel').textContent = val;
 editor.style.lineHeight = val;
 updateRatio();
-clearTimeout(typeTimer);
-typeTimer = setTimeout(saveHistory, 400);
+scheduleHistorySave();
 }
 
 function applyBase(base) {
@@ -17,15 +16,14 @@ el.style.fontSize = '';
 });
 }
 
-function updateBaseFontSize(size) { applyBase(size); updateRatio(); clearTimeout(typeTimer); typeTimer = setTimeout(saveHistory, 400); }
+function updateBaseFontSize(size) { applyBase(size); updateRatio(); scheduleHistorySave(); }
 
 let typeTimer = null;
 editor.addEventListener('input', function() {
 document.getElementById('charCount').textContent = editor.innerText.replace(/\u200B/g, '').trim().length;
 updateImgCounter();
 updateRatio();
-clearTimeout(typeTimer);
-typeTimer = setTimeout(saveHistory, 400);
+scheduleHistorySave();
 });
 
 editor.addEventListener('paste', function(e) {

@@ -1,13 +1,21 @@
-function updateUndoRedoButtons() {
-document.getElementById('btnUndo').disabled = (historyIndex <= 0);
-document.getElementById('btnRedo').disabled = (historyIndex >= historyStack.length - 1);
-const fU = document.getElementById('floatUndo');
-const fR = document.getElementById('floatRedo');
-if (fU) fU.disabled = (historyIndex <= 0);
-if (fR) fR.disabled = (historyIndex >= historyStack.length - 1);
+// Ввод объединяется в шаг через 400 мс, но отмена доступна сразу.
+function scheduleHistorySave() {
+clearTimeout(typeTimer);
+typeTimer = setTimeout(saveHistory, 400);
+updateUndoRedoButtons();
 }
 
-function saveHistory() {
+function updateUndoRedoButtons() {
+const pending = typeTimer !== null;
+document.getElementById('btnUndo').disabled = (historyIndex <= 0 && !pending);
+document.getElementById('btnRedo').disabled = (pending || historyIndex >= historyStack.length - 1);
+const fU = document.getElementById('floatUndo');
+const fR = document.getElementById('floatRedo');
+if (fU) fU.disabled = (historyIndex <= 0 && !pending);
+if (fR) fR.disabled = (pending || historyIndex >= historyStack.length - 1);
+}
+
+function captureHistorySnapshot() {
 const textBoxesData = Array.from(exportNode.querySelectorAll('.text-box')).map(b => {
   const contentEl = b.querySelector('.tb-content');
    return {
@@ -37,9 +45,16 @@ const snapshot = {
   lineHeight: lineHeightSlider.value, 
   fontFamily: fontFamilySelector.value 
 };
+return snapshot;
+}
+
+function saveHistory() {
+clearTimeout(typeTimer);
+typeTimer = null;
+const snapshot = captureHistorySnapshot();
 if (historyIndex >= 0) {
 const last = historyStack[historyIndex];
-if (last.html === snapshot.html && JSON.stringify(last.textBoxes) === JSON.stringify(snapshot.textBoxes) && last.fontSize === snapshot.fontSize && last.lineHeight === snapshot.lineHeight && last.fontFamily === snapshot.fontFamily) return;
+if (last.html === snapshot.html && JSON.stringify(last.textBoxes) === JSON.stringify(snapshot.textBoxes) && last.fontSize === snapshot.fontSize && last.lineHeight === snapshot.lineHeight && last.fontFamily === snapshot.fontFamily) { updateUndoRedoButtons(); return; }
 }
 if (historyIndex < historyStack.length - 1) historyStack = historyStack.slice(0, historyIndex + 1);
 historyStack.push(snapshot);
@@ -48,6 +63,12 @@ updateUndoRedoButtons();
 }
 
 function applySnapshot(snapshot) {
+clearTimeout(typeTimer);
+typeTimer = null;
+savedSelection = null;
+savedSelectionForFont = null;
+if (typeof releaseSelection === 'function') releaseSelection();
+if (typeof currentTextBox !== 'undefined') currentTextBox = null;
 editor.innerHTML = snapshot.html;
 baseFontSlider.value = snapshot.fontSize;
 document.getElementById('baseFontSizeLabel').textContent = snapshot.fontSize;
@@ -99,11 +120,14 @@ if (snapshot.textBoxes && Array.isArray(snapshot.textBoxes)) {
 
 function undoAction(e) {
 if(e && e.preventDefault) e.preventDefault();
-if (historyIndex > 0) { historyIndex--; applySnapshot(historyStack[historyIndex]); restoreAfterHistoryChange(); }
+// Сначала фиксируем ещё не записанный ввод, иначе отмена пропускает шаг.
+if (typeTimer !== null) saveHistory();
+if (historyIndex > 0) { historyIndex--; applySnapshot(historyStack[historyIndex]); restoreAfterHistoryChange(); historyStack[historyIndex] = captureHistorySnapshot(); }
 }
 function redoAction(e) {
 if(e && e.preventDefault) e.preventDefault();
-if (historyIndex < historyStack.length - 1) { historyIndex++; applySnapshot(historyStack[historyIndex]); restoreAfterHistoryChange(); }
+if (typeTimer !== null) { saveHistory(); return; }
+if (historyIndex < historyStack.length - 1) { historyIndex++; applySnapshot(historyStack[historyIndex]); restoreAfterHistoryChange(); historyStack[historyIndex] = captureHistorySnapshot(); }
 }
 
 function restoreAfterHistoryChange() {

@@ -29,6 +29,7 @@
   var currentUser = null;
   var currentWorkId = null;
   var currentWorkTitle = null;
+  var saveBusy = false;
 
   function ready(fn) {
     if (document.readyState === 'loading') {
@@ -44,7 +45,12 @@
     return fetch(API_BASE + path, Object.assign({ credentials: 'include' }, options, { headers: headers }))
       .then(function (r) {
         return r.json().catch(function () { return {}; }).then(function (data) {
-          if (!r.ok) throw new Error(data.error || ('Ошибка сервера (' + r.status + ')'));
+          if (!r.ok) {
+            var message = data.error || ('Ошибка сервера (' + r.status + ')');
+            if (r.status === 401 && path !== '/api/auth/login' && path !== '/api/auth/register') message = 'Сессия входа закончилась или браузер не передал вход. Выйдите и войдите снова; холст останется на месте.';
+            if (r.status === 413) message = 'Сервер отклонил пост: превышен допустимый размер. Возможно, слишком большой объём картинок.';
+            throw new Error(message);
+          }
           return data;
         });
       });
@@ -300,9 +306,9 @@
     if (!userLabel) return;
     userLabel.hidden = !currentUser;
     userLabel.textContent = currentUser ? currentUser.email : '';
-    btnSaveNew.disabled = authChecking;
+    btnSaveNew.disabled = authChecking || saveBusy;
     btnList.disabled = authChecking;
-    btnUpdate.disabled = !currentUser || !currentWorkId;
+    btnUpdate.disabled = saveBusy || !currentUser || !currentWorkId;
     btnUpdate.title = currentWorkId ? 'Сохранить изменения в открытом посте' : 'Сначала откройте или сохраните пост';
     if (!currentUser) {
       worksList.style.display = 'none';
@@ -380,32 +386,39 @@
   }
 
   function saveWork(update) {
-    var data = captureSnapshot();
+    if (saveBusy) return;
+    var data;
+    try { data = captureSnapshot(); }
+    catch (err) { showStatus('Не удалось подготовить пост: ' + err.message, true); return; }
+    saveBusy = true;
+    renderAuthState();
+    showStatus('Подготавливаю сохранение…');
 
     function proceed(defaultTitle) {
       var title = prompt('Название поста:', defaultTitle);
-      if (title === null) return;
-
+      if (title === null) { showStatus('Сохранение отменено — пост не отправлен.'); return; }
       var path = update && currentWorkId ? ('/api/works/' + currentWorkId) : '/api/works';
       var method = update && currentWorkId ? 'PUT' : 'POST';
-
-      api(path, { method: method, body: JSON.stringify({ title: title, data: data }) })
+      showStatus('Сохраняю пост…');
+      return api(path, { method: method, body: JSON.stringify({ title: title, data: data }) })
         .then(function (res) {
+          if (!res.id || typeof res.title !== 'string') throw new Error('Сервер не подтвердил сохранение. Проверьте «Мои посты» перед повторной попыткой.');
           currentWorkId = res.id;
           currentWorkTitle = res.title;
-          renderAuthState();
           showStatus('Сохранено: ' + res.title);
-        })
-        .catch(function (err) { showStatus(err.message, true); });
+        });
     }
 
-    if (update && currentWorkId) {
-      // Обновление существующего поста — по умолчанию оставляем его же имя.
-      proceed(currentWorkTitle || ('Пост №' + currentWorkId));
-    } else {
-      // Новый пост — предлагаем автоматическое "Дата-номер".
-      nextAutoTitle().then(proceed);
-    }
+    var titleRequest = update && currentWorkId
+      ? Promise.resolve(currentWorkTitle || ('Пост №' + currentWorkId)) : nextAutoTitle();
+    titleRequest.then(proceed).catch(function (err) {
+      var message = err instanceof TypeError
+        ? 'Нет ответа от сервера. Проверьте соединение и «Мои посты» перед повторной попыткой.' : err.message;
+      showStatus('Не удалось сохранить. ' + message, true);
+    }).finally(function () {
+      saveBusy = false;
+      renderAuthState();
+    });
   }
 
   function loadWorksList() {
