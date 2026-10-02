@@ -352,7 +352,7 @@ function handleTbPaste(e) {
 
 document.addEventListener('paste', handleTbPaste, true);
 
-function insertImageIntoTextBox(event) {
+async function insertImageIntoTextBox(event) {
   const file = event.target.files && event.target.files[0];
   if (!file) return;
   const box = getTbTargetBox();
@@ -360,21 +360,24 @@ function insertImageIntoTextBox(event) {
   const content = box.querySelector('.tb-content');
   if (!content) { event.target.value = ''; return; }
 
-  const reader = new FileReader();
-  reader.onload = function(e) {
+  if (imageImportBusy) { event.target.value = ''; imageImportNotice('Дождитесь добавления картинок.'); return; }
+  imageImportBusy = true;
+  try {
+    imageImportNotice('Обрабатываю картинку…');
+    const dataUrl = await preparePostImage(file);
+    if (!content.isConnected) return;
     const img = document.createElement('img');
     img.className = 'tb-img';
-    img.src = e.target.result;
+    img.src = dataUrl;
     img.contentEditable = 'false';
-    // Вставляем вполовину ширины плашки — дальше растягивается за уголок.
     img.style.width = TB_IMG_START_WIDTH;
     content.appendChild(img);
     wrapTbImage(img);
     scheduleHistorySave();
-  };
-  reader.readAsDataURL(file);
+    imageImportNotice('Картинка добавлена — не больше 500 КБ.');
+  } catch (err) { imageImportNotice(err.message); }
+  finally { imageImportBusy = false; event.target.value = ''; }
 
-  event.target.value = '';
 }
 
 function addTextBox() {

@@ -30,6 +30,9 @@
   var currentWorkId = null;
   var currentWorkTitle = null;
   var saveBusy = false;
+  var MAX_POST_BYTES = 6000000;
+  var sizeMeter, sizeTimer;
+  var wasOverPostLimit = false;
 
   function ready(fn) {
     if (document.readyState === 'loading') {
@@ -48,7 +51,7 @@
           if (!r.ok) {
             var message = data.error || ('Ошибка сервера (' + r.status + ')');
             if (r.status === 401 && path !== '/api/auth/login' && path !== '/api/auth/register') message = 'Сессия входа закончилась или браузер не передал вход. Выйдите и войдите снова; холст останется на месте.';
-            if (r.status === 413) message = 'Сервер отклонил пост: превышен допустимый размер. Возможно, слишком большой объём картинок.';
+            if (r.status === 413) message = data.error || 'Сервер отклонил пост: превышен допустимый размер. Возможно, слишком большой объём картинок.';
             throw new Error(message);
           }
           return data;
@@ -109,6 +112,37 @@
       bgColor: document.getElementById('bgColorPicker') ? document.getElementById('bgColorPicker').value : ''
     };
     return JSON.stringify(snap);
+  }
+
+  function updatePostSize(data) {
+    try {
+      var bytes = new Blob([data === undefined ? captureSnapshot() : data]).size;
+      var over = bytes > MAX_POST_BYTES;
+      if (over && !wasOverPostLimit && typeof imageImportNotice === 'function') {
+        imageImportNotice('Пост больше 6 МБ: облачное сохранение недоступно. Уменьшите картинки или разделите пост.');
+      }
+      if (!over && wasOverPostLimit) {
+        var notice = document.getElementById('imageImportNotice');
+        if (notice && notice.textContent.indexOf('Пост больше 6 МБ:') === 0) {
+          clearTimeout(notice.hideTimer);
+          notice.hidden = true;
+        }
+      }
+      wasOverPostLimit = over;
+      if (sizeMeter) {
+        var mb = (Math.ceil(bytes / 10000) / 100).toLocaleString('ru-RU', { maximumFractionDigits: 2 });
+        sizeMeter.textContent = 'Объём поста: ' + mb + ' из 6 МБ.' + (over
+          ? ' Превышен лимит облачного сохранения. Уменьшите картинки или разделите пост. Холст и скачивание PNG доступны.'
+          : bytes >= 5400000 ? ' Почти достигнут лимит сохранения.' : '');
+        sizeMeter.style.color = over ? '#f87171' : bytes >= 5400000 ? '#e0ba74' : '#aeb6c2';
+      }
+      return bytes;
+    } catch (err) { return null; }
+  }
+
+  function schedulePostSize() {
+    clearTimeout(sizeTimer);
+    sizeTimer = setTimeout(function () { updatePostSize(); }, 250);
   }
 
   /* ------------------------- восстановление состояния -------------------------
@@ -269,6 +303,16 @@
     result.insertBefore(userLabel, exportBtn);
     result.insertBefore(rowSave, exportBtn);
     result.insertBefore(statusLine, exportBtn);
+    sizeMeter = document.createElement('div');
+    sizeMeter.id = 'postSizeMeter';
+    sizeMeter.setAttribute('role', 'status');
+    sizeMeter.setAttribute('aria-live', 'polite');
+    sizeMeter.style.cssText = 'font-size:14px;line-height:1.4;margin:8px 0';
+    result.insertBefore(sizeMeter, rowSave);
+    new MutationObserver(schedulePostSize).observe(exportNode, {subtree:true, childList:true, characterData:true, attributes:true});
+    document.addEventListener('input', schedulePostSize);
+    document.addEventListener('change', schedulePostSize);
+    updatePostSize();
 
     btnList = document.createElement('button');
     btnList.type = 'button';
@@ -387,9 +431,16 @@
 
   function saveWork(update) {
     if (saveBusy) return;
+    if (typeof imageImportBusy !== 'undefined' && imageImportBusy) {
+      showStatus('Дождитесь окончания добавления картинок и сохраните пост.', true); return;
+    }
     var data;
     try { data = captureSnapshot(); }
     catch (err) { showStatus('Не удалось подготовить пост: ' + err.message, true); return; }
+    if (updatePostSize(data) > MAX_POST_BYTES) {
+      showStatus('Пост превышает 6 МБ. Уменьшите картинки или разделите пост на несколько. Ваша работа остаётся на холсте.', true);
+      return;
+    }
     saveBusy = true;
     renderAuthState();
     showStatus('Подготавливаю сохранение…');

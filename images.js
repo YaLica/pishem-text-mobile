@@ -1,3 +1,78 @@
+// Лимит относится к файлу вставленной картинки, не к готовому PNG-посту.
+const TEXTTURA_IMAGE_MAX_BYTES = 500000;
+let imageImportBusy = false;
+
+function imageImportNotice(message) {
+  let el = document.getElementById('imageImportNotice');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'imageImportNotice';
+    el.setAttribute('role', 'status');
+    el.style.cssText = 'position:fixed;bottom:90px;left:50%;transform:translateX(-50%);width:max-content;max-width:85vw;box-sizing:border-box;padding:10px 14px;border-radius:10px;background:#252a32;color:#fff;z-index:100001;font:15px Georgia,serif;pointer-events:none';
+    document.body.appendChild(el);
+  }
+  clearTimeout(el.hideTimer);
+  el.textContent = message;
+  el.hidden = false;
+  el.hideTimer = setTimeout(() => { el.hidden = true; }, 7000);
+}
+
+function imageBlobDataURL(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('Не удалось прочитать картинку.'));
+    reader.onabort = () => reject(new Error('Чтение картинки прервано.'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function preparePostImage(file) {
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  try {
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = () => reject(new Error('Не удалось открыть картинку. Попробуйте JPEG, PNG или WebP.'));
+      img.src = url;
+    });
+    // Небольшой файл сохраняем побайтно, без повторного сжатия.
+    if (file.size <= TEXTTURA_IMAGE_MAX_BYTES) return await imageBlobDataURL(file);
+    const canvas = document.createElement('canvas');
+    const ratio = Math.min(1, 2400 / Math.max(img.naturalWidth, img.naturalHeight));
+    let width = Math.max(1, Math.round(img.naturalWidth * ratio));
+    let height = Math.max(1, Math.round(img.naturalHeight * ratio));
+    const encode = (type, quality) => new Promise((resolve, reject) => {
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error('Не удалось обработать картинку.')), type, quality);
+    });
+    let alpha = null;
+    for (let attempt = 0; attempt < 20; attempt++) {
+      canvas.width = width; canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Браузер не смог обработать картинку.');
+      ctx.drawImage(img, 0, 0, width, height);
+      if (alpha === null) {
+        const pixels = ctx.getImageData(0, 0, width, height).data;
+        alpha = false;
+        for (let i = 3; i < pixels.length; i += 4) {
+          if (pixels[i] !== 255) { alpha = true; break; }
+        }
+      }
+      // Сначала пробуем без потерь — это особенно полезно для скриншотов.
+      let blob = await encode('image/png');
+      if (blob.size <= TEXTTURA_IMAGE_MAX_BYTES) return await imageBlobDataURL(blob);
+      for (const quality of [0.9, 0.82, 0.74]) {
+        blob = await encode(alpha ? 'image/webp' : 'image/jpeg', quality);
+        if (blob.size <= TEXTTURA_IMAGE_MAX_BYTES) return await imageBlobDataURL(blob);
+      }
+      const shrink = Math.min(0.85, Math.sqrt(TEXTTURA_IMAGE_MAX_BYTES / blob.size) * 0.9);
+      width = Math.max(1, Math.floor(width * shrink));
+      height = Math.max(1, Math.floor(height * shrink));
+    }
+    throw new Error('Не удалось уменьшить картинку до 500 КБ.');
+  } finally { URL.revokeObjectURL(url); }
+}
+
 function updateImgCounter() {
 const count = editor.querySelectorAll('.img-box').length;
 document.getElementById('imgCount').textContent = count;
@@ -5,7 +80,8 @@ return count;
 }
 
 async function insertMultipleImages(event) {
-const files = event.target.files;
+const files = Array.from(event.target.files || []);
+if (imageImportBusy) { event.target.value = ""; imageImportNotice("Дождитесь добавления картинок."); return; }
 if (!files || files.length === 0) return;
 
 let currentCount = updateImgCounter();
@@ -20,20 +96,25 @@ restoreSelection();
 const sel = window.getSelection();
 let range = null;
 if (sel && sel.rangeCount > 0 && editor.contains(sel.anchorNode)) {
-range = sel.getRangeAt(0);
+range = sel.getRangeAt(0).cloneRange();
 }
 
 let added = 0;
+const failedImages = [];
+imageImportBusy = true;
+try {
 
 for (let i = 0; i < files.length; i++) {
 if (currentCount + added >= maxImages) break;
 
 const file = files[i];
-const dataUrl = await new Promise((resolve) => {
-  const reader = new FileReader();
-  reader.onload = (e) => resolve(e.target.result);
-  reader.readAsDataURL(file);
-});
+imageImportNotice('Обрабатываю картинку ' + (i + 1) + ' из ' + files.length + '…');
+let dataUrl;
+try { dataUrl = await preparePostImage(file); }
+catch (err) { failedImages.push(file.name || "Картинка"); imageImportNotice(err.message); continue; }
+// При удалении места вставки за время обработки добавляем в конец холста.
+if (range && !editor.contains(range.commonAncestorContainer)) range = null;
+if (updateImgCounter() >= maxImages) break;
 
 const box = createImageBox(dataUrl);
 box.querySelector('img').onload = updateRatio;
@@ -67,7 +148,12 @@ updateImgCounter();
 updateRatio();
 saveHistory();
 
+if (failedImages.length) imageImportNotice('Добавлено: ' + added + '. Не удалось открыть: ' + failedImages.join(', '));
+else if (added) imageImportNotice('Добавлено картинок: ' + added + '. Каждая — не больше 500 КБ.');
+} finally {
+imageImportBusy = false;
 event.target.value = '';
+}
 setTimeout(() => focusEditor(), 50);
 }
 
