@@ -33,6 +33,9 @@
   var MAX_POST_BYTES = 6000000;
   var sizeMeter, sizeTimer;
   var wasOverPostLimit = false;
+  var MAX_SAVED_WORKS = 20;
+  var WARN_SAVED_WORKS = 18;
+  var savedWorksCount = null, quotaMeter;
 
   function ready(fn) {
     if (document.readyState === 'loading') {
@@ -52,11 +55,48 @@
             var message = data.error || ('Ошибка сервера (' + r.status + ')');
             if (r.status === 401 && path !== '/api/auth/login' && path !== '/api/auth/register') message = 'Сессия входа закончилась или браузер не передал вход. Выйдите и войдите снова; холст останется на месте.';
             if (r.status === 413) message = data.error || 'Сервер отклонил пост: превышен допустимый размер. Возможно, слишком большой объём картинок.';
-            throw new Error(message);
+            var error = new Error(message);
+            error.code = data.code;
+            error.count = data.count;
+            throw error;
           }
           return data;
         });
       });
+  }
+
+  function renderWorksQuota() {
+    if (!quotaMeter) return;
+    quotaMeter.hidden = !currentUser;
+    if (!currentUser) { savedWorksCount = null; quotaMeter.textContent = ''; return; }
+    if (savedWorksCount === null) { quotaMeter.textContent = 'Проверяем количество сохранённых постов…'; return; }
+    var full = savedWorksCount >= MAX_SAVED_WORKS;
+    var near = savedWorksCount >= WARN_SAVED_WORKS;
+    quotaMeter.style.color = full ? '#f87171' : near ? '#e0ba74' : '#aeb6c2';
+    quotaMeter.textContent = 'Сохранено постов: ' + savedWorksCount + ' из ' + MAX_SAVED_WORKS + '.' +
+      (full ? ' Все места заняты. Удалите ненужный пост или обновите существующий. Сохранённые работы остаются доступными.' :
+       near ? ' Вы приближаетесь к лимиту. Свободных мест: ' + (MAX_SAVED_WORKS - savedWorksCount) + '.' : '');
+  }
+
+  function getWorks() {
+    var user = currentUser;
+    return api('/api/works').then(function (data) {
+      if (currentUser !== user) throw new Error('Аккаунт изменился. Повторите действие.');
+      if (!Array.isArray(data.works)) throw new Error('Не удалось проверить список постов. Повторите попытку.');
+      savedWorksCount = data.works.length;
+      renderWorksQuota();
+      return data;
+    });
+  }
+
+  function refreshWorksQuota() {
+    if (!currentUser) { renderWorksQuota(); return; }
+    var user = currentUser;
+    return getWorks().catch(function () {
+      if (currentUser === user && quotaMeter) {
+        quotaMeter.textContent = 'Не удалось обновить количество постов. Проверим снова перед сохранением.';
+      }
+    });
   }
 
   /* --------------------------- захват состояния ---------------------------
@@ -309,6 +349,13 @@
     sizeMeter.setAttribute('aria-live', 'polite');
     sizeMeter.style.cssText = 'font-size:14px;line-height:1.4;margin:8px 0';
     result.insertBefore(sizeMeter, rowSave);
+    quotaMeter = document.createElement('div');
+    quotaMeter.id = 'savedWorksQuota';
+    quotaMeter.setAttribute('role', 'status');
+    quotaMeter.setAttribute('aria-live', 'polite');
+    quotaMeter.style.cssText = 'font-size:14px;line-height:1.4;margin:8px 0';
+    quotaMeter.hidden = true;
+    result.insertBefore(quotaMeter, rowSave);
     new MutationObserver(schedulePostSize).observe(exportNode, {subtree:true, childList:true, characterData:true, attributes:true});
     document.addEventListener('input', schedulePostSize);
     document.addEventListener('change', schedulePostSize);
@@ -343,6 +390,7 @@
   }
 
   function renderAuthState() {
+    renderWorksQuota();
     accountToggle.textContent = currentUser ? 'Выйти' : 'Войти';
     accountToggle.classList.toggle('is-signed-in', !!currentUser);
     accountToggle.disabled = authChecking;
@@ -369,6 +417,7 @@
     }).finally(function () {
       authChecking = false;
       renderAuthState();
+      refreshWorksQuota();
     });
   }
 
@@ -389,6 +438,7 @@
         document.getElementById('cloudPassword').value = '';
         renderAuthState();
         showStatus('Вход выполнен');
+        refreshWorksQuota();
         if (action) action();
       })
       .catch(function (err) { showStatus(err.message, true); })
@@ -418,14 +468,15 @@
      с этим именем; если впишет своё — сохранится своё. */
   function nextAutoTitle() {
     var dateStr = new Date().toLocaleDateString('ru-RU');
-    return api('/api/works').then(function (data) {
-      var works = data.works || [];
+    return getWorks().then(function (data) {
+      if (savedWorksCount >= MAX_SAVED_WORKS) {
+        throw new Error('Достигнут лимит 20 постов. Удалите ненужный пост или обновите существующий. Сохранённые работы не удалены.');
+      }
+      var works = data.works;
       var count = works.filter(function (w) {
         return (w.title || '').indexOf(dateStr) === 0;
       }).length;
       return dateStr + '-' + (count + 1);
-    }).catch(function () {
-      return dateStr + '-1';
     });
   }
 
@@ -457,12 +508,17 @@
           currentWorkId = res.id;
           currentWorkTitle = res.title;
           showStatus('Сохранено: ' + res.title);
+          return refreshWorksQuota();
         });
     }
 
     var titleRequest = update && currentWorkId
       ? Promise.resolve(currentWorkTitle || ('Пост №' + currentWorkId)) : nextAutoTitle();
     titleRequest.then(proceed).catch(function (err) {
+      if (err.code === 'works_limit_reached' && Number.isInteger(err.count)) {
+        savedWorksCount = err.count;
+        renderWorksQuota();
+      }
       var message = err instanceof TypeError
         ? 'Нет ответа от сервера. Проверьте соединение и «Мои посты» перед повторной попыткой.' : err.message;
       showStatus('Не удалось сохранить. ' + message, true);
@@ -474,8 +530,8 @@
 
   function loadWorksList() {
     worksList.innerHTML = '<div style="font-size:11px;color:#9aa4b2;">Загрузка…</div>';
-    api('/api/works').then(function (data) {
-      var works = data.works || [];
+    getWorks().then(function (data) {
+      var works = data.works;
       if (!works.length) {
         worksList.innerHTML = '<div style="font-size:11px;color:#9aa4b2;">Пока пусто</div>';
         return;
@@ -537,5 +593,8 @@
     if (typeof exportNode === 'undefined') return;
     buildUI();
     refreshAuthUI();
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden && !authChecking && !saveBusy) refreshWorksQuota();
+    });
   });
 })();

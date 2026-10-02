@@ -374,7 +374,7 @@ async function insertImageIntoTextBox(event) {
     content.appendChild(img);
     wrapTbImage(img);
     scheduleHistorySave();
-    imageImportNotice('Картинка добавлена — не больше 500 КБ.');
+    clearImageImportProgress();
   } catch (err) { imageImportNotice(err.message); }
   finally { imageImportBusy = false; event.target.value = ''; }
 

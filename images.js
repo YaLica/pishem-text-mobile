@@ -17,6 +17,14 @@ function imageImportNotice(message) {
   el.hideTimer = setTimeout(() => { el.hidden = true; }, 7000);
 }
 
+function clearImageImportProgress() {
+  const el = document.getElementById('imageImportNotice');
+  if (el && el.textContent.startsWith('Обрабатываю картинку')) {
+    clearTimeout(el.hideTimer);
+    el.hidden = true;
+  }
+}
+
 function imageBlobDataURL(blob) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -148,8 +156,8 @@ updateImgCounter();
 updateRatio();
 saveHistory();
 
-if (failedImages.length) imageImportNotice('Добавлено: ' + added + '. Не удалось открыть: ' + failedImages.join(', '));
-else if (added) imageImportNotice('Добавлено картинок: ' + added + '. Каждая — не больше 500 КБ.');
+if (failedImages.length) imageImportNotice('Не удалось открыть: ' + failedImages.join(', '));
+else clearImageImportProgress();
 } finally {
 imageImportBusy = false;
 event.target.value = '';
