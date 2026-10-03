@@ -560,8 +560,15 @@ return;
 }
 
 const nextState = getClipboardStyle(state, child);
-if (tag === 'DIV' || tag === 'P' || child.classList.contains('editor-block')) {
-if (html.length && !html.endsWith('\n')) html += '\n';
+if (tag === 'BLOCKQUOTE' || child.hasAttribute('data-post-quote')) {
+  if (html.length && !html.endsWith('\n') && !html.endsWith('<blockquote>')) html += '\n';
+  html += '<blockquote>';
+  walk(child, nextState);
+  // Закрываем блок без лишнего последнего переноса внутри цитаты.
+  if (html.endsWith('\n')) html = html.slice(0, -1);
+  html += '</blockquote>\n';
+} else if (tag === 'DIV' || tag === 'P' || child.hasAttribute('data-para') || child.classList.contains('editor-block')) {
+if (html.length && !html.endsWith('\n') && !html.endsWith('<blockquote>')) html += '\n';
 walk(child, nextState);
 if (!html.endsWith('\n')) html += '\n';
 } else {
@@ -585,7 +592,7 @@ prevEmpty = isEmpty;
 return cleaned;
 }
 
-function copyRichSelection(html) {
+function copyRichSelection(html, plain) {
 const temp = document.createElement('div');
 temp.contentEditable = 'true';
 temp.setAttribute('aria-hidden', 'true');
@@ -599,8 +606,18 @@ const sel = window.getSelection();
 sel.removeAllRanges();
 sel.addRange(range);
 
+// Явно передаём семантику цитаты: нативное копирование выделения иногда
+// превращает blockquote в DIV со стилями, которые мессенджер отбрасывает.
+function onCopy(event) {
+  if (!event.clipboardData) return;
+  event.clipboardData.setData('text/html', html);
+  event.clipboardData.setData('text/plain', plain);
+  event.preventDefault();
+}
+document.addEventListener('copy', onCopy, true);
 let ok = false;
 try { ok = document.execCommand('copy'); } catch (_) { ok = false; }
+finally { document.removeEventListener('copy', onCopy, true); }
 sel.removeAllRanges();
 temp.remove();
 return ok;
@@ -610,10 +627,11 @@ async function writeToClipboard(html, plain, btnId) {
 let ok = false;
 const btn = btnId ? document.getElementById(btnId) : null;
 const original = btn ? btn.innerHTML : '';
+let plainOnly = false;
 
 // Desktop Telegram надёжнее принимает форматирование из обычного rich-copy.
 // На iOS/Android этот путь может быть запрещён — там используем Clipboard API.
-if (!isMobile()) ok = copyRichSelection(html);
+if (!isMobile()) ok = copyRichSelection(html, plain);
 
 if (!ok && navigator.clipboard && window.ClipboardItem) {
   try {
@@ -627,21 +645,24 @@ if (!ok && navigator.clipboard && window.ClipboardItem) {
   } catch (_) { ok = false; }
 }
 
-if (!ok) ok = copyRichSelection(html);
+if (!ok) ok = copyRichSelection(html, plain);
 
 if (!ok && navigator.clipboard && navigator.clipboard.writeText) {
   try {
     await navigator.clipboard.writeText(plain);
     ok = true;
+    plainOnly = true;
   } catch (_) { ok = false; }
 }
 
 if (ok && btn) {
-  btn.innerHTML = '✅ Скопировано!';
+  btn.textContent = plainOnly ? 'Скопировано без оформления' : '✅ Скопировано!';
   setTimeout(function() { btn.innerHTML = original; }, 2000);
 }
 
+if (!ok) alert('Не удалось скопировать. Попробуйте ещё раз или разрешите доступ к буферу обмена в браузере.');
 restoreSelection();
+return ok && !plainOnly;
 }
 
 async function copyForTelegram() {

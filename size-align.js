@@ -1,11 +1,12 @@
 /* ==========================================================================
    size-align.js — написан заново
 
-   Делает три вещи и больше ничего:
+   Настройки текста и абзацев:
 
    1. Размер текста до 240 px (ползунки и кнопки A+ / A−).
    2. Выравнивание отдельно для каждой строки ОСНОВНОГО текста.
    3. Подсветку активной кнопки выравнивания.
+   4. Единые блоки цитат, их снятие и выход в обычный текст.
 
    Чего этот файл НЕ делает — специально:
    • не перехватывает вставку текста (этим занимается editor-events.js),
@@ -75,7 +76,7 @@
 
   function isBlock(node) {
     return node && node.nodeType === 1 &&
-           (node.tagName === 'DIV' || node.tagName === 'P' || node.hasAttribute('data-para')) &&
+           (node.tagName === 'DIV' || node.tagName === 'P' || node.tagName === 'BLOCKQUOTE' || node.hasAttribute('data-para')) &&
            !node.closest('.img-box');
   }
 
@@ -279,26 +280,36 @@
     }
 
     var quoteMode = align === 'quote';
-    var removeQuotes = quoteMode && lines.length && lines.every(function(nodes) {
-      var node = nodes[0].nodeType === 1 ? nodes[0] : nodes[0].parentElement;
-      return !!(node && node.closest('[data-post-quote]'));
+    var quoteAncestors = lines.map(function(nodes) {
+      var n = nodes[0].nodeType === 1 ? nodes[0] : nodes[0].parentElement;
+      return n && n.closest('[data-post-quote],blockquote');
     });
-    lines.forEach(function (nodes) {
-      var box = (nodes.length === 1 && isBlock(nodes[0])) ? nodes[0] : wrapLine(nodes);
-      if (!quoteMode) { setAlign(box, align); return; }
-      var existing = box.closest('[data-post-quote]');
-      if (removeQuotes) {
-        if (existing) {
-          existing.removeAttribute('data-post-quote');
-          ['border-left', 'padding-left', 'margin-left'].forEach(function(p) { existing.style.removeProperty(p); });
-        }
-      } else if (!existing) {
-        box.setAttribute('data-post-quote', '1');
-        box.style.borderLeft = '0.12em solid currentColor';
-        box.style.paddingLeft = '0.65em';
-        box.style.marginLeft = '0.25em';
-      }
-    });
+    var removeQuotes = quoteMode && lines.length && quoteAncestors.every(Boolean);
+    if (removeQuotes) {
+      Array.from(new Set(quoteAncestors)).forEach(removeQuoteStyle);
+    } else {
+      var boxes = lines.map(function(nodes) {
+        return nodes.length === 1 && isBlock(nodes[0]) ? nodes[0] : wrapLine(nodes);
+      });
+      if (quoteMode && boxes.length) {
+        // Выделенные абзацы — одна цитата, включая пустые строки между ними.
+        var whole = document.createRange();
+        whole.setStartBefore(boxes[0].closest('[data-post-quote],blockquote') || boxes[0]);
+        var lastBox = boxes[boxes.length - 1];
+        whole.setEndAfter(lastBox.closest('[data-post-quote],blockquote') || lastBox);
+        var fragment = whole.extractContents();
+        // Старые цитаты внутри нового блока не создают вложенных полос.
+        Array.from(fragment.querySelectorAll('[data-post-quote],blockquote')).forEach(removeQuoteStyle);
+        var parent = whole.startContainer.nodeType === 1 ? whole.startContainer : whole.startContainer.parentElement;
+        var inlineParent = parent.closest('p,span,b,i,strong,em,a');
+        var quote = document.createElement(inlineParent && paragraphRoot.contains(inlineParent) ? 'span' : 'blockquote');
+        quote.setAttribute('data-post-quote', '1');
+        quote.setAttribute('data-para', '1');
+        quote.style.cssText = 'display:block;margin:0 0 0 0.25em;border-left:0.12em solid currentColor;padding:0 0 0 0.65em;';
+        quote.appendChild(fragment);
+        whole.insertNode(quote);
+      } else boxes.forEach(function(box) { setAlign(box, align); });
+    }
 
     try {
       var r = document.createRange();
@@ -351,6 +362,17 @@
     };
   }
 
+  function removeQuoteStyle(node) {
+    node.removeAttribute('data-post-quote');
+    ['border-left', 'padding-left', 'margin-left'].forEach(function(p) { node.style.removeProperty(p); });
+    if (node.tagName === 'BLOCKQUOTE') {
+      var plain = document.createElement('div');
+      Array.from(node.attributes).forEach(function(attr) { plain.setAttribute(attr.name, attr.value); });
+      while (node.firstChild) plain.appendChild(node.firstChild);
+      node.replaceWith(plain);
+    }
+  }
+
   window.togglePostQuote = function() {
     if (typeof restoreSelection === 'function') restoreSelection();
     var scope = getEditingScope();
@@ -370,8 +392,66 @@
     var sel = window.getSelection();
     var node = sel && sel.anchorNode;
     if (node && node.nodeType !== 1) node = node.parentElement;
-    if (btn) btn.setAttribute('aria-pressed', String(!!(node && node.closest && node.closest('[data-post-quote]'))));
+    var quote = node && node.closest && node.closest('[data-post-quote],blockquote');
+    if (btn) btn.setAttribute('aria-pressed', String(!!quote));
+    var exit = document.getElementById('exitQuoteBtn');
+    if (exit) { exit.hidden = !quote; exit.style.display = quote ? '' : 'none'; }
   }
+  function activeQuote() {
+    var selection = window.getSelection();
+    if (!selection || !selection.rangeCount) return null;
+    var range = selection.getRangeAt(0);
+    var node = range.commonAncestorContainer;
+    if (node.nodeType !== 1) node = node.parentElement;
+    var quote = node && node.closest('[data-post-quote],blockquote');
+    return quote && exportNode.contains(quote) ? quote : null;
+  }
+  window.exitPostQuote = function() {
+    restoreSelection();
+    var quote = activeQuote();
+    if (!quote) return;
+    saveHistory();
+    var para = document.createElement(quote.parentElement.closest('p') ? 'span' : 'div');
+    para.setAttribute('data-para', '1');
+    para.style.display = 'block';
+    para.appendChild(document.createElement('br'));
+    quote.after(para);
+    var range = document.createRange();
+    range.setStart(para, 0);
+    range.collapse(true);
+    var sel = window.getSelection();
+    sel.removeAllRanges(); sel.addRange(range);
+    releaseSelection(); saveSelectionBeforeAction();
+    var field = para.closest('[contenteditable="true"]');
+    if (field) field.focus();
+    updateRatio(); saveHistory(); updateQuoteButton();
+  };
+  function insertQuoteBreak(e) {
+    var field = e.target.closest && e.target.closest('[contenteditable="true"]');
+    if (!field || !exportNode.contains(field)) return;
+    var quote = activeQuote();
+    if (!quote) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    var range = window.getSelection().getRangeAt(0);
+    saveHistory();
+    range.deleteContents();
+    var br = document.createElement('br');
+    range.insertNode(br);
+    var rest = document.createRange();
+    rest.selectNodeContents(quote); rest.setStartAfter(br);
+    if (!rest.toString() && !rest.cloneContents().querySelector('br,img')) br.after(document.createElement('br'));
+    range.setStartAfter(br); range.collapse(true);
+    var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+    releaseSelection(); saveSelectionBeforeAction(); updateRatio(); saveHistory();
+  }
+  // beforeinput покрывает виртуальную клавиатуру; keydown — обычную.
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.isComposing) insertQuoteBreak(e);
+  }, true);
+  document.addEventListener('beforeinput', function(e) {
+    if (e.inputType === 'insertParagraph' || e.inputType === 'insertLineBreak') insertQuoteBreak(e);
+  }, true);
   document.addEventListener('selectionchange', updateQuoteButton);
   document.addEventListener('texttura:new-post', updateQuoteButton);
 

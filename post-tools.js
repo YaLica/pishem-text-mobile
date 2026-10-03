@@ -54,9 +54,11 @@
   ['bgColorPicker', 'mainTextColorPicker'].forEach(function (id) {
     document.getElementById(id).addEventListener('input', scheduleHistorySave);
   });
-  document.getElementById('quoteBtn').addEventListener('pointerdown', function(e) {
+  ['quoteBtn', 'exitQuoteBtn'].forEach(function(id) {
+  document.getElementById(id).addEventListener('pointerdown', function(e) {
     saveSelectionBeforeAction();
     // На телефоне и компьютере кнопка не забирает курсор из абзаца.
     e.preventDefault();
+  });
   });
 })();
