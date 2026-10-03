@@ -28,6 +28,8 @@
       ? ['Откройте сайт «Тексttура» в Safari.', 'Нажмите «Поделиться», затем «На экран „Домой“». Если есть переключатель «Открывать как веб-приложение», включите его.', 'Нажмите «Добавить». На главном экране появится значок «Тексttура».']
       : android
       ? ['Откройте меню браузера.', 'Выберите «Установить приложение» или «Добавить на главный экран» и подтвердите установку.', 'Если этого пункта нет, попробуйте открыть сайт в Chrome.']
+      : /YaBrowser/.test(navigator.userAgent)
+      ? ['Нажмите три точки справа внутри адресной строки Яндекс Браузера.', 'Выберите «Установить как приложение», затем режим «Отдельное окно».', 'В меню установленного приложения можно включить «Добавить ярлык».']
       : ['Откройте меню браузера или значок установки справа от адреса сайта.', 'Выберите «Установить «Тексttура»» / «Установить приложение» и подтвердите установку.', 'Если такого пункта нет, откройте сайт в Chrome или Edge.'];
     var text = document.getElementById('installHelpSteps');
     text.textContent = '';
@@ -77,7 +79,7 @@
     errorLine.setAttribute('role','status'); errorLine.hidden = true; controls.appendChild(errorLine);
     document.querySelector('.panel').appendChild(controls);
     help = document.createElement('div'); help.id = 'installHelp'; help.hidden = true;
-    help.innerHTML = '<section class="app-dialog" role="dialog" aria-modal="true" aria-labelledby="installHelpTitle"><img src="icons/icon-192.png" alt="" width="80" height="80"><h2 id="installHelpTitle">Тексttура</h2><div id="installHelpSteps"></div><button id="closeInstallHelp" type="button">Понятно</button></section>';
+    help.innerHTML = '<section class="app-dialog" role="dialog" aria-modal="true" aria-labelledby="installHelpTitle"><img src="icon-192.png" alt="" width="80" height="80"><h2 id="installHelpTitle">Тексttура</h2><div id="installHelpSteps"></div><button id="closeInstallHelp" type="button">Понятно</button></section>';
     document.body.appendChild(help);
     document.getElementById('closeInstallHelp').addEventListener('click', closeHelp);
     help.addEventListener('click', function(e) { if (e.target === help) closeHelp(); });
