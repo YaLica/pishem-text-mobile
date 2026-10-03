@@ -30,6 +30,7 @@
   var currentWorkId = null;
   var currentWorkTitle = null;
   var openRequestVersion = 0;
+  var openingRequests = 0;
   var saveBusy = false;
   var MAX_POST_BYTES = 6000000;
   var sizeMeter, sizeTimer;
@@ -235,6 +236,23 @@
     if (typeof updateRatio === 'function') updateRatio();
     if (typeof saveHistory === 'function') saveHistory();
   }
+
+  // Локальный черновик использует тот же формат, что и облако.
+  // При восстановлении не привязываем его к прежнему облачному посту:
+  // это исключает случайное обновление работы другого аккаунта.
+  window.TextturaDocument = {
+    capture: captureSnapshot,
+    restoreDraft: function(json) {
+      restoreSnapshot(json);
+      currentWorkId = null;
+      currentWorkTitle = null;
+      renderAuthState();
+      historyStack = [];
+      historyIndex = -1;
+      saveHistory();
+    },
+    isBusy: function() { return saveBusy || openingRequests > 0 || (typeof imageImportBusy !== 'undefined' && imageImportBusy); }
+  };
 
   /* ------------------------------- UI ------------------------------- */
 
@@ -580,6 +598,7 @@
     if (!confirm('Открыть этот пост? Текущий несохранённый холст будет заменён.')) return;
     if (saveBusy || (typeof imageImportBusy !== 'undefined' && imageImportBusy)) { showStatus('Дождитесь завершения сохранения или загрузки картинки.', true); return; }
     var version = ++openRequestVersion;
+    openingRequests++;
     showStatus('Загружаю…');
     api('/api/works/' + id).then(function (data) {
       if (version !== openRequestVersion) return;
@@ -588,7 +607,9 @@
       currentWorkTitle = data.work.title;
       renderAuthState();
       showStatus('Пост загружен');
-    }).catch(function (err) { showStatus(err.message, true); });
+      document.dispatchEvent(new CustomEvent('texttura:work-loaded'));
+    }).catch(function (err) { showStatus(err.message, true); })
+      .finally(function() { openingRequests--; });
   }
 
   function deleteWork(id) {

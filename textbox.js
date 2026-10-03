@@ -363,7 +363,6 @@ async function insertImageIntoTextBox(event) {
   if (imageImportBusy) { event.target.value = ''; imageImportNotice('Дождитесь добавления картинок.'); return; }
   imageImportBusy = true;
   try {
-    imageImportNotice('Обрабатываю картинку…');
     const dataUrl = await preparePostImage(file);
     if (!content.isConnected) return;
     const img = document.createElement('img');

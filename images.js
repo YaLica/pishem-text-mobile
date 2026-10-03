@@ -116,7 +116,6 @@ for (let i = 0; i < files.length; i++) {
 if (currentCount + added >= maxImages) break;
 
 const file = files[i];
-imageImportNotice('Обрабатываю картинку ' + (i + 1) + ' из ' + files.length + '…');
 let dataUrl;
 try { dataUrl = await preparePostImage(file); }
 catch (err) { failedImages.push(file.name || "Картинка"); imageImportNotice(err.message); continue; }

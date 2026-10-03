@@ -1,0 +1,12 @@
+#appControls { margin-top:16px; padding-top:12px; border-top:1px solid rgba(255,255,255,.1); font-family:"Times New Roman",Times,serif; }
+#appControls [hidden], #appControls[hidden], #installHelp[hidden] { display:none !important; }
+#appControls button { width:100%; margin:4px 0; font:inherit; }
+#appControls .app-error { font-size:14px; line-height:1.4; color:#f3a6a6; }
+#installHelp { position:fixed; inset:0; z-index:110000; display:flex; align-items:center; justify-content:center; padding:20px; background:rgba(0,0,0,.65); font-family:"Times New Roman",Times,serif; }
+#installHelp .app-dialog { width:min(420px,100%); max-height:85vh; overflow:auto; padding:24px; border:1px solid #594b3b; border-radius:20px; color:#f5f1ea; background:#1b1f29; box-shadow:0 12px 48px #0008; }
+#installHelp h2 { margin:10px 0 16px; text-align:center; font:bold 25px "Times New Roman",Times,serif; }
+#installHelp img { display:block; width:80px; height:80px; border-radius:16px; margin:auto; }
+#installHelp p { font-size:17px; line-height:1.5; margin:12px 0; }
+#installHelp button { font:17px "Times New Roman",Times,serif; padding:10px 16px; border-radius:10px; color:#211a14; background:#efd7b8; border:0; width:100%; }
+
+.app-updating body { pointer-events:none; }

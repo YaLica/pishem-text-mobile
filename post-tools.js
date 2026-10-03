@@ -36,7 +36,6 @@
     if (imageImportBusy) { imageImportNotice('Дождитесь добавления картинок.'); return; }
     imageImportBusy = true;
     button.disabled = true;
-    imageImportNotice('Обрабатываю картинку для фона…');
     try {
       var data = await preparePostImage(file);
       saveHistory();
