@@ -21,11 +21,6 @@
     width:40px; height:64px; z-index:100021;
   }
   #panelHandle.open { left:calc(var(--visual-left, 0px) + var(--drawer-width)); }
-  #panelCloseBar { display:flex; justify-content:flex-end; position:sticky; top:0;
-    z-index:5; margin:0 -12px 10px; padding:6px 10px;
-    background:#1b1f29; border-bottom:1px solid #efd7b833; }
-  #panelCloseBar button { width:auto; min-height:44px; margin:0; padding:8px 14px;
-    font:16px 'Times New Roman',Times,serif; color:#efd7b8; }
   body.tools-open #quickBar, body.tools-open #floatUndoRedo,
   body.tools-open #accountToggle { visibility:hidden !important; pointer-events:none !important; }
   #fontSheet, #fsPanelMain, #fsPanelWord, #fsPanelTb { z-index:100030;
@@ -46,4 +41,12 @@
   #installHelp .install-address { display:block; width:100%; font:16px 'Times New Roman',Times,serif;
     padding:8px; color:#f5f1ea; background:#232834; border:1px solid #efd7b855; border-radius:8px; }
 }
-@media (min-width:821px) { #panelCloseBar { display:none; } }
+
+
+@media (max-width:820px) {
+  #imgMobilePanel { max-height:calc(var(--visual-height, 100vh) - 16px);
+    overflow-y:auto; overscroll-behavior:contain; touch-action:pan-y;
+    -webkit-overflow-scrolling:touch; }
+  #impHead { touch-action:none; }
+  #imgMobilePanel input[type=range] { touch-action:pan-x; }
+}

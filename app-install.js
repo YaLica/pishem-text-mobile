@@ -4,6 +4,10 @@
   var installPrompt = null, registration = null, applyingUpdate = false;
   var controls, installButton, updateButton, errorLine, help, previousFocus;
   var mode = window.matchMedia('(display-mode: standalone)');
+  function mobileInstallation() {
+    return /Android|iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  }
   function installed() { return mode.matches || window.navigator.standalone === true; }
   function showError(message) {
     if (!errorLine) return;
@@ -13,7 +17,7 @@
   }
   function refresh() {
     if (!controls) return;
-    installButton.hidden = installed();
+    installButton.hidden = !mobileInstallation() || installed();
     updateButton.hidden = !(registration && registration.waiting && navigator.serviceWorker.controller);
     controls.hidden = installButton.hidden && updateButton.hidden && errorLine.hidden;
   }
@@ -22,15 +26,14 @@
     if (previousFocus && previousFocus.isConnected) previousFocus.focus();
   }
   function helpInstall() {
+    if (!mobileInstallation()) return;
     var ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     var android = /Android/.test(navigator.userAgent);
     var steps = ios
       ? ['Если страница открыта внутри мессенджера (с крестиком сверху), нажмите значок компаса или выберите «Открыть в Safari» в меню. Если такого пункта нет, скопируйте адрес ниже и откройте его в Safari.', 'В Safari нажмите «Поделиться» → «На экран „Домой“». Если пункта нет, посмотрите «Изменить действия».', 'Нажмите «Добавить». Если есть переключатель «Открывать как веб-приложение», включите его. Затем запускайте Тексttуру с нового значка.']
       : android
       ? ['Откройте меню браузера.', 'Выберите «Установить приложение» или «Добавить на главный экран» и подтвердите установку.', 'Если этого пункта нет, попробуйте открыть сайт в Chrome.']
-      : /YaBrowser/.test(navigator.userAgent)
-      ? ['Нажмите три точки справа внутри адресной строки Яндекс Браузера.', 'Выберите «Установить как приложение», затем режим «Отдельное окно».', 'В меню установленного приложения можно включить «Добавить ярлык».']
-      : ['Откройте меню браузера или значок установки справа от адреса сайта.', 'Выберите «Установить «Тексttура»» / «Установить приложение» и подтвердите установку.', 'Если такого пункта нет, откройте сайт в Chrome или Edge.'];
+      : [];
     var text = document.getElementById('installHelpSteps');
     text.textContent = '';
     steps.forEach(function(step, index) { var p = document.createElement('p'); p.textContent = (index + 1) + '. ' + step; text.appendChild(p); });
@@ -49,6 +52,7 @@
     document.getElementById('closeInstallHelp').focus();
   }
   async function install() {
+    if (!mobileInstallation()) return;
     if (!installPrompt) { helpInstall(); return; }
     var prompt = installPrompt;
     installPrompt = null;
@@ -111,7 +115,7 @@
       if (applyingUpdate) { e.preventDefault(); e.stopImmediatePropagation(); }
     }, true);
   });
-  window.addEventListener('beforeinstallprompt', function(e) { e.preventDefault(); installPrompt = e; refresh(); });
+  window.addEventListener('beforeinstallprompt', function(e) { e.preventDefault(); installPrompt = mobileInstallation() ? e : null; refresh(); });
   window.addEventListener('appinstalled', function() { installPrompt = null; if (installButton) installButton.hidden = true; });
   if (mode.addEventListener) mode.addEventListener('change', refresh);
   document.addEventListener('texttura:app-error', function(e) { showError(e.detail); });

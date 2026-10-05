@@ -219,16 +219,6 @@ function setPanelOpen(open) {
   scheduleQuickBarPosition();
 }
 function togglePanel() { setPanelOpen(!panelEl.classList.contains('open')); }
-(function addPanelCloseButton() {
-  const row = document.createElement('div'); row.id = 'panelCloseBar';
-  const close = document.createElement('button'); close.type = 'button';
-  close.textContent = 'Закрыть ×'; close.setAttribute('aria-label', 'Закрыть инструменты');
-  close.addEventListener('click', function () { setPanelOpen(false); });
-  row.appendChild(close); panelEl.insertBefore(row, panelEl.firstChild);
-  document.addEventListener('keydown', function (event) {
-    if (event.key === 'Escape' && isMobile() && panelEl.classList.contains('open')) setPanelOpen(false);
-  });
-})();
 
 function onMobileToolsClick() {
   togglePanel();

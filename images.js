@@ -306,6 +306,7 @@ if (tbPanel) tbPanel.style.display = 'none';
 let dragBox = null;
 let isTouchDraggingImg = false;
 let imgGhost = null;
+let imageTouchStart = null;
 
 editor.addEventListener('dragstart', function(e) { const box = e.target.closest('.img-box'); if (box) dragBox = box; });
 editor.addEventListener('dragover', function(e) { if (dragBox) e.preventDefault(); });
@@ -343,11 +344,14 @@ editor.addEventListener('touchstart', function(e) {
 const box = e.target.closest('.img-box');
 if (box && !e.target.closest('.img-resizer')) {
 dragBox = box;
+imageTouchStart = {x:e.touches[0].clientX, y:e.touches[0].clientY};
 }
 }, {passive: true});
 
 editor.addEventListener('touchmove', function(e) {
 if (dragBox && !isTouchDraggingImg) {
+const t = e.touches[0];
+if (!t || !imageTouchStart || Math.hypot(t.clientX-imageTouchStart.x,t.clientY-imageTouchStart.y) < 10) return;
 isTouchDraggingImg = true;
 imgGhost = dragBox.cloneNode(true);
 imgGhost.style.position = 'fixed';
@@ -407,7 +411,16 @@ dragBox = null;
 updateRatio();
 saveHistory();
 } else {
+if (dragBox && imageTouchStart) {
+  if (e.cancelable) e.preventDefault();
+  selectImgBox(dragBox);
+}
 dragBox = null;
 }
+imageTouchStart = null;
+}, {passive:false});
+editor.addEventListener('touchcancel', function () {
+  if (imgGhost) imgGhost.remove();
+  imgGhost = null; dragBox = null; imageTouchStart = null; isTouchDraggingImg = false;
 });
 

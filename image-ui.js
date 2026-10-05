@@ -281,25 +281,34 @@ function openImgMobilePanel() {
   syncImgMobilePanel();
   setRotLock(false);
   p.classList.add('visible');
-  requestAnimationFrame(function(){
-    const pw = p.offsetWidth || 270;
-    const ph = p.offsetHeight || 300;
-    const peek = 40;
-    const minL = peek - pw, maxL = window.innerWidth - peek;
-    const minT = peek - ph, maxT = window.innerHeight - peek;
-    let left, top;
-    if (impPos) {
-      left = Math.max(minL, Math.min(impPos.left, maxL));
-      top  = Math.max(minT, Math.min(impPos.top, maxT));
-    } else {
-      left = Math.max(0, (window.innerWidth - pw) / 2);
-      top  = 80;
-    }
-    p.style.left = left + 'px';
-    p.style.top = top + 'px';
-    impPos = { left: left, top: top };
-  });
+  requestAnimationFrame(function(){positionImgMobilePanel();});
+  [80, 200, 400, 700].forEach(function(ms) { setTimeout(positionImgMobilePanel, ms); });
 }
+
+function imagePanelBounds() {
+  if (window.TextturaViewport) return window.TextturaViewport.bounds();
+  const vv = window.visualViewport;
+  return vv ? {left:vv.offsetLeft,top:vv.offsetTop,width:vv.width,height:vv.height} :
+    {left:0,top:0,width:window.innerWidth,height:window.innerHeight};
+}
+function positionImgMobilePanel(left, top) {
+  const p = document.getElementById('imgMobilePanel');
+  if (!p || !p.classList.contains('visible')) return;
+  const b = imagePanelBounds(), pad = 8;
+  p.style.maxHeight = Math.max(80, b.height - pad*2) + 'px';
+  const pw = p.offsetWidth || 270, ph = p.offsetHeight || 300;
+  if (typeof left !== 'number') left = impPos ? impPos.left : b.left + (b.width-pw)/2;
+  if (typeof top !== 'number') top = impPos ? impPos.top : b.top + Math.min(80, Math.max(pad,(b.height-ph)/2));
+  left = Math.max(b.left+pad, Math.min(left,b.left+b.width-pw-pad));
+  top = Math.max(b.top+pad, Math.min(top,b.top+b.height-ph-pad));
+  p.style.left = left + 'px'; p.style.top = top + 'px';
+  impPos = {left:left,top:top};
+}
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', function(){positionImgMobilePanel();});
+  window.visualViewport.addEventListener('scroll', function(){positionImgMobilePanel();});
+}
+window.addEventListener('resize', function(){positionImgMobilePanel();});
 
 function closeImgMobilePanel() {
   const p = document.getElementById('imgMobilePanel');
@@ -339,25 +348,15 @@ function syncImgMobilePanel() {
   function move(x, y) {
     if (!dragging) return;
     let nl = ox + (x - sx), nt = oy + (y - sy);
-    const peek = 40;
-    const pw = panel.offsetWidth;
-    const ph = panel.offsetHeight;
-    const minL = peek - pw;
-    const maxL = window.innerWidth - peek;
-    const minT = peek - ph;
-    const maxT = window.innerHeight - peek;
-    nl = Math.max(minL, Math.min(nl, maxL));
-    nt = Math.max(minT, Math.min(nt, maxT));
-    panel.style.left = nl + 'px';
-    panel.style.top = nt + 'px';
-    impPos = { left: nl, top: nt };
+    positionImgMobilePanel(nl, nt);
   }
   function end() { dragging = false; head.classList.remove('grabbing'); }
   
-  head.addEventListener('touchstart', e => { const t = e.touches[0]; start(t.clientX, t.clientY); }, {passive:true});
-  head.addEventListener('touchmove', e => { e.preventDefault(); const t = e.touches[0]; move(t.clientX, t.clientY); }, {passive:false});
+  head.addEventListener('touchstart', e => { if (e.target.closest('.imp-close,button,input')) return; const t = e.touches[0]; start(t.clientX, t.clientY); }, {passive:true});
+  head.addEventListener('touchmove', e => { if (!dragging) return; e.preventDefault(); const t = e.touches[0]; move(t.clientX, t.clientY); }, {passive:false});
   head.addEventListener('touchend', end);
-  head.addEventListener('mousedown', e => start(e.clientX, e.clientY));
+  head.addEventListener('touchcancel', end);
+  head.addEventListener('mousedown', e => { if (!e.target.closest('.imp-close,button,input')) start(e.clientX, e.clientY); });
   document.addEventListener('mousemove', e => move(e.clientX, e.clientY));
   document.addEventListener('mouseup', end);
 })();
