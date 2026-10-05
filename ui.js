@@ -90,10 +90,6 @@ window.addEventListener('focus', function() {
     scheduleQuickBarPosition();
   }
 });
-// Высота собственной полоски Safari над клавиатурой («вверх / вниз / Готово»).
-// Значение постоянное во всех актуальных версиях iOS.
-const IOS_ACCESSORY_BAR = 48;
-
 function isIOSDevice() {
   return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
          (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -125,22 +121,21 @@ function positionQuickBar() {
   const vv = window.visualViewport;
   if (!vv) { quickBar.style.bottom = ''; return; }
 
-  // Высота клавиатуры = насколько видимая область меньше окна.
-  let gap = window.innerHeight - (vv.height + vv.offsetTop);
-
-  // Отрицательное значение появляется при прокрутке страницы: панель
-  // уезжала бы вниз за край экрана. Ниже нуля не опускаем.
-  if (!isFinite(gap) || gap < 0) gap = 0;
-
-  // На iPhone и iPad Safari рисует над клавиатурой свою собственную
-  // полоску с кнопками «вверх / вниз / Готово». Скрыть её нельзя, и в
-  // размер видимой области она не входит — браузер о ней не сообщает.
-  // Поэтому наша панель оказывалась ровно под ней и была недоступна.
-  // В Android такой полоски нет, там ничего добавлять не нужно.
-  // Прибавляем её высоту, только когда клавиатура действительно открыта.
-  if (gap > 0 && isIOSDevice()) gap += IOS_ACCESSORY_BAR;
-
-  quickBar.style.bottom = Math.round(gap) + 'px';
+  // visualViewport already describes the available area. Do not add a
+  // guessed Safari accessory-bar height a second time.
+  if (isIOSDevice()) {
+    const barHeight = quickBar.offsetHeight;
+    quickBar.style.top = Math.round(Math.max(vv.offsetTop, vv.offsetTop + vv.height - barHeight)) + 'px';
+    quickBar.style.bottom = 'auto';
+    quickBar.style.left = vv.offsetLeft + 'px';
+    quickBar.style.width = vv.width + 'px';
+  } else {
+    const gap = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop));
+    quickBar.style.top = '';
+    quickBar.style.left = '';
+    quickBar.style.width = '';
+    quickBar.style.bottom = Math.round(gap) + 'px';
+  }
 }
 
 function qb(e, command) {
@@ -202,18 +197,38 @@ saveSelectionBeforeAction();
 document.getElementById('qbImageInput').click();
 }
 
-function togglePanel() {
-const panel = document.querySelector('.panel');
-const handle = document.getElementById('panelHandle');
-panel.classList.toggle('open');
-handle.classList.toggle('open');
-handle.textContent = panel.classList.contains('open') ? '‹' : '›';
-// Как только панель открыта любым способом — прячем кнопку "Инструменты"
-if (panel.classList.contains('open')) {
-  const btn = document.getElementById('mobileToolsBtn');
-  if (btn) btn.style.display = 'none';
+function setPanelOpen(open) {
+  const panel = document.querySelector('.panel');
+  const handle = document.getElementById('panelHandle');
+  if (open) {
+    saveSelectionBeforeAction();
+    const active = document.activeElement;
+    if (active && (active.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName))) active.blur();
+  }
+  panel.classList.toggle('open', open);
+  handle.classList.toggle('open', open);
+  document.body.classList.toggle('tools-open', open);
+  handle.textContent = open ? '‹' : '›';
+  handle.setAttribute('aria-label', open ? 'Закрыть инструменты' : 'Открыть инструменты');
+  handle.setAttribute('aria-expanded', String(open));
+  if (open) {
+    const btn = document.getElementById('mobileToolsBtn');
+    if (btn) btn.style.display = 'none';
+  }
+  if (window.TextturaViewport) window.TextturaViewport.update();
+  scheduleQuickBarPosition();
 }
-}
+function togglePanel() { setPanelOpen(!panelEl.classList.contains('open')); }
+(function addPanelCloseButton() {
+  const row = document.createElement('div'); row.id = 'panelCloseBar';
+  const close = document.createElement('button'); close.type = 'button';
+  close.textContent = 'Закрыть ×'; close.setAttribute('aria-label', 'Закрыть инструменты');
+  close.addEventListener('click', function () { setPanelOpen(false); });
+  row.appendChild(close); panelEl.insertBefore(row, panelEl.firstChild);
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape' && isMobile() && panelEl.classList.contains('open')) setPanelOpen(false);
+  });
+})();
 
 function onMobileToolsClick() {
   togglePanel();

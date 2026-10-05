@@ -25,7 +25,7 @@
     var ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     var android = /Android/.test(navigator.userAgent);
     var steps = ios
-      ? ['Откройте сайт «Тексttура» в Safari.', 'Нажмите «Поделиться», затем «На экран „Домой“». Если есть переключатель «Открывать как веб-приложение», включите его.', 'Нажмите «Добавить». На главном экране появится значок «Тексttура».']
+      ? ['Если страница открыта внутри мессенджера (с крестиком сверху), нажмите значок компаса или выберите «Открыть в Safari» в меню. Если такого пункта нет, скопируйте адрес ниже и откройте его в Safari.', 'В Safari нажмите «Поделиться» → «На экран „Домой“». Если пункта нет, посмотрите «Изменить действия».', 'Нажмите «Добавить». Если есть переключатель «Открывать как веб-приложение», включите его. Затем запускайте Тексttуру с нового значка.']
       : android
       ? ['Откройте меню браузера.', 'Выберите «Установить приложение» или «Добавить на главный экран» и подтвердите установку.', 'Если этого пункта нет, попробуйте открыть сайт в Chrome.']
       : /YaBrowser/.test(navigator.userAgent)
@@ -34,7 +34,17 @@
     var text = document.getElementById('installHelpSteps');
     text.textContent = '';
     steps.forEach(function(step, index) { var p = document.createElement('p'); p.textContent = (index + 1) + '. ' + step; text.appendChild(p); });
+    if (ios) {
+      const address = document.createElement('input');
+      address.className = 'install-address'; address.type = 'text'; address.readOnly = true;
+      address.setAttribute('aria-label', 'Адрес редактора для Safari');
+      address.value = new URL('./', location.href).href;
+      address.addEventListener('click', function () { address.select(); });
+      text.appendChild(address);
+    }
     previousFocus = document.activeElement;
+    if (previousFocus && previousFocus.blur) previousFocus.blur();
+    if (window.TextturaViewport) window.TextturaViewport.update();
     help.hidden = false;
     document.getElementById('closeInstallHelp').focus();
   }
@@ -85,7 +95,12 @@
     help.addEventListener('click', function(e) { if (e.target === help) closeHelp(); });
     help.addEventListener('keydown', function(e) {
       if (e.key === 'Escape') { e.preventDefault(); closeHelp(); }
-      if (e.key === 'Tab') { e.preventDefault(); document.getElementById('closeInstallHelp').focus(); }
+      if (e.key === 'Tab') {
+        var focusable = help.querySelectorAll('input, button');
+        var first = focusable[0], last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
     });
     refresh();
   }
