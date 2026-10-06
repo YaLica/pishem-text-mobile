@@ -8,6 +8,10 @@
     return /Android|iPad|iPhone|iPod/.test(navigator.userAgent) ||
       (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   }
+  function windowsInstallation() {
+    return !mobileInstallation() && /Windows/.test(navigator.userAgent) && !/Electron\//.test(navigator.userAgent);
+  }
+  var windowsInstallerURL = 'https://github.com/YaLica/pishem-text-mobile/releases/download/windows-v1.0.1/Texttura-Setup-1.0.1-x64.exe';
   function installed() { return mode.matches || window.navigator.standalone === true; }
   function showError(message) {
     if (!errorLine) return;
@@ -17,7 +21,8 @@
   }
   function refresh() {
     if (!controls) return;
-    installButton.hidden = !mobileInstallation() || installed();
+    installButton.hidden = windowsInstallation() ? false : (!mobileInstallation() || installed());
+    installButton.textContent = windowsInstallation() ? 'Установить на Windows' : 'Установить «Тексttура»';
     updateButton.hidden = !(registration && registration.waiting && navigator.serviceWorker.controller);
     controls.hidden = installButton.hidden && updateButton.hidden && errorLine.hidden;
   }
@@ -52,6 +57,15 @@
     document.getElementById('closeInstallHelp').focus();
   }
   async function install() {
+    if (windowsInstallation()) {
+      var download = document.createElement('a');
+      download.href = windowsInstallerURL;
+      download.download = 'Texttura-Setup-1.0.1-x64.exe';
+      document.body.appendChild(download);
+      download.click();
+      download.remove();
+      return;
+    }
     if (!mobileInstallation()) return;
     if (!installPrompt) { helpInstall(); return; }
     var prompt = installPrompt;
