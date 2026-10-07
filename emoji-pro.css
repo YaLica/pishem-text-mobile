@@ -56,10 +56,11 @@
 
 /* ---- заголовок с ручкой ---- */
 .emoji-pop-head {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px;
+  padding: 12px 54px 12px 12px;
   border-bottom: 1px solid rgba(70, 82, 104, 0.5);
   background: rgba(27, 32, 41, 0.55);
   border-radius: 16px 16px 0 0;
@@ -90,7 +91,10 @@
 .emoji-search::placeholder { color: #7d8798; }
 .emoji-search:focus { border-color: #3d7eff; }
 
-.emoji-close {
+.emoji-pop-head > .emoji-close {
+  position: absolute;
+  right: 10px;
+  top: 10px;
   flex: 0 0 auto;
   display: grid;
   place-items: center;

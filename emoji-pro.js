@@ -102,7 +102,7 @@
     close.type = 'button';
     close.className = 'emoji-close';
     close.textContent = '✕';
-    close.title = 'Закрыть эмодзи (Esc)';
+    close.title = 'Закрыть эмодзи';
     close.setAttribute('aria-label', 'Закрыть эмодзи');
     close.addEventListener('click', hide);
     head.appendChild(close);
@@ -266,24 +266,17 @@
     if (!built) buildPanel();
     panel.classList.add('open');
     if (panel._render) panel._render();
-    // Курсор можно переносить по тексту: панель закрывается только явно.
-    document.addEventListener('keydown', onEsc, true);
+    // Открытие не переключает состояние: закрыть панель можно только крестиком.
   }
 
   function hide() {
     if (!panel) return;
     panel.classList.remove('open');
-    document.removeEventListener('keydown', onEsc, true);
   }
 
-  function onEsc(e) {
-    if (e.key === 'Escape') hide();
-  }
-
-  function toggle(e) {
+  function openPanel(e) {
     if (e) e.preventDefault();
-    if (panel && panel.classList.contains('open')) hide();
-    else show();
+    show();
   }
 
   function placeButton() {
@@ -297,7 +290,7 @@
     btn.type = 'button';
     btn.className = 'emoji-open-btn';
     btn.innerHTML = '<span>😀</span> Эмодзи';
-    btn.addEventListener('click', toggle);
+    btn.addEventListener('click', openPanel);
     wrap.appendChild(btn);
 
     var qb = document.getElementById('quickBar');
@@ -308,7 +301,7 @@
       m.textContent = '😀';
       m.title = 'Эмодзи';
       m.addEventListener('mousedown', function (e) { e.preventDefault(); });
-      m.addEventListener('click', toggle);
+      m.addEventListener('click', openPanel);
       qb.appendChild(m);
     }
   }
