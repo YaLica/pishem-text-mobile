@@ -593,33 +593,53 @@ return cleaned;
 }
 
 function copyRichSelection(html, plain) {
+const sel = window.getSelection();
+if (!sel) return false;
+const previousRanges = [];
+for (let i = 0; i < sel.rangeCount; i++) previousRanges.push(sel.getRangeAt(i).cloneRange());
+const previousFocus = document.activeElement;
 const temp = document.createElement('div');
 temp.contentEditable = 'true';
+temp.setAttribute('inputmode', 'none');
 temp.setAttribute('aria-hidden', 'true');
 temp.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;overflow:hidden;opacity:0.01;pointer-events:none;';
 temp.innerHTML = html;
 document.body.appendChild(temp);
 
-const range = document.createRange();
-range.selectNodeContents(temp);
-const sel = window.getSelection();
-sel.removeAllRanges();
-sel.addRange(range);
-
-// Явно передаём семантику цитаты: нативное копирование выделения иногда
-// превращает blockquote в DIV со стилями, которые мессенджер отбрасывает.
+// Передаём исходный HTML через событие copy на всех устройствах:
+// сохраняем blockquote, не полагаясь на копирование одного оформления.
+let wroteRichData = false;
 function onCopy(event) {
   if (!event.clipboardData) return;
-  event.clipboardData.setData('text/html', html);
-  event.clipboardData.setData('text/plain', plain);
-  event.preventDefault();
+  try {
+    event.clipboardData.setData('text/html', html);
+    event.clipboardData.setData('text/plain', plain);
+    event.preventDefault();
+    wroteRichData = true;
+  } catch (_) { wroteRichData = false; }
 }
 document.addEventListener('copy', onCopy, true);
 let ok = false;
-try { ok = document.execCommand('copy'); } catch (_) { ok = false; }
-finally { document.removeEventListener('copy', onCopy, true); }
-sel.removeAllRanges();
-temp.remove();
+try {
+  temp.focus({preventScroll: true});
+  const range = document.createRange();
+  range.selectNodeContents(temp);
+  sel.removeAllRanges();
+  sel.addRange(range);
+  // Успех execCommand без события copy не подтверждает запись HTML.
+  ok = document.execCommand('copy') && wroteRichData;
+} catch (_) { ok = false; }
+finally {
+  document.removeEventListener('copy', onCopy, true);
+  temp.remove();
+  if (previousFocus && previousFocus.isConnected && previousFocus.focus) {
+    try { previousFocus.focus({preventScroll: true}); } catch (_) {}
+  }
+  sel.removeAllRanges();
+  previousRanges.forEach(function(range) {
+    if (range.commonAncestorContainer.isConnected) sel.addRange(range);
+  });
+}
 return ok;
 }
 
@@ -629,9 +649,9 @@ const btn = btnId ? document.getElementById(btnId) : null;
 const original = btn ? btn.innerHTML : '';
 let plainOnly = false;
 
-// Desktop Telegram надёжнее принимает форматирование из обычного rich-copy.
-// На iOS/Android этот путь может быть запрещён — там используем Clipboard API.
-if (!isMobile()) ok = copyRichSelection(html, plain);
+// Один способ на компьютере и телефоне: сохраняем настоящий blockquote
+// в буфере, пока ещё действует нажатие пользователя. Clipboard API — запасной.
+ok = copyRichSelection(html, plain);
 
 if (!ok && navigator.clipboard && window.ClipboardItem) {
   try {
@@ -645,7 +665,6 @@ if (!ok && navigator.clipboard && window.ClipboardItem) {
   } catch (_) { ok = false; }
 }
 
-if (!ok) ok = copyRichSelection(html, plain);
 
 if (!ok && navigator.clipboard && navigator.clipboard.writeText) {
   try {
@@ -669,7 +688,8 @@ async function copyForTelegram() {
 if (!editor.innerText.trim()) return;
 const lines = getEditorLines();
 
-const finalHtml = lines.join('<br>');
+// type=cite сохраняет семантику цитаты и для HTML-импортёров iOS.
+const finalHtml = lines.join('<br>').replace(/<blockquote>/g, '<blockquote type="cite">');
 
 // Plain-text строим напрямую из строк. innerText у элемента вне DOM
 // в Chromium склеивает <br>, из-за чего раньше пропадали все отступы.

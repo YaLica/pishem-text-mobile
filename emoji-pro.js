@@ -102,7 +102,8 @@
     close.type = 'button';
     close.className = 'emoji-close';
     close.textContent = '✕';
-    close.title = 'Закрыть (Esc)';
+    close.title = 'Закрыть эмодзи (Esc)';
+    close.setAttribute('aria-label', 'Закрыть эмодзи');
     close.addEventListener('click', hide);
     head.appendChild(close);
 
@@ -265,23 +266,14 @@
     if (!built) buildPanel();
     panel.classList.add('open');
     if (panel._render) panel._render();
-    setTimeout(function () {
-      document.addEventListener('mousedown', outside, true);
-      document.addEventListener('keydown', onEsc, true);
-    }, 0);
+    // Курсор можно переносить по тексту: панель закрывается только явно.
+    document.addEventListener('keydown', onEsc, true);
   }
 
   function hide() {
     if (!panel) return;
     panel.classList.remove('open');
-    document.removeEventListener('mousedown', outside, true);
     document.removeEventListener('keydown', onEsc, true);
-  }
-
-  function outside(e) {
-    if (panel.contains(e.target)) return;
-    if (e.target.closest && e.target.closest('.emoji-open-btn')) return;
-    hide();
   }
 
   function onEsc(e) {
