@@ -11,7 +11,7 @@
   function windowsInstallation() {
     return !mobileInstallation() && /Windows/.test(navigator.userAgent) && !/Electron\//.test(navigator.userAgent);
   }
-  var windowsInstallerURL = 'https://github.com/YaLica/pishem-text-mobile/releases/download/windows-v1.0.1/Texttura-Setup-1.0.1-x64.exe';
+  var windowsInstallerURL = 'https://github.com/YaLica/pishem-text-mobile/releases/download/windows-v1.0.1/Texttura-Setup-1.0.3-x64.exe';
   function installed() { return mode.matches || window.navigator.standalone === true; }
   function showError(message) {
     if (!errorLine) return;
@@ -60,7 +60,7 @@
     if (windowsInstallation()) {
       var download = document.createElement('a');
       download.href = windowsInstallerURL;
-      download.download = 'Texttura-Setup-1.0.1-x64.exe';
+      download.download = 'Texttura-Setup-1.0.3-x64.exe';
       document.body.appendChild(download);
       download.click();
       download.remove();
