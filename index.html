@@ -24,6 +24,12 @@
 <link rel="stylesheet" href="font-sheet.css">
 <link rel="stylesheet" href="texttura-gloss.css?v=1">
 <link rel="stylesheet" href="mobile-viewport.css?v=20261005-ios1">
+<style id="texttura-mobile-drawer-alpha-restore">
+/* Возвращаем прозрачность шторки (как в styles.css), не изменяя остальные стили. */
+@media (max-width: 820px) {
+  .panel { background: rgba(23, 26, 33, 0.55) !important; }
+}
+</style>
 </head>
 <body>
 
@@ -472,5 +478,57 @@
 <script src="cloud-save.js?v=20261003-pwa1"></script>
 <script src="local-draft.js?v=20261003-pwa1"></script>
 <script src="app-install.js?v=20261005-ios1"></script>
+<script id="texttura-mobile-image-tap-recovery">
+/*
+ * Восстановление пропущенного браузером касания картинки.
+ * ВАЖНО: selectImgBox() и правило первого касания / двойного касания
+ * (400 мс) в images.js НЕ изменяются. Новое открытие панели не вызывается.
+ * Если основной touchend уже выбрал картинку, этот код ничего не делает.
+ */
+(function () {
+  'use strict';
+  if (typeof isMobile !== 'function' || typeof selectImgBox !== 'function' ||
+      typeof lastImgTapTime === 'undefined') return;
+  var root = document.getElementById('editor');
+  if (!root) return;
+  var candidate = null;
+
+  root.addEventListener('touchstart', function (e) {
+    candidate = null;
+    if (!isMobile() || e.touches.length !== 1) return;
+    var target = e.target;
+    if (!target || !target.closest) return;
+    var box = target.closest('.img-box');
+    if (!box || target.closest('.img-resizer')) return;
+    var touch = e.touches[0];
+    candidate = {box:box, x:touch.clientX, y:touch.clientY, tapTime:lastImgTapTime};
+  }, {passive:true});
+
+  root.addEventListener('touchmove', function (e) {
+    if (!candidate) return;
+    if (e.touches.length !== 1) { candidate = null; return; }
+    var touch = e.touches[0];
+    if (Math.hypot(touch.clientX - candidate.x, touch.clientY - candidate.y) > 10)
+      candidate = null;
+  }, {passive:true});
+
+  // images.js зарегистрировал свой обработчик раньше, поэтому сначала
+  // отрабатывают штатные выбор / перетаскивание, и только потом эта страховка.
+  root.addEventListener('touchend', function (e) {
+    var tap = candidate;
+    candidate = null;
+    if (!tap || e.changedTouches.length !== 1 || !tap.box.isConnected) return;
+    var touch = e.changedTouches[0];
+    if (Math.hypot(touch.clientX - tap.x, touch.clientY - tap.y) > 10) return;
+    if (lastImgTapTime === tap.tapTime) {
+      // Не допускаем последующего синтетического click с повторным выбором.
+      if (e.cancelable) e.preventDefault();
+      selectImgBox(tap.box);
+    }
+  }, {passive:false});
+
+  root.addEventListener('touchcancel', function () { candidate = null; }, {passive:true});
+})();
+</script>
 </body>
 </html>
