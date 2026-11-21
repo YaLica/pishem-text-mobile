@@ -1173,23 +1173,33 @@ await writeToClipboard(finalHtml, finalPlain, 'copyTgBtn');
 })();
 </script>
 <style>
-#ttCrop {box-sizing:border-box;width:min(460px,94vw);max-height:90dvh;overflow:auto;background:#171a21;color:white;border:1px solid #50627a;border-radius:14px;padding:16px}
-#ttCrop::backdrop{background:#000a} #ttCrop h3{margin:0 0 8px} #ttCrop p{margin:6px 0 12px}
-#ttStage{position:relative;width:fit-content;margin:auto;overflow:hidden;touch-action:none;user-select:none;cursor:move}
-#ttPhoto{display:block;max-width:100%;max-height:38dvh;pointer-events:none}
-#ttFrame{position:absolute;box-sizing:border-box;border:2px solid white;outline:1px solid #333;box-shadow:0 0 0 999px #0008;pointer-events:none}
-#ttCrop label{display:block;margin-top:8px} #ttCrop input[type=range]{width:100%}
-#ttCrop footer{display:flex;justify-content:flex-end;gap:8px;margin-top:12px} #ttCrop button{min-height:36px}
+#ttCrop{box-sizing:border-box;width:min(900px,96vw);max-height:96dvh;overflow:auto;padding:16px;background:#202020;color:#fafafa;border:1px solid #484848;border-radius:12px;color-scheme:dark}
+#ttCrop::backdrop{background:#080808bd}
+#ttCrop header,#ttCrop footer{display:flex;align-items:center;justify-content:space-between;gap:12px}
+#ttCrop h3{font:600 17px system-ui;margin:0}
+#ttFormat,#ttCrop footer button{width:auto;min-height:40px;padding:6px 14px;margin:0}
+#ttViewport{background:#191919;display:grid;place-items:center;padding:14px 0;margin:12px 0;border-radius:6px}
+#ttStage{position:relative;width:fit-content;max-width:100%;line-height:0;overflow:hidden;touch-action:none;user-select:none}
+#ttPhoto{display:block;width:auto;height:auto;max-width:100%;max-height:64dvh;pointer-events:none}
+#ttFrame{position:absolute;box-sizing:border-box;border:1px solid white;box-shadow:0 0 0 9999px #000a;cursor:move}
+#ttFrame i{position:absolute;width:32px;height:32px;box-sizing:border-box}
+#ttFrame i::after{content:"";position:absolute;inset:0;border:0 solid white;filter:drop-shadow(0 1px 2px #444);pointer-events:none}
+#ttFrame [data-dir*=n]{top:0} #ttFrame [data-dir*=s]{bottom:0}
+#ttFrame [data-dir*=w]{left:0} #ttFrame [data-dir*=e]{right:0}
+#ttFrame [data-dir*=n]::after{border-top-width:3px} #ttFrame [data-dir*=s]::after{border-bottom-width:3px}
+#ttFrame [data-dir*=w]::after{border-left-width:3px} #ttFrame [data-dir*=e]::after{border-right-width:3px}
+#ttFrame [data-dir=n],#ttFrame [data-dir=s]{left:50%;transform:translateX(-50%);cursor:ns-resize}
+#ttFrame [data-dir=e],#ttFrame [data-dir=w]{top:50%;transform:translateY(-50%);cursor:ew-resize}
+#ttFrame [data-dir=nw],#ttFrame [data-dir=se]{cursor:nwse-resize} #ttFrame [data-dir=sw],#ttFrame [data-dir=ne]{cursor:nesw-resize}
+#ttFrame i{max-width:32%;max-height:32%}
+#ttCrop footer{justify-content:flex-end} #ttPx{margin-right:auto;font:14px system-ui;font-variant-numeric:tabular-nums;white-space:nowrap}
+#ttStatus:empty{display:none}
 </style>
 <dialog id="ttCrop" aria-labelledby="ttCropTitle">
-<h3 id="ttCropTitle">Обрезка картинки</h3>
-<p>Передвинь рамку мышью или пальцем. Ползунками можно изменить её размер.</p>
-<div id="ttStage"><img alt="" id="ttPhoto" draggable="false"><div id="ttFrame"></div></div>
-<label><input id="ttSquare" type="checkbox"> Квадрат 1:1</label>
-<label>Ширина <input id="ttW" type="range" min="1" max="100" value="100"></label>
-<label>Высота <input id="ttH" type="range" min="1" max="100" value="100"></label>
+<header><h3 id="ttCropTitle">Обрезка</h3><select id="ttFormat" aria-label="Пропорции кадра"><option>Свободно</option><option>Исходный</option><option>1:1</option><option>3:4</option><option>4:3</option><option>2:3</option><option>3:2</option><option>4:5</option><option>5:4</option><option>9:16</option><option>16:9</option><option>2:1</option><option>1:2</option><option>21:9</option></select></header>
+<div id="ttViewport"><div id="ttStage"><img alt="" id="ttPhoto" draggable="false"><div id="ttFrame"><i data-dir="n"></i><i data-dir="s"></i><i data-dir="e"></i><i data-dir="w"></i><i data-dir="ne"></i><i data-dir="sw"></i><i data-dir="se"></i><i data-dir="nw"></i></div></div></div>
 <div role="status" id="ttStatus"></div>
-<footer><button type="button" id="ttCancel">Отмена</button><button type="button" class="primary" id="ttApply">Применить</button></footer>
+<footer><output id="ttPx"></output><button type="button" id="ttCancel">Отмена</button><button type="button" class="primary" id="ttApply">Применить</button></footer>
 </dialog>
 <script>
 (() => {
@@ -1221,40 +1231,59 @@ await writeToClipboard(finalHtml, finalPlain, 'copyTgBtn');
     applyImgStyles(currentImgBox);showRadius();scheduleHistorySave();
   };
   const d=by('ttCrop'),stage=by('ttStage'),photo=by('ttPhoto'),frame=by('ttFrame'),
-    w=by('ttW'),h=by('ttH'),square=by('ttSquare'),apply=by('ttApply');
+    fmt=by('ttFormat'),apply=by('ttApply');
   let target=null,source=null,X=0,Y=0,W=1,H=1,A=1,B=1,drag=null,busy=false;
   const clamp=(x,max)=>Math.max(0,Math.min(x,max));
   function render(){
+    by('ttPx').textContent=W+' × '+H+' px';
     X=clamp(Math.round(X),A-W);Y=clamp(Math.round(Y),B-H);
     Object.assign(frame.style,{left:X/A*100+'%',top:Y/B*100+'%',width:W/A*100+'%',height:H/B*100+'%'});
   }
-  function resize(){
-    const cx=X+W/2,cy=Y+H/2;
-    W=Math.max(1,Math.round((square.checked?Math.min(A,B):A)*w.value/100));
-    H=square.checked?W:Math.max(1,Math.round(B*h.value/100));
-    X=cx-W/2;Y=cy-H/2;render();
+  function ratio(){
+    if(fmt.selectedIndex===0)return 0;
+    if(fmt.selectedIndex===1)return A/B;
+    const [a,b]=fmt.value.split(':').map(Number);return a/b;
   }
+  fmt.onchange=()=>{
+    const t=ratio(); if(!t)return;
+    const cx=X+W/2,cy=Y+H/2;
+    const width=Math.min(A,B*t);
+    W=Math.max(1,Math.round(width));H=Math.max(1,Math.round(width/t));
+    X=cx-W/2;Y=cy-H/2;render();
+  };
   window.ttOpenCrop=function(){
     if(d.open||!currentImgBox)return;
     const img=currentImgBox.querySelector('img');
     if(!img||!img.naturalWidth){imageImportNotice('Картинка ещё не загрузилась.');return}
     target=currentImgBox;source=img;A=W=img.naturalWidth;B=H=img.naturalHeight;X=Y=0;
     busy=false;apply.disabled=false;photo.src=img.src;
-    square.checked=false;w.value=h.value=100;h.disabled=false;
+    fmt.selectedIndex=0;
     by('ttStatus').textContent='';render();d.showModal();
   };
-  square.onchange=()=>{h.disabled=square.checked;resize()};
-  w.oninput=h.oninput=resize;
   stage.onpointerdown=e=>{
-    if(!e.isPrimary||e.button!==0)return;
+    if(busy||!e.isPrimary||e.button!==0||!frame.contains(e.target))return;
     const r=stage.getBoundingClientRect();
-    const x=(e.clientX-r.left)/r.width*A,y=(e.clientY-r.top)/r.height*B;
-    if(x<X||x>X+W||y<Y||y>Y+H){X=x-W/2;Y=y-H/2;render()}
-    drag={id:e.pointerId,x:e.clientX,y:e.clientY,X,Y,r};stage.setPointerCapture(e.pointerId);
+    drag={id:e.pointerId,x:e.clientX,y:e.clientY,X,Y,W,H,r,dir:e.target.dataset.dir||''};
+    stage.setPointerCapture(e.pointerId);e.preventDefault();
   };
   stage.onpointermove=e=>{
     if(!drag||drag.id!==e.pointerId)return;
-    X=drag.X+(e.clientX-drag.x)*A/drag.r.width;Y=drag.Y+(e.clientY-drag.y)*B/drag.r.height;render();
+    const g=drag,dx=(e.clientX-g.x)*A/g.r.width,dy=(e.clientY-g.y)*B/g.r.height;
+    const u=g.dir.includes('e')?1:g.dir.includes('w')?-1:0;
+    const v=g.dir.includes('s')?1:g.dir.includes('n')?-1:0;
+    if(!u&&!v){X=g.X+dx;Y=g.Y+dy;render();return}
+    const ax=g.X+(1-u)*g.W/2,ay=g.Y+(1-v)*g.H/2;
+    const mw=u>0?A-ax:u<0?ax:2*Math.min(ax,A-ax);
+    const mh=v>0?B-ay:v<0?ay:2*Math.min(ay,B-ay);
+    const t=ratio();
+    if(t){
+      const want=!u?(g.H+v*dy)*t:!v?g.W+u*dx:g.W+(u*dx+v*dy/t)/(1+1/(t*t));
+      const width=Math.min(mw,mh*t,Math.max(1,t,want));
+      W=Math.max(1,Math.round(width));H=Math.max(1,Math.round(width/t));
+    }else{
+      W=Math.max(1,Math.round(clamp(g.W+u*dx,mw)));H=Math.max(1,Math.round(clamp(g.H+v*dy,mh)));
+    }
+    X=ax-(1-u)*W/2;Y=ay-(1-v)*H/2;render();
   };
   stage.onlostpointercapture=()=>drag=null;
   d.addEventListener('click',e=>e.stopPropagation());
