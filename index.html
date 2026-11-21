@@ -490,7 +490,6 @@ const textBoxesData = Array.from(exportNode.querySelectorAll('.text-box')).map(b
         lineHeight: b.dataset.lineHeight || '1.25',
     fontSize: b.dataset.fontSize || '',
     fontFamily: b.dataset.fontFamily || '',
-    textColor: b.dataset.textColor || '',
     mode: b.dataset.mode || 'plate',
     ribbonColor: b.dataset.ribbonColor || '#000000',
     ribbonOpacity: (b.dataset.ribbonOpacity !== undefined) ? b.dataset.ribbonOpacity : '85',
@@ -566,7 +565,6 @@ if (snapshot.textBoxes && Array.isArray(snapshot.textBoxes)) {
         if (tb.lineHeight !== undefined) box.dataset.lineHeight = tb.lineHeight;
     if (tb.fontSize) box.dataset.fontSize = tb.fontSize;
     if (tb.fontFamily !== undefined) box.dataset.fontFamily = tb.fontFamily;
-    if (tb.textColor) box.dataset.textColor = tb.textColor;
     if (tb.mode !== undefined) box.dataset.mode = tb.mode;
     if (tb.ribbonColor !== undefined) box.dataset.ribbonColor = tb.ribbonColor;
     if (tb.ribbonOpacity !== undefined) box.dataset.ribbonOpacity = tb.ribbonOpacity;
@@ -881,7 +879,6 @@ function applyTbTypography(box) {
   content.style.fontSize = fs + 'px';
   content.style.lineHeight = lh;
   content.style.fontFamily = ff || '';
-  content.style.color = box.dataset.textColor || '';
   const ribbon = content.querySelector('.tb-ribbon');
   if (ribbon) {
     ribbon.style.fontSize = fs + 'px';
@@ -1301,7 +1298,6 @@ function duplicateTextBox(box) {
   clone.dataset.fontSize  = box.dataset.fontSize  || '24';
   clone.dataset.lineHeight = box.dataset.lineHeight || '1.25';
   clone.dataset.fontFamily = box.dataset.fontFamily || '';
-  if (box.dataset.textColor) clone.dataset.textColor = box.dataset.textColor;
   clone.dataset.mode = box.dataset.mode || 'plate';
   clone.dataset.ribbonColor = box.dataset.ribbonColor || '#000000';
   clone.dataset.ribbonOpacity = box.dataset.ribbonOpacity || '85';
@@ -3450,10 +3446,29 @@ function rebindTbImages() {
 </script>
 <!-- ТЕКСТТУРА: единый немодальный редактор плашек (пробная версия). -->
 <style id="tt-plate-ui-v2">
-/* Боковая секция плашки больше не содержит настроек.
-   Существующие обработчики текста, шрифтов, цвета и подложки перенесены
-   в открывающуюся панель у холста без дублирования функций. */
-#tbSettings { display:none !important; }
+/* Тот же блок настроек из исходного индекса. Узлы НЕ копируются:
+   переносим их к холсту, сохраняя ID, onchange/oninput и все значения. */
+#ttLayers #tbSettings { display:block !important; background:transparent !important;
+  border:0 !important; padding:0 !important; margin:0 !important; }
+#ttLayers #ttOriginalTools {--blk:#C73459; accent-color:var(--blk);
+  margin-top:10px; padding:10px 12px; border:1px solid rgba(199,52,89,.55);
+  background:rgba(199,52,89,.06); border-radius:12px; }
+#ttLayers #tbSettings .tb-toolbar {display:flex !important; flex-wrap:wrap !important;
+  gap:5px; padding:8px; margin:8px 0 12px; background:#10b98114;
+  border:1px solid #10b981; border-radius:10px; align-items:center;}
+#ttLayers #tbSettings .tb-toolbar button {width:auto;min-width:32px;height:32px;
+  min-height:32px;padding:0 6px;margin:0;background:#1c3b32;color:#d7f5ea;
+  border:1px solid #10b98155;border-radius:6px;font-size:14px;}
+#ttLayers #tbSettings .tb-toolbar input[type=color] {width:32px;height:32px;margin:0;
+  padding:0;border:1px solid #10b98155;background:transparent;}
+#ttLayers #tbSettings .tb-toolbar .tb-toolbar-divider {display:block;width:1px;
+  height:22px;background:#10b98166;margin:0 3px;}
+#ttLayers #tbSettings .tb-font-row {display:block !important;}
+#ttLayers #ttOriginalTools .pb-ribbon {margin:12px 0 2px;padding:11px 12px 12px;
+  background:rgba(144,180,143,.06);border-color:#90b48f;}
+#ttLayers #ttOriginalTools input[type=range] {accent-color:#C73459;}
+#ttLayers #ttOriginalTools .pb-ribbon input[type=range] {accent-color:#90b48f;}
+/* У бокового раздела по-прежнему только кнопка создания. */
 /* Боковая панель — только добавление плашки. Настройки переехали в экранный редактор. */
 .pb-plate > .pb-body > :not(#pbAddPlate) { display:none !important; }
 #ttReopen { display:none !important; }
@@ -3505,24 +3520,6 @@ function rebindTbImages() {
 #ttLayers .tt-context-head {font:700 13px system-ui;margin:4px 0 9px;color:#9ee4cd}
 #ttLayers .tt-context-choose {display:flex;gap:7px;margin:8px 0 12px}
 #ttLayers .tt-context-choose button {flex:1}
-
-/* Текстовая панель: все функции из прежнего #tbSettings, без дублирования обработчиков. */
-#ttLayers #ttTextControls .tb-toolbar {display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin:10px 0 8px;align-items:center}
-#ttLayers #ttTextControls .tb-toolbar .tb-toolbar-divider {display:none}
-#ttLayers #ttTextControls .tb-toolbar button {width:100%;min-width:0;min-height:40px;padding:5px 2px;margin:0;font-size:15px}
-#ttLayers #ttTextControls .tb-toolbar input[type=color] {width:100%;height:40px;margin:0;grid-column:auto}
-#ttLayers #ttTextControls .tt-text-additional {display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:7px 0}
-#ttLayers #ttTextControls .tt-text-additional button {margin:0;min-height:39px;font-size:12px;padding:7px}
-#ttLayers #ttTextControls #ttTextAll {grid-column:1 / -1}
-#ttLayers #ttTypographyDock > label {display:block;margin:10px 0 4px}
-#ttLayers #ttTypographyDock > input[type=range] {margin:1px 0 6px}
-#ttLayers #ttTypographyDock .tb-font-row {margin:6px 0 10px}
-#ttLayers #ttTypographyDock .tb-font-row label {margin:5px 0}
-#ttLayers #ttInlineLink {padding:9px;border:1px solid #465365;border-radius:9px;margin:7px 0;background:rgba(255,255,255,.04)}
-#ttLayers #ttInlineLink input {width:100%;height:40px;font-size:15px;box-sizing:border-box;border-radius:7px;padding:7px;background:#242b37;border:1px solid #465365;color:white}
-#ttLayers #ttLinkApply {width:100%;margin-top:8px;background:#176b55;border-color:#53d6aa}
-#ttLayers #ttTextHint {min-height:0;margin:5px 0;color:#b9dbc9}
-#ttLayers #ttWordFont {font-size:15px}
 #ttLayers #ttRibbonDock {margin-top:10px}
 #ttLayers #tbRibbonToggle {display:block;width:100%;margin:8px 0}
 #ttLayers #tbRibbonSettings {margin:8px 0 4px;padding:10px;border-radius:9px;border:1px solid #67559b;
@@ -3563,34 +3560,7 @@ function rebindTbImages() {
       <button type="button" id="ttKindImage" aria-pressed="false">🖼️ Картинка</button>
     </div>
     <div id="ttTextControls" hidden>
-      <div class="tt-context-head">✍️ Текст плашки</div>
-      <p class="tt-help">Шрифт, цвет, размер и форматирование — здесь. Выделите фрагмент текста в плашке, затем нажмите нужный инструмент. Для всей надписи используйте параметры ниже.</p>
-      <div id="ttTbToolbarDock"></div>
-      <div class="tt-text-additional">
-        <button type="button" id="ttTextAll" title="Выделить весь текст плашки">Выделить весь текст</button>
-        <button type="button" id="ttAlignFull" title="Выровнять по ширине">≡≡ По ширине</button>
-        <button type="button" id="ttLinkToggle" aria-expanded="false">🔗 Ссылка</button>
-        <button type="button" id="ttCleanText" title="Очистить оформление выделенного текста">🧹 Сбросить формат</button>
-        <button type="button" id="ttDeleteTextSelection" title="Удалить выделенный текст">✕ Удалить выделенное</button>
-      </div>
-      <div id="ttInlineLink" hidden>
-        <label for="ttLinkAddress">Адрес ссылки для выделенного текста</label>
-        <input type="url" id="ttLinkAddress" placeholder="https://example.com" autocomplete="off" inputmode="url">
-        <button type="button" id="ttLinkApply">Применить ссылку</button>
-      </div>
-      <div class="tt-text-field">
-        <label for="ttWordFont">Шрифт выделенного слова или фрагмента</label>
-        <select id="ttWordFont"><option value="">Выбрать шрифт для выделения…</option></select>
-      </div>
-      <div class="tt-divider"></div>
-      <div class="tt-context-head">Весь текст плашки</div>
-      <div id="ttTypographyDock"></div>
-      <label for="ttTextBaseColor">Цвет всего текста плашки</label>
-      <input type="color" id="ttTextBaseColor" value="#ffffff">
-      <div class="tt-divider"></div>
-      <div class="tt-context-head">Подложка под текст</div>
-      <div id="ttRibbonDock"></div>
-      <p class="tt-help" id="ttTextHint" aria-live="polite"></p>
+      <div id="ttOriginalTools" aria-label="Инструменты текста выбранной плашки"></div>
     </div>
     <div id="ttPanelActions">
       <button type="button" id="ttCopyPlate">⧉ Копия</button>
@@ -3664,6 +3634,7 @@ function rebindTbImages() {
     by('ttKindText').setAttribute('aria-pressed',String(kind==='text'));
     by('ttKindImage').setAttribute('aria-pressed',String(kind==='image'));
     by('ttTextControls').hidden = kind!=='text';
+    by('ttInsertPhoto').hidden = kind!=='image';
     by('ttControls').hidden = kind!=='image' || !hasPhotos;
     optionList(choices,pics.map((p,i)=>({value:String(i),title:'Картинка '+(i+1)})));
     choices.value=photo?String(pics.indexOf(photo)):'';
@@ -3672,7 +3643,6 @@ function rebindTbImages() {
   function setPanel(b, preferredPhoto, preferredKind) {
     if (!b || !b.isConnected) return;
     const previously=selected;
-    if (previously!==b) plateRange=null;
     selected=b;
     selectTextBox(b);
     const plates=allPlates();
@@ -3691,14 +3661,13 @@ function rebindTbImages() {
   }
   function sync() {
     if (!selected?.isConnected) return;
-    by('ttPlateAppearance').hidden = selected.dataset.mode === 'ribbon';
+    by('ttPlateAppearance').hidden = kind !== 'image' || selected.dataset.mode === 'ribbon';
     // Старые настройки подложки подключены к этому же выбранному объекту.
     if (typeof syncTbSettings==='function') syncTbSettings();
     by('ttPlateBg').value=selected.dataset.bgColor||'#000000';
     const plateOp=Math.max(0,Math.min(100,Number(selected.dataset.bgOpacity??55)));
     by('ttPlateOpacity').value=String(plateOp);
     by('ttPlateOpacityVal').textContent=plateOp+'%';
-    by('ttTextBaseColor').value=selected.dataset.textColor || '#ffffff';
     if (!photo?.isConnected) return;
     const content=selected.querySelector('.tb-content');
     const widthMax=Math.max(40,Math.min(1200,Math.round(content?.clientWidth||1200)));
@@ -3829,173 +3798,50 @@ function rebindTbImages() {
     schedule();
   });
   list.addEventListener('change',()=>setPanel(allPlates()[Number(list.value)]));
-  // Full text editing is scoped to the selected plate, NOT to #editor.
-  // The old .tb-toolbar and typography sliders are moved, not cloned, so the
-  // existing vetted handlers for text formatting continue to be used.
-  function moveOriginalTextTools() {
-    const source=by('tbSettings');
-    const toolbar=source?.querySelector('.tb-toolbar');
-    const barDock=by('ttTbToolbarDock');
-    const typDock=by('ttTypographyDock');
-    if (!source || !barDock || !typDock) return;
-    if (toolbar) barDock.appendChild(toolbar);
-    ['tbFontSize','tbLineHeight'].forEach(id=>{
-      const input=by(id);
-      if (!input) return;
-      const label=input.previousElementSibling;
-      if (label?.tagName==='LABEL') typDock.appendChild(label);
-      typDock.appendChild(input);
-    });
-    const fontRow=source.querySelector('.tb-font-row');
-    if (fontRow) typDock.appendChild(fontRow);
-    // Font options are cloned from the same master list as the main editor.
-    if (typeof populateTbFontSelector==='function') populateTbFontSelector();
-    const master=by('fontFamilySelector'), word=by('ttWordFont');
-    if (master && word && word.options.length<2) {
-      Array.from(master.options).forEach(opt=>word.add(opt.cloneNode(true)));
-    }
-  }
-  // Remember the explicit text selection BEFORE pressing toolbar buttons or
-  // opening a select/color input; browsers often drop a selection on blur.
-  let plateRange=null;
-  function rememberPlateRange() {
-    if (!selected?.isConnected) return false;
-    const content=selected.querySelector('.tb-content');
-    const sel=window.getSelection();
-    if (!content || !sel?.rangeCount) return false;
-    const range=sel.getRangeAt(0);
-    if (!content.contains(range.commonAncestorContainer) || range.collapsed) return false;
-    plateRange=range.cloneRange();
-    savedSelection=range.cloneRange();
-    return true;
-  }
-  function restorePlateRange() {
-    if (!selected?.isConnected || !plateRange) return false;
-    const content=selected.querySelector('.tb-content');
-    if (!content || !content.contains(plateRange.commonAncestorContainer))return false;
-    selectTextBox(selected);
-    const sel=window.getSelection();
-    try {sel.removeAllRanges();sel.addRange(plateRange.cloneRange());savedSelection=plateRange.cloneRange();return true;}
-    catch(e){return false;}
-  }
-  function hint(msg){by('ttTextHint').textContent=msg||'';}
-  // Preserve native interaction with sliders, color pickers, font dropdowns.
-  // Only buttons suppress focus-stealing pointerdown, not the entire panel.
-  by('ttTextControls').addEventListener('pointerdown',e=>{
-    rememberPlateRange();
-    if(e.target.closest('button') && e.cancelable) e.preventDefault();
-  },true);
-  exportNode.addEventListener('selectionchange',rememberPlateRange);
+  // Moving existing controls out of the sidebar must NOT make the selected
+  // text box vanish while changing a font, color or slider. Unlike the old
+  // .panel, the floating window lives directly under <body>.
+  const originalTools=by('ttOriginalTools');
+  let savedPlateRange=null;
   document.addEventListener('selectionchange',()=>{
-    const sel=window.getSelection();
-    if (!selected?.isConnected || !sel?.rangeCount) return;
-    const content=selected.querySelector('.tb-content');
-    if (content?.contains(sel.getRangeAt(0).commonAncestorContainer) && !sel.isCollapsed) rememberPlateRange();
-  });
-  // A single click selects the words for formatting; buttons never silently
-  // target the main post when a plate is selected.
-  by('ttTextAll').addEventListener('click',()=>{
     if(!selected?.isConnected)return;
-    const content=selected.querySelector('.tb-content');
-    if(!content)return;
-    selectTextBox(selected);
-    const r=document.createRange();
-    // Выделяем именно текст, не вложенную картинку. Если между фрагментами
-    // находится фото, безопаснее выделить текст вручную, не меняя геометрию фото.
-    const nodes=[];
-    const walk=document.createTreeWalker(content,NodeFilter.SHOW_TEXT);
-    let node;
-    while((node=walk.nextNode())) {
-      if(node.textContent?.trim())nodes.push(node);
-    }
-    if(!nodes.length){hint('Сначала напишите текст в плашке.');return;}
-    r.setStart(nodes[0],0);
-    r.setEnd(nodes[nodes.length-1],nodes[nodes.length-1].textContent.length);
-    const mixed=Array.from(content.querySelectorAll('img.tb-img'));
-    if(mixed.some(img=>r.intersectsNode(img))){
-      hint('Картинка находится между фрагментами текста. Выделите нужный текст вручную, чтобы не затронуть картинку.');
-      return;
-    }
-    const s=window.getSelection();s.removeAllRanges();s.addRange(r);
-    plateRange=r.cloneRange();savedSelection=r.cloneRange();
-    hint('Выделен весь текст плашки. Выберите форматирование.');
+    const field=selected.querySelector('.tb-content');
+    const selection=window.getSelection();
+    if(!field || !selection?.rangeCount || selection.isCollapsed)return;
+    const range=selection.getRangeAt(0);
+    if(field.contains(range.commonAncestorContainer))savedPlateRange=range.cloneRange();
   });
-  // Scoped formatting actions delegated to existing native text engine.
-  function operateOnSelectedText(fn) {
+  originalTools.addEventListener('pointerdown',e=>{
     if(!selected?.isConnected)return;
-    if(!restorePlateRange()) {
-      hint('Сначала выделите текст внутри плашки.');return false;
-    }
-    const s=window.getSelection();
-    if(!s?.rangeCount || s.isCollapsed || !selected.querySelector('.tb-content')?.contains(s.getRangeAt(0).commonAncestorContainer)){
-      hint('Сначала выделите текст внутри плашки.');return false;
-    }
-    fn();rememberPlateRange();hint('');return true;
-  }
-  by('ttAlignFull').addEventListener('click',()=>{
+    // The original complete-plate controls use getTbTargetBox().
+    // Maintain the target even when a native <select> steals focus.
+    currentTextBox=selected.querySelector('.tb-content')||selected;
+    if(typeof saveSelectionBeforeAction==='function')saveSelectionBeforeAction();
+    // Prevent focus loss only for formatting buttons, not upload/ribbon controls.
+    if(e.target.closest('.tb-toolbar button') && e.cancelable)e.preventDefault();
+  },true);
+  originalTools.addEventListener('change',e=>{
     if(!selected?.isConnected)return;
-    if(!restorePlateRange())scopeCaretToPlate();
-    format('justifyFull');hint('');
-  });
-  by('ttCleanText').addEventListener('click',()=>operateOnSelectedText(()=>cleanFormat()));
-  by('ttDeleteTextSelection').addEventListener('click',()=>operateOnSelectedText(()=>deleteSelection()));
-  by('ttLinkToggle').addEventListener('click',()=>{
-    const box=by('ttInlineLink');const next=box.hidden;
-    box.hidden=!next;by('ttLinkToggle').setAttribute('aria-expanded',String(next));
-    if(next)rememberPlateRange();
-  });
-  by('ttLinkApply').addEventListener('click',()=>{
-    const url=by('ttLinkAddress').value.trim();
-    if(!url){hint('Введите адрес ссылки.');return;}
-    const applied=operateOnSelectedText(()=>{
-      if(typeof applyLinkToSelection==='function') applyLinkToSelection(url);
-    });
-    if(applied){by('ttInlineLink').hidden=true;by('ttLinkToggle').setAttribute('aria-expanded','false');}
-  });
-  by('ttWordFont').addEventListener('pointerdown',rememberPlateRange,true);
-  by('ttWordFont').addEventListener('change',e=>{
-    const font=e.target.value;
-    if(!font)return;
-    operateOnSelectedText(()=>{
-      savedSelectionForFont=plateRange?.cloneRange()||null;
-      applyWordFont(font);
-    });
-    e.target.selectedIndex=0;
-  });
-  by('ttTextBaseColor').addEventListener('input',e=>{
+    currentTextBox=selected.querySelector('.tb-content')||selected;
+    // Original onchange handlers run after this capture listener.
+    // The original inline onchange fires once, with its original value.
+  },true);
+  originalTools.addEventListener('click',e=>{
     if(!selected?.isConnected)return;
-    selectTextBox(selected);
-    selected.dataset.textColor=e.target.value;
-    applyTbTypography(selected);
-    scheduleHistorySave();hint('');
-  });
-  // Existing formatting commands inside the moved .tb-toolbar rely on savedSelection
-  // and getEditingScope(). Set the plate target and restore selection before them.
-  function scopeCaretToPlate() {
-    if(!selected?.isConnected)return false;
-    const content=selected.querySelector('.tb-content');
-    if(!content)return false;
-    selectTextBox(selected);
-    if(typeof releaseSelection==='function')releaseSelection();
-    const r=document.createRange();r.selectNodeContents(content);r.collapse(false);
-    const sel=window.getSelection();sel.removeAllRanges();sel.addRange(r);
-    savedSelection=r.cloneRange();return true;
-  }
-  by('ttTbToolbarDock').addEventListener('click',e=>{
-    const btn=e.target.closest('button');
-    if(!btn || !selected?.isConnected)return;
-    // The existing inline onclick runs after this capture listener. Prevent
-    // formatting the main editor if no text inside this plate was selected.
-    if(!restorePlateRange()) {
-      if(/justify/.test(btn.getAttribute('onclick')||''))scopeCaretToPlate();
-      else {e.preventDefault();e.stopImmediatePropagation();hint('Сначала выделите текст внутри плашки.');}
+    currentTextBox=selected.querySelector('.tb-content')||selected;
+    // For selected words, use the original range engine and avoid a fall-back
+    // into the main post if the browser collapsed the selection in the popup.
+    if(e.target.closest('.tb-toolbar button') && savedPlateRange){
+      const field=selected.querySelector('.tb-content');
+      if(field?.contains(savedPlateRange.commonAncestorContainer)){
+        try{
+          const sel=window.getSelection();sel.removeAllRanges();
+          sel.addRange(savedPlateRange.cloneRange());savedSelection=savedPlateRange.cloneRange();
+        }catch(err){}
+      }
     }
   },true);
-  by('ttTbToolbarDock').addEventListener('input',e=>{
-    if(e.target.id==='tbWordColor' && !restorePlateRange()) {
-      e.stopImmediatePropagation();hint('Сначала выделите текст внутри плашки.');
-    }
-  },true);
+
   by('ttKindText').addEventListener('click',()=>{kind='text';updateContext();sync();});
   by('ttKindImage').addEventListener('click',()=>{kind='image';updateContext();sync();});
   choices.addEventListener('change',()=>{
@@ -4101,12 +3947,22 @@ function rebindTbImages() {
   for(const name of ['pointerup','pointercancel'])by('ttLayersHead').addEventListener(name,e=>{
     if(pointerOp?.kind==='dialog'&&pointerOp.id===e.pointerId)pointerOp=null;
   });
-  function attachRibbonControls() {
-    const dock=by('ttRibbonDock');
-    const toggle=by('tbRibbonToggle'), settings=by('tbRibbonSettings');
-    if (!dock || !toggle || !settings) return;
-    dock.append(toggle,settings);
-    toggle.style.width='100%';
+  function moveOriginalPlateTools() {
+    const dock=by('ttOriginalTools');
+    const original=by('tbSettings');
+    if(!dock || !original) return;
+    dock.appendChild(original);
+    // panel-blocks.js already moved the original ribbon controls into their
+    // existing titled section. Move THAT section, not cloned replacement fields.
+    const ribbon=by('tbRibbonToggle')?.closest('.pb-ribbon');
+    if(ribbon) dock.appendChild(ribbon);
+    else {
+      const toggle=by('tbRibbonToggle'), settings=by('tbRibbonSettings');
+      if(toggle) dock.appendChild(toggle);
+      if(settings) dock.appendChild(settings);
+    }
+    // Keep original bound font options, populated from the original master list.
+    if(typeof populateTbFontSelector==='function')populateTbFontSelector();
   }
   // В боковом разделе остаётся только одна кнопка вставки. Старые инструменты
   // сохранены в DOM ради совместимости, но их интерфейс сюда не дублируем.
@@ -4116,7 +3972,7 @@ function rebindTbImages() {
     const add=by('pbAddPlate');
     if (add) add.textContent='➕ Вставить плашку';
   }
-  function setupSidebar() {renamePlateSection();moveOriginalTextTools();attachRibbonControls();}
+  function setupSidebar() {renamePlateSection();moveOriginalPlateTools();}
   if (document.readyState==='loading') {
     document.addEventListener('DOMContentLoaded',setupSidebar);
   } else setupSidebar();
