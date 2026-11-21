@@ -1197,7 +1197,7 @@ await writeToClipboard(finalHtml, finalPlain, 'copyTgBtn');
 </style>
 <dialog id="ttCrop" aria-labelledby="ttCropTitle">
 <header><h3 id="ttCropTitle">Обрезка</h3><select id="ttFormat" aria-label="Пропорции кадра"><option>Свободно</option><option>Исходный</option><option>1:1</option><option>3:4</option><option>4:3</option><option>2:3</option><option>3:2</option><option>4:5</option><option>5:4</option><option>9:16</option><option>16:9</option><option>2:1</option><option>1:2</option><option>21:9</option></select></header>
-<div id="ttViewport"><div id="ttStage"><img alt="" id="ttPhoto" draggable="false"><div id="ttFrame"><i data-dir="n"></i><i data-dir="s"></i><i data-dir="e"></i><i data-dir="w"></i><i data-dir="ne"></i><i data-dir="sw"></i><i data-dir="se"></i><i data-dir="nw"></i></div></div></div>
+<div id="ttViewport"><div id="ttStage"><img alt="" id="ttPhoto" draggable="false"><div id="ttFrame"><span id="ttAspect"></span><i data-dir="n"></i><i data-dir="s"></i><i data-dir="e"></i><i data-dir="w"></i><i data-dir="ne"></i><i data-dir="sw"></i><i data-dir="se"></i><i data-dir="nw"></i></div></div></div>
 <div role="status" id="ttStatus"></div>
 <footer><output id="ttPx"></output><button type="button" id="ttCancel">Отмена</button><button type="button" class="primary" id="ttApply">Применить</button></footer>
 </dialog>
@@ -1235,7 +1235,11 @@ await writeToClipboard(finalHtml, finalPlain, 'copyTgBtn');
   let target=null,source=null,X=0,Y=0,W=1,H=1,A=1,B=1,drag=null,busy=false;
   const clamp=(x,max)=>Math.max(0,Math.min(x,max));
   function render(){
-    by('ttPx').textContent=W+' × '+H+' px';
+    const gcd=(a,b)=>b?gcd(b,a%b):a;
+    const baseW=fmt.selectedIndex===1?A:W,baseH=fmt.selectedIndex===1?B:H,div=gcd(baseW,baseH);
+    const label=fmt.selectedIndex>1?fmt.value:(baseW/div)+':'+(baseH/div);
+    by('ttAspect').textContent=label;
+    by('ttPx').textContent=W+' × '+H+' px · '+label;
     X=clamp(Math.round(X),A-W);Y=clamp(Math.round(Y),B-H);
     Object.assign(frame.style,{left:X/A*100+'%',top:Y/B*100+'%',width:W/A*100+'%',height:H/B*100+'%'});
   }
@@ -1245,7 +1249,7 @@ await writeToClipboard(finalHtml, finalPlain, 'copyTgBtn');
     const [a,b]=fmt.value.split(':').map(Number);return a/b;
   }
   fmt.onchange=()=>{
-    const t=ratio(); if(!t)return;
+    const t=ratio(); if(!t){render();return}
     const cx=X+W/2,cy=Y+H/2;
     const width=Math.min(A,B*t);
     W=Math.max(1,Math.round(width));H=Math.max(1,Math.round(width/t));
@@ -1310,5 +1314,60 @@ await writeToClipboard(finalHtml, finalPlain, 'copyTgBtn');
 })();
 </script>
 
+<style>
+.text-box.tt-drop-ready {outline:3px solid #35d7ae!important;outline-offset:3px}
+#ttAspect {position:absolute;left:50%;top:4px;transform:translateX(-50%);padding:3px 6px;border-radius:3px;background:#111b;color:white;font:600 13px/1.2 system-ui;pointer-events:none;white-space:nowrap}
+#ttPx{white-space:normal}
+</style>
+<script>
+(()=>{
+  let highlighted=null;
+  const at=(x,y)=>document.elementsFromPoint(x,y).map(n=>n.closest('.text-box')).find(n=>n&&exportNode.contains(n))||null;
+  function mark(box){
+    if(box===highlighted)return;
+    if(highlighted)highlighted.classList.remove('tt-drop-ready');
+    highlighted=box;
+    if(box)box.classList.add('tt-drop-ready');
+  }
+  function transfer(box,panel){
+    const old=box.querySelector('img'),content=panel.querySelector('.tb-content');
+    if(!old||!content||!editor.contains(box))return false;
+    mark(null);saveHistory();
+    const pic=old.cloneNode(false);
+    pic.className='tb-img';pic.contentEditable='false';
+    pic.style.width=Math.min(old.offsetWidth||160,content.clientWidth||160)+'px';
+    pic.style.maxWidth='100%';pic.style.height='auto';
+    pic.style.borderRadius=box.dataset.roundPct!=null?box.dataset.roundPct+'%':(box.dataset.radius||12)+'px';
+    pic.style.boxShadow=getComputedStyle(old).boxShadow;
+    if(+box.dataset.rot)pic.style.transform='rotate('+Number(box.dataset.rot)+'deg)';
+    content.appendChild(pic);wrapTbImage(pic);
+    removeCenterSpacers(box);box.remove();hideMiniBar();closeImgMobilePanel();
+    selectTextBox(panel);syncImgSettings();updateImgCounter();updateRatio();saveHistory();return true;
+  }
+  document.addEventListener('dragover',e=>{
+    if(!dragBox||!editor.contains(dragBox))return;
+    const panel=at(e.clientX,e.clientY);mark(panel);
+    if(panel){e.preventDefault();if(e.dataTransfer)e.dataTransfer.dropEffect='move'}
+  },true);
+  document.addEventListener('drop',e=>{
+    const panel=dragBox&&at(e.clientX,e.clientY);mark(null);
+    if(!panel||!transfer(dragBox,panel))return;
+    dragBox=null;e.preventDefault();e.stopImmediatePropagation();
+  },true);
+  document.addEventListener('dragend',()=>mark(null),true);
+  editor.addEventListener('touchmove',e=>{
+    if(isTouchDraggingImg&&e.touches.length===1){const t=e.touches[0];mark(at(t.clientX,t.clientY))}
+  },{passive:true});
+  editor.addEventListener('touchend',e=>{
+    const t=e.changedTouches[0],panel=t&&dragBox&&isTouchDraggingImg&&at(t.clientX,t.clientY);
+    mark(null);
+    if(!panel||!transfer(dragBox,panel))return;
+    if(imgGhost)imgGhost.remove();
+    imgGhost=null;dragBox=null;imageTouchStart=null;isTouchDraggingImg=false;
+    if(e.cancelable)e.preventDefault();e.stopImmediatePropagation();
+  },{capture:true,passive:false});
+  editor.addEventListener('touchcancel',()=>mark(null),true);
+})();
+</script>
 </body>
 </html>
