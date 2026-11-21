@@ -3444,173 +3444,434 @@ function rebindTbImages() {
   editor.addEventListener('touchcancel',()=>mark(null),true);
 })();
 </script>
-<style>
-#ttFormat{display:block}
-#ttViewport{grid-template-columns:minmax(0,1fr)}
-#ttFrame #ttPx{position:absolute;bottom:4px;left:50%;transform:translateX(-50%);padding:3px 6px;border-radius:3px;background:#111b;color:white;font:600 13px/1.2 system-ui;white-space:nowrap;pointer-events:none}
-#ttLayers [aria-pressed=true]{background:#2479a8;color:white}
-#export-node{isolation:isolate}
-#export-node>.text-box[data-panel-layer="back"]{z-index:-1}
-#ttLayers{box-sizing:border-box;width:min(390px,94vw);max-height:88dvh;overflow:auto;border:1px solid #465365;border-radius:12px;background:#191d24;color:white;padding:16px;color-scheme:dark}
-#ttLayers::backdrop{background:#0008}#ttLayers h3{margin:0}#ttLayers button,#ttLayers select{margin:3px 0;min-height:36px}#ttLayers header{display:flex;align-items:center;justify-content:space-between}#ttLayers [hidden]{display:none!important}
+<!-- ТЕКСТТУРА: единый немодальный редактор плашек (пробная версия). -->
+<style id="tt-plate-ui-v2">
+/* Плашка под текстом находится МЕЖДУ фоном холста и основным текстом.
+   Изменение слоя не затрагивает её размеры и положение. */
+#export-node { isolation:isolate; }
+#export-node > #editor { position:relative; z-index:1; }
+#export-node > .text-box[data-panel-layer="back"] { z-index:0 !important; }
+#export-node > .text-box:not([data-panel-layer="back"]) { z-index:2 !important; }
+
+/* Внешние управляющие элементы не являются частью поста и не экспортируются. */
+#ttPlateOutline {position:fixed;box-sizing:border-box;border:2px solid #10b981;border-radius:2px;
+  transform-origin:center;pointer-events:none;z-index:100004;display:block;}
+#ttPlateOutline[hidden] {display:none!important}
+#ttPlateOutline button {position:absolute;pointer-events:auto;touch-action:none;cursor:pointer;
+  min-width:36px;min-height:36px;padding:5px 7px;display:grid;place-items:center;
+  background:#18232a;color:#f3f6f7;border:1px solid #53d6aa;border-radius:8px;
+  box-shadow:0 2px 7px #0006;font:600 15px system-ui}
+#ttPlateOutline [data-handle="move"] {top:-49px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:13px;cursor:move}
+#ttPlateOutline [data-handle="resize"] {bottom:-17px;right:-17px;cursor:nwse-resize}
+#ttPlateOutline [data-handle="rotate"] {top:-18px;right:-18px;cursor:grab}
+#ttPlateOutline [data-action="open"] {top:-49px;right:31px}
+#ttPlateOutline [data-action="copy"] {bottom:-47px;left:0}
+#ttPlateOutline [data-action="delete"] {bottom:-47px;right:0}
+
+/* Доступ к любым плашкам: одна кнопка внизу, даже если объект под текстом. */
+#ttLayerLauncher {position:fixed;right:18px;bottom:93px;z-index:100010;display:block;
+  min-height:40px;padding:9px 13px;background:#1d2630;color:#f2eee6;
+  border:1px solid #10b981;border-radius:11px;font:600 13px system-ui;
+  box-shadow:0 3px 12px #0005;}
+#ttLayerLauncher[hidden] {display:none!important}
+
+/* Настройки появляются только по явной кнопке, не блокируют холст. */
+#ttLayers {position:fixed;top:84px;right:18px;width:min(360px,calc(100vw - 16px));
+  max-height:min(76dvh,690px);overflow:auto;overscroll-behavior:contain;z-index:100025;
+  box-sizing:border-box;border:1px solid #465365;border-radius:14px;
+  background:rgba(25,29,36,.94);color:#f5f5f5;box-shadow:0 12px 32px #0007;
+  padding:0 14px 14px;color-scheme:dark;font:14px system-ui;}
+#ttLayers[hidden],#ttLayers [hidden]{display:none!important}
+#ttLayers header {position:sticky;top:0;z-index:2;display:flex;align-items:center;
+  justify-content:space-between;gap:12px;background:#191d24;padding:12px 0 10px;
+  border-bottom:1px solid #465365;cursor:move;touch-action:none;}
+#ttLayers header h3 {margin:0;font:700 16px system-ui}
+#ttLayers button,#ttLayers select,#ttLayers input {box-sizing:border-box}
+#ttLayers button {min-height:38px;border-radius:9px;padding:7px 10px;margin:4px 0;
+  background:#303848;color:#f7f7f7;border:1px solid #465365;font:600 13px system-ui}
+#ttLayers button[aria-pressed="true"] {background:#19624f;border-color:#53d6aa;color:white}
+#ttLayers label {display:block;font:600 12px system-ui;color:#d9dbe0;margin:11px 0 5px}
+#ttLayers select {display:block;width:100%;min-height:42px;padding:6px 8px;border:1px solid #465365;
+  border-radius:8px;background:#242b37;color:white;font-size:16px}
+#ttLayers input[type="range"] {display:block;width:100%;height:32px;touch-action:pan-x}
+#ttLayers input[type="color"] {display:block;width:100%;height:36px;border-radius:8px;padding:1px;background:#242b37}
+#ttLayers #ttOrder {display:flex;gap:7px}
+#ttLayers #ttOrder button {flex:1}
+#ttLayers #ttPanelActions {display:flex;gap:7px;margin-top:12px}
+#ttLayers #ttPanelActions button {flex:1}
+#ttLayers #ttDest button {width:100%;background:#176b55;border-color:#53d6aa}
+#ttLayers #ttControls {margin:9px 0;padding-top:3px;border-top:1px solid #414754}
+#ttLayers #ttDone {min-width:38px;min-height:38px;margin:0;font-size:18px;cursor:pointer}
+#ttLayers .tt-help {font:12px/1.35 system-ui;color:#b5c4ca;margin:8px 0 0}
+#ttLayers button:focus-visible,#ttLayerLauncher:focus-visible,
+#ttPlateOutline button:focus-visible {outline:2px solid #62dfb9;outline-offset:2px}
+@media (max-width:820px){
+  #ttLayers {top:auto;right:8px;bottom:68px;width:min(340px,calc(100vw - 16px));
+    max-height:46dvh;background:rgba(25,29,36,.91);}
+  #ttLayerLauncher {right:9px;bottom:76px}
+  #ttPlateOutline button {min-width:40px;min-height:40px}
+}
+/* Сохранить прежнюю полупрозрачность боковой шторки на телефоне. */
+@media(max-width:820px){.panel{background:rgba(23,26,33,.55)!important}}
 </style>
-<dialog id="ttLayers"><header><h3 id="ttTitle">Настройки плашки</h3><button id="ttDone" aria-label="Закрыть">✕</button></header>
-<div id="ttPanelControls"><label>Плашка <select id="ttEditPanel"></select></label>
-<div id="ttOrder"><button data-mode="back">Под текст</button> <button data-mode="front">Над текстом</button></div></div>
-<select id="ttWhich" aria-label="Картинка в плашке"></select>
-<div id="ttControls"><label for="ttAlpha">Прозрачность картинки: <output id="ttAlphaVal"></output></label><input type="range" id="ttAlpha" min="0" max="100">
+
+<!-- Панель НЕ является модальным dialog: можно одновременно видеть и менять холст. -->
+<section id="ttLayers" role="dialog" aria-modal="false" aria-label="Настройки плашек" hidden>
+  <header id="ttLayersHead"><h3 id="ttTitle">Плашки</h3>
+    <button type="button" id="ttDone" title="Закрыть настройки" aria-label="Закрыть настройки">✕</button>
+  </header>
+  <div id="ttPanelControls">
+    <label for="ttEditPanel">Выбранная плашка</label><select id="ttEditPanel"></select>
+    <div id="ttOrder" aria-label="Порядок слоёв">
+      <button type="button" data-mode="back">Под текстом</button>
+      <button type="button" data-mode="front">Над текстом</button>
+    </div>
+    <p class="tt-help">Положение слоя относится к плашке целиком, не к фотографии внутри неё.</p>
+    <div id="ttPlateAppearance">
+      <label for="ttPlateBg">Цвет фона плашки</label><input type="color" id="ttPlateBg" value="#000000">
+      <label for="ttPlateOpacity">Прозрачность фона плашки: <output id="ttPlateOpacityVal">55%</output></label>
+      <input type="range" id="ttPlateOpacity" min="0" max="100" value="55">
+    </div>
+    <p id="ttRibbonHint" class="tt-help" hidden>У этой плашки используется ленточная подложка. Её цвет и прозрачность регулируются в разделе «Плашка» основной панели.</p>
+    <div id="ttPanelActions">
+      <button type="button" id="ttCopyPlate">⧉ Копия</button>
+      <button type="button" id="ttDeletePlate">🗑 Удалить</button>
+    </div>
+  </div>
+  <div id="ttControls">
+    <label for="ttWhich">Картинка в плашке</label><select id="ttWhich"></select>
+    <label for="ttAlpha">Прозрачность картинки: <output id="ttAlphaVal">0%</output></label>
+    <input type="range" id="ttAlpha" min="0" max="100" step="1" value="0">
+    <label for="ttPhotoWidth">Ширина картинки: <output id="ttPhotoWidthVal">0 px</output></label>
+    <input type="range" id="ttPhotoWidth" min="40" max="1200" step="1" value="100">
+    <p class="tt-help">Настройки картинки не изменяют размер или слой самой плашки.</p>
+  </div>
+  <div id="ttDest" hidden>
+    <label for="ttPanelList">В какую плашку вставить?</label>
+    <select id="ttPanelList"></select>
+    <button type="button" id="ttPlace">Вставить в выбранную плашку</button>
+  </div>
+</section>
+<button type="button" id="ttLayerLauncher" aria-haspopup="dialog" aria-controls="ttLayers" aria-expanded="false" hidden>▣ Плашки</button>
+<div id="ttPlateOutline" aria-label="Рамка выбранной плашки под текстом" hidden>
+  <button type="button" data-handle="move" title="Переместить">✥ Переместить</button>
+  <button type="button" data-handle="resize" title="Изменить размер">⇲</button>
+  <button type="button" data-handle="rotate" title="Повернуть">↻</button>
+  <button type="button" data-action="open" title="Настроить плашку">⚙</button>
+  <button type="button" data-action="copy" title="Дублировать">⧉</button>
+  <button type="button" data-action="delete" title="Удалить">✕</button>
 </div>
-<div id="ttDest"><select id="ttPanelList" aria-label="Плашка для картинки"></select><button id="ttPlace">Вставить в плашку</button></div></dialog>
-<script>
-(()=>{
-const el=id=>document.getElementById(id),dlg=el('ttLayers'),choices=el('ttWhich'),places=el('ttPanelList');
-let image,box,content,photos,panels;
-let activePanel=null;
-function sync(){
- const mode=activePanel?.dataset.panelLayer||'front';
- for(const b of el('ttOrder').children)b.setAttribute('aria-pressed',String(b.dataset.mode===mode));
- if(!image)return;
- const n=Math.round(100*(1-Number(image.style.opacity||1)));
- el('ttAlpha').value=n;el('ttAlphaVal').textContent=n+'%';
-}
-function edit(panel,pic){
- if(!panel?.isConnected)return;
- activePanel=panel;selectTextBox(panel);box=null;
- panels=Array.from(exportNode.querySelectorAll('.text-box'));
- const selector=el('ttEditPanel');
- selector.replaceChildren(...panels.map((p,i)=>new Option('Плашка '+(i+1)+(p.innerText.trim()?' · '+p.innerText.trim().slice(0,26):''),i)));
- selector.selectedIndex=panels.indexOf(panel);
- photos=Array.from(panel.querySelectorAll('.tb-content img.tb-img'));
- image=photos.includes(pic)?pic:photos[0];
- choices.replaceChildren(...photos.map((_,i)=>new Option('Картинка '+(i+1),i)));
- choices.selectedIndex=photos.indexOf(image);choices.hidden=photos.length<2;
- el('ttTitle').textContent='Настройки плашки';el('ttPanelControls').hidden=false;
- el('ttControls').hidden=!image;el('ttDest').hidden=true;sync();if(!dlg.open)dlg.showModal();
-}
-el('ttEditPanel').onchange=e=>edit(panels[e.target.selectedIndex]);
-function show(pic){if(pic)edit(pic.closest('.text-box'),pic)}
-function moveTo(panel){
- if(!box?.isConnected||!panel?.isConnected)return;
- if(window.ttMovePhoto(box,panel)){
-   const imgs=panel.querySelectorAll('img.tb-img');show(imgs[imgs.length-1]);
- }
-}
-window.ttPicTools=()=>{
- box=currentImgBox;if(!box?.isConnected)return;
- panels=Array.from(exportNode.querySelectorAll('.text-box'));
- if(!panels.length){imageImportNotice('Добавьте плашку');return}
- if(panels.length===1){moveTo(panels[0]);return}
- places.replaceChildren(...panels.map((p,i)=>new Option('Плашка '+(i+1)+(p.innerText.trim()?' · '+p.innerText.trim().slice(0,28):''),i)));
- el('ttTitle').textContent='Вставить в плашку';el('ttPanelControls').hidden=true;el('ttDest').hidden=false;choices.hidden=true;el('ttControls').hidden=true;
- if(!dlg.open)dlg.showModal();
-};
-window.ttPanelTools=()=>{
- const all=Array.from(exportNode.querySelectorAll('.text-box'));
- if(!all.length){imageImportNotice('Добавьте плашку');return}
- const selected=getTbTargetBox();
- edit(all.includes(selected)?selected:all.includes(activePanel)?activePanel:all[0]);
-};
-function addReturn(){
- const add=document.querySelector('#pbAddPlate,button[onclick="addTextBox()"]');
- if(!add||document.getElementById('ttReopen'))return;
- const btn=document.createElement('button');btn.type='button';btn.id='ttReopen';btn.textContent='Открыть настройки плашки';btn.onclick=window.ttPanelTools;add.after(btn);
-}
-if(document.readyState==='complete')addReturn();else window.addEventListener('load',addReturn);
-document.addEventListener('click',e=>{const wrap=e.target.closest('.tb-img-wrap');if(wrap&&!e.target.closest('.tb-img-grip'))show(wrap.querySelector('img'))},true);
-choices.onchange=()=>{image=photos[choices.selectedIndex];sync()};
-el('ttAlpha').oninput=e=>{image.style.opacity=String(1-e.target.value/100);sync();scheduleHistorySave()};
-el('ttOrder').onclick=e=>{
- const mode=e.target.dataset.mode;
- if(!activePanel?.isConnected||!['back','front'].includes(mode))return;
- saveHistory();activePanel.dataset.panelLayer=mode;sync();saveHistory();
-};
-el('ttPlace').onclick=()=>moveTo(panels[places.selectedIndex]);
-el('ttDone').onclick=()=>dlg.close();dlg.addEventListener('click',e=>e.stopPropagation());
-})();
-</script>
-<style>
-#ttPlateOutline{position:absolute;box-sizing:border-box;outline:2px solid #10b981;pointer-events:none;z-index:60;transform-origin:center;display:block}
-#ttPlateOutline[hidden]{display:none}
-#ttPlateOutline .ttSide{position:absolute;pointer-events:auto;touch-action:none;cursor:move}
-#ttPlateOutline .ttSide:nth-child(1),#ttPlateOutline .ttSide:nth-child(2){left:0;right:0;height:16px}
-#ttPlateOutline .ttSide:nth-child(1){top:-8px}#ttPlateOutline .ttSide:nth-child(2){bottom:-8px}
-#ttPlateOutline .ttSide:nth-child(3),#ttPlateOutline .ttSide:nth-child(4){top:0;bottom:0;width:16px}
-#ttPlateOutline .ttSide:nth-child(3){left:-8px}#ttPlateOutline .ttSide:nth-child(4){right:-8px}
-#ttPlateOutline button{position:absolute;left:50%;top:0;transform:translate(-50%,-50%);pointer-events:auto;touch-action:none;cursor:move;background:#075e4b;color:white;border:1px solid #51e4bd;padding:4px 10px;min-height:32px;white-space:nowrap;font:600 13px system-ui}
-</style>
-<script>
-(()=>{
- const root=exportNode,ui=document.createElement('div');ui.id='ttPlateOutline';
- ui.className='tb-drag-frame';ui.contentEditable='false';ui.hidden=true;
- ui.innerHTML='<i class="ttSide"></i>'.repeat(4)+'<button type="button" aria-label="Переместить плашку">✥ Переместить</button>';
- root.append(ui);
- let active=null,drag=null,suppress=null,raf=0;
- const ro=new ResizeObserver(()=>schedule());
- function render(){
-   raf=0;
-   const b=root.querySelector('.text-box.selected[data-panel-layer="back"]');
-   if(b!==active){ro.disconnect();active=b;if(b)ro.observe(b)}
-   ui.hidden=!b;if(!b)return;
-   Object.assign(ui.style,{left:b.offsetLeft+'px',top:b.offsetTop+'px',width:b.offsetWidth+'px',height:b.offsetHeight+'px',transform:getComputedStyle(b).transform});
- }
- function schedule(){if(!raf)raf=requestAnimationFrame(render)}
- new MutationObserver(ms=>{if(ms.some(m=>!ui.contains(m.target)))schedule()}).observe(root,{subtree:true,childList:true,attributes:true,attributeFilter:['style','class','data-panel-layer']});
- // Leave the foreground text selectable. A caret hit alone is insufficient:
- // the browser returns the nearest caret even over empty areas of a line.
- function onLetter(x,y){
-   let n,o;
-   if(document.caretPositionFromPoint){const c=document.caretPositionFromPoint(x,y);if(c){n=c.offsetNode;o=c.offset}}
-   else if(document.caretRangeFromPoint){const c=document.caretRangeFromPoint(x,y);if(c){n=c.startContainer;o=c.startOffset}}
-   if(n?.nodeType!==3||!editor.contains(n))return false;
-   const r=document.createRange();
-   for(const i of [o-1,o]){
-     if(i<0||i>=n.length||!n.data[i].trim())continue;
-     r.setStart(n,i);r.setEnd(n,i+1);
-     for(const b of r.getClientRects())if(x>=b.left&&x<=b.right&&y>=b.top&&y<=b.bottom)return true;
-   }
-   return false;
- }
- function target(e,x,y){
-   if(ui.contains(e.target))return active;
-   const direct=e.target.closest('.text-box');
-   if(direct)return direct.dataset.panelLayer==='back'&&!e.target.closest('.tb-handle,.tb-edge,.tb-delete,.tb-resize,.tb-rotate,.tb-copy,.tb-img-grip,.tb-90-rot,.tb-reset-rot')&&!direct.classList.contains('selected')?direct:null;
-   if(e.target.closest('.img-box,button,a,input')||!root.contains(e.target))return null;
-   const hit=document.elementsFromPoint(x,y).map(n=>n.closest('.text-box')).find(b=>b&&root.contains(b));
-   return hit?.dataset.panelLayer==='back'&&!onLetter(x,y)?hit:null;
- }
- function start(e){
-   if(drag||e.button>0||(e.touches&&e.touches.length!==1))return;
-   const p=e.touches?e.touches[0]:e;
-   const b=target(e,p.clientX,p.clientY);if(!b)return;
-   e.preventDefault();e.stopImmediatePropagation();selectTextBox(b);render();
-   const scale=root.getBoundingClientRect().width/root.offsetWidth||1;
-   drag={b,x:p.clientX,y:p.clientY,left:b.offsetLeft,top:b.offsetTop,scale,id:p.identifier,touch:!!e.touches,moved:false};
- }
- function move(e){
-   if(!drag||drag.touch!==!!e.touches)return;
-   const p=e.touches?Array.from(e.touches).find(t=>t.identifier===drag.id):e;if(!p)return;
-   const dx=p.clientX-drag.x,dy=p.clientY-drag.y;
-   if(!drag.moved&&Math.hypot(dx,dy)<3)return;
-   if(!drag.moved)saveHistory();
-   drag.moved=true;if(e.cancelable)e.preventDefault();
-   drag.b.style.left=drag.left+dx/drag.scale+'px';drag.b.style.top=drag.top+dy/drag.scale+'px';render();
- }
- function end(e){
-   if(!drag||drag.touch!==!!e.changedTouches)return;
-   const p=e.changedTouches?Array.from(e.changedTouches).find(t=>t.identifier===drag.id):e;if(!p)return;
-   if(drag.moved)saveHistory();
-   suppress={x:p.clientX,y:p.clientY,until:performance.now()+450};
-   drag=null;
- }
- root.addEventListener('mousedown',start,true);root.addEventListener('touchstart',start,{capture:true,passive:false});
- document.addEventListener('mousemove',move,true);document.addEventListener('touchmove',move,{capture:true,passive:false});
- for(const t of ['mouseup','touchend','touchcancel'])document.addEventListener(t,end,true);
- root.addEventListener('click',e=>{
-  if(ui.contains(e.target)||(suppress&&performance.now()<suppress.until&&Math.hypot(e.clientX-suppress.x,e.clientY-suppress.y)<8)){
-    suppress=null;e.stopImmediatePropagation();e.preventDefault();
+<script id="tt-plate-editor-v2">
+/* Инструменты плашек. Не изменяет функцию selectImgBox, фото-жесты и HTML снимков. */
+(function () {
+  'use strict';
+  const by = id => document.getElementById(id);
+  const panel = by('ttLayers'), launcher = by('ttLayerLauncher'), overlay = by('ttPlateOutline');
+  const choices = by('ttWhich'), list = by('ttEditPanel'), destinations = by('ttPanelList');
+  const allPlates = () => Array.from(exportNode.querySelectorAll(':scope > .text-box'));
+  let selected = null, photo = null, movingImage = null, state = 'plate';
+  let pointerOp = null, raf = 0, manualPosition = false;
+
+  function titleFor(b, i) {
+    const content = b.querySelector('.tb-content');
+    const label = content ? (content.innerText || '').trim().replace(/\s+/g,' ').slice(0,22) : '';
+    return 'Плашка ' + (i+1) + (label ? ' · ' + label : '');
   }
- },true);
- schedule();
+  function optionList(select, values) {
+    select.replaceChildren(...values.map(({value,title}) => new Option(title,value)));
+  }
+  function setOpen(open) {
+    panel.hidden = !open;
+    launcher.setAttribute('aria-expanded', String(open));
+    launcher.hidden = open || !allPlates().length;
+    if (!open) return;
+    if (!manualPosition) { panel.style.left='';panel.style.top='';panel.style.right='';panel.style.bottom=''; }
+  }
+  function setPanel(b, preferredPhoto) {
+    if (!b || !b.isConnected) return;
+    selected = b;
+    selectTextBox(b);
+    const plates=allPlates();
+    optionList(list,plates.map((p,i)=>({value:String(i),title:titleFor(p,i)})));
+    list.value=String(plates.indexOf(b));
+    const pics=Array.from(b.querySelectorAll('.tb-content img.tb-img'));
+    photo=pics.includes(preferredPhoto)?preferredPhoto:pics[0]||null;
+    optionList(choices,pics.map((p,i)=>({value:String(i),title:'Картинка '+(i+1)})));
+    choices.value=photo?String(pics.indexOf(photo)):'';
+    by('ttControls').hidden=!pics.length;
+    by('ttTitle').textContent='Настройки плашки';
+    by('ttPanelControls').hidden=false;
+    by('ttDest').hidden=true;
+    state='plate';
+    sync();
+  }
+  function sync() {
+    if (!selected?.isConnected) return;
+    const mode=selected.dataset.panelLayer==='back'?'back':'front';
+    by('ttOrder').querySelectorAll('button').forEach(btn => {
+      btn.setAttribute('aria-pressed',String(btn.dataset.mode===mode));
+    });
+    by('ttPlateAppearance').hidden = selected.dataset.mode === 'ribbon';
+    by('ttRibbonHint').hidden = selected.dataset.mode !== 'ribbon';
+    by('ttPlateBg').value=selected.dataset.bgColor||'#000000';
+    const plateOp=Math.max(0,Math.min(100,Number(selected.dataset.bgOpacity??55)));
+    by('ttPlateOpacity').value=String(plateOp);
+    by('ttPlateOpacityVal').textContent=plateOp+'%';
+    if (!photo?.isConnected) return;
+    const content=selected.querySelector('.tb-content');
+    const widthMax=Math.max(40,Math.min(1200,Math.round(content?.clientWidth||1200)));
+    by('ttPhotoWidth').max=String(widthMax);
+    const width=Math.max(40,Math.min(widthMax,Math.round(photo.offsetWidth||40)));
+    by('ttPhotoWidth').value=String(width);
+    by('ttPhotoWidthVal').textContent=width+' px';
+    const opacity = photo.style.opacity === '' ? 1 : Number(photo.style.opacity);
+    const val = Math.max(0,Math.min(100,Math.round((1-(Number.isFinite(opacity)?opacity:1))*100)));
+    by('ttAlpha').value=String(val);by('ttAlphaVal').textContent=val+'%';
+  }
+  function openPlates(b,pic) {
+    const plates=allPlates();
+    if (!plates.length) {imageImportNotice('Сначала добавьте плашку.');return;}
+    setPanel(plates.includes(b)?b:plates.includes(selected)?selected:plates[0],pic);
+    setOpen(true);
+    schedule();
+  }
+  function updateLauncher() {
+    const plates=allPlates();
+    launcher.hidden = !plates.length || !panel.hidden;
+    if (selected && !plates.includes(selected)) {selected=null;photo=null;}
+  }
+
+  window.ttPanelTools = function () {
+    const target=typeof getTbTargetBox==='function'?getTbTargetBox():null;
+    openPlates(target);
+  };
+  // Единственное расширение старой кнопки "Вставить в плашку".
+  // Другие инструменты изображения остаются нетронутыми.
+  window.ttPicTools = function () {
+    const box=currentImgBox,plates=allPlates();
+    if (!box?.isConnected) return;
+    if (!plates.length) {imageImportNotice('Сначала добавьте плашку.');return;}
+    if (plates.length===1) {if(window.ttMovePhoto(box,plates[0])) {
+      const pics=plates[0].querySelectorAll('.tb-content img.tb-img');
+      openPlates(plates[0],pics[pics.length-1]);
+    } return;}
+    movingImage=box;state='destination';
+    optionList(destinations,plates.map((p,i)=>({value:String(i),title:titleFor(p,i)})));
+    by('ttPanelControls').hidden=true;by('ttControls').hidden=true;
+    by('ttDest').hidden=false;by('ttTitle').textContent='Вставить в плашку';
+    setOpen(true);
+  };
+  function transferTo(b){
+    if (!movingImage?.isConnected || !b?.isConnected) return;
+    if(window.ttMovePhoto(movingImage,b)) {
+      movingImage=null;
+      const pics=b.querySelectorAll('.tb-content img.tb-img');
+      setPanel(b,pics[pics.length-1]);setOpen(true);
+    }
+  }
+  by('ttPlace').addEventListener('click',()=>transferTo(allPlates()[Number(destinations.value)]));
+  by('ttDone').addEventListener('click',()=>{setOpen(false);schedule()});
+  launcher.addEventListener('click',()=>openPlates(typeof getTbTargetBox==='function'?getTbTargetBox():null));
+  list.addEventListener('change',()=>setPanel(allPlates()[Number(list.value)]));
+  choices.addEventListener('change',()=>{
+    const pics=selected?.querySelectorAll('.tb-content img.tb-img')||[];
+    photo=pics[Number(choices.value)]||null;sync();
+  });
+  by('ttPlateBg').addEventListener('input',e=>{
+    if(!selected?.isConnected)return;
+    selectTextBox(selected);setTbBgColor(e.target.value);
+  });
+  by('ttPlateOpacity').addEventListener('input',e=>{
+    if(!selected?.isConnected)return;
+    selectTextBox(selected);setTbBgOpacity(e.target.value);
+    by('ttPlateOpacityVal').textContent=e.target.value+'%';
+  });
+  by('ttPhotoWidth').addEventListener('input',e=>{
+    if(!photo?.isConnected || !selected?.isConnected)return;
+    photo.style.width=e.target.value+'px';photo.style.maxWidth='100%';
+    by('ttPhotoWidthVal').textContent=e.target.value+' px';
+    scheduleHistorySave();
+  });
+  by('ttAlpha').addEventListener('input',e=>{
+    if (!photo?.isConnected || !selected?.isConnected) return;
+    photo.style.opacity=String(1-Number(e.target.value)/100);
+    by('ttAlphaVal').textContent=e.target.value+'%';
+    scheduleHistorySave();
+  });
+  by('ttOrder').addEventListener('click',e=>{
+    const btn=e.target.closest('button[data-mode]');
+    if(!btn || !selected?.isConnected) return;
+    if(selected.dataset.panelLayer===btn.dataset.mode || (!selected.dataset.panelLayer && btn.dataset.mode==='front'))return;
+    saveHistory();
+    // Только уровень слоя: координаты, размеры, фотографии и поворот не меняем.
+    selected.dataset.panelLayer=btn.dataset.mode;
+    saveHistory();sync();schedule();
+  });
+  by('ttCopyPlate').addEventListener('click',()=>{
+    if(!selected?.isConnected)return;
+    duplicateTextBox(selected);
+    const newest=allPlates().at(-1);
+    if(newest)setPanel(newest);
+    schedule();
+  });
+  by('ttDeletePlate').addEventListener('click',()=>{
+    if(!selected?.isConnected)return;
+    deleteTextBox(selected);
+    const plates=allPlates();selected=null;photo=null;
+    if(plates.length)setPanel(plates[0]);else setOpen(false);
+    schedule();
+  });
+  panel.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();setOpen(false);launcher.focus();}});
+  // Нажатие на фото внутри плашки ТОЛЬКО выделяет его. Окно само не открывается.
+  exportNode.addEventListener('click',e=>{
+    const wrap=e.target.closest?.('.tb-img-wrap');
+    if(!wrap || e.target.closest('.tb-img-grip'))return;
+    const b=wrap.closest('.text-box');if(!b)return;
+    selectTextBox(b);
+    if(!panel.hidden && state==='plate')setPanel(b,wrap.querySelector('img.tb-img'));
+    else {selected=b;photo=wrap.querySelector('img.tb-img');schedule();}
+  },true);
+  // При закрытом инспекторе выбор плашки никогда не вызывает диалоги.
+  function chooseBack(e) {
+    if (e.button!==0 || e.target.closest?.('button,input,select,textarea,a,.img-box,.text-box'))return;
+    if (!exportNode.contains(e.target) || !e.target.closest?.('#editor'))return;
+    const x=e.clientX,y=e.clientY;
+    // Не перекрываем редактирование букв в основном тексте.
+    if(letterAt(x,y))return;
+    const back=allPlates().reverse().find(b=>b.dataset.panelLayer==='back'&&inside(b,x,y));
+    if(back){e.preventDefault();e.stopPropagation();selectTextBox(back);selected=back;schedule();}
+  }
+  function letterAt(x,y){
+    const pos=document.caretPositionFromPoint?.(x,y),old=pos?null:document.caretRangeFromPoint?.(x,y);
+    const node=pos?.offsetNode||old?.startContainer,offset=pos?.offset??old?.startOffset;
+    if(!node || node.nodeType!==3 || !editor.contains(node))return false;
+    const range=document.createRange();
+    for(const i of [offset-1,offset]){
+      if(i<0||i>=node.length||!node.data[i].trim())continue;
+      range.setStart(node,i);range.setEnd(node,i+1);
+      for(const r of range.getClientRects())if(x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom)return true;
+    }
+    return false;
+  }
+  function inside(b,x,y){
+    const r=b.getBoundingClientRect();return x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom;
+  }
+  exportNode.addEventListener('pointerdown',chooseBack,true);
+
+  // При скрытии под основной текст собственные ручки плашки недоступны.
+  // Поэтому тот же выбранный объект управляется ВНЕ экспортируемого холста.
+  function activeBack(){
+    return allPlates().find(b=>b.classList.contains('selected')&&b.dataset.panelLayer==='back')||null;
+  }
+  function renderOutline(){
+    raf=0;updateLauncher();watchSelected();
+    const b=activeBack();overlay.hidden=!b;
+    if(!b)return;
+    const r=exportNode.getBoundingClientRect();
+    const scale=exportNode.offsetWidth>0 ? r.width/exportNode.offsetWidth : 1;
+    const w=b.offsetWidth*scale,h=b.offsetHeight*scale;
+    Object.assign(overlay.style,{left:r.left+b.offsetLeft*scale+'px',
+      top:r.top+b.offsetTop*scale+'px',width:w+'px',height:h+'px',
+      transform:'rotate('+Number(b.dataset.rot||0)+'deg)'});
+  }
+  function schedule(){if(!raf)raf=requestAnimationFrame(renderOutline)}
+  // Изменения положения, истории, слоя и выбора отражаются без дополнительных кликов.
+  new MutationObserver(()=>schedule()).observe(exportNode,{subtree:true,childList:true,
+    attributes:true,attributeFilter:['class','style','data-panel-layer']});
+  window.addEventListener('resize',schedule);
+  window.addEventListener('scroll',schedule,true);
+  window.visualViewport?.addEventListener('resize',schedule);
+  window.visualViewport?.addEventListener('scroll',schedule);
+  const sizeObserver=new ResizeObserver(schedule);sizeObserver.observe(exportNode);
+  // Для изменения размеров выбранной плашки нужен ResizeObserver именно за ней.
+  let observed=null;
+  function watchSelected(){
+    const b=activeBack();if(b===observed)return;
+    if(observed)sizeObserver.unobserve(observed);
+    observed=b;if(b)sizeObserver.observe(b);
+  }
+  // Проверка того, за какой плашкой следим, выполняется перед отрисовкой.
+
+  overlay.addEventListener('click',e=>{
+    const button=e.target.closest('button[data-action]');if(!button)return;
+    e.preventDefault();e.stopPropagation();
+    const b=activeBack();if(!b)return;
+    switch(button.dataset.action){
+      case 'open':openPlates(b);break;
+      case 'copy':duplicateTextBox(b);schedule();break;
+      case 'delete':deleteTextBox(b);schedule();break;
+    }
+  });
+  overlay.addEventListener('pointerdown',e=>{
+    const handle=e.target.closest('button[data-handle]');
+    if(!handle || !e.isPrimary || e.button!==0)return;
+    const b=activeBack();if(!b)return;
+    e.preventDefault();e.stopPropagation();
+    selectTextBox(b);
+    const r=b.getBoundingClientRect();
+    pointerOp={id:e.pointerId,node:handle,b,kind:handle.dataset.handle,
+      x:e.clientX,y:e.clientY,left:b.offsetLeft,top:b.offsetTop,
+      width:b.offsetWidth,height:b.querySelector('.tb-content')?.offsetHeight||b.offsetHeight,
+      angle:Number(b.dataset.rot||0),cx:r.left+r.width/2,cy:r.top+r.height/2,
+      started:false};
+    handle.setPointerCapture?.(e.pointerId);
+  });
+  overlay.addEventListener('pointermove',e=>{
+    const g=pointerOp;if(!g||g.id!==e.pointerId||!g.b.isConnected)return;
+    const dx=e.clientX-g.x,dy=e.clientY-g.y;
+    if(!g.started&&Math.hypot(dx,dy)<3)return;
+    if(!g.started){saveHistory();g.started=true;}
+    const scale=exportNode.offsetWidth ? exportNode.getBoundingClientRect().width/exportNode.offsetWidth : 1;
+    if(g.kind==='move'){
+      g.b.style.left=g.left+dx/scale+'px';g.b.style.top=g.top+dy/scale+'px';
+    }else if(g.kind==='resize'){
+      const rad=g.angle*Math.PI/180,c=Math.cos(rad),s=Math.sin(rad);
+      const x=(c*dx+s*dy)/scale,y=(-s*dx+c*dy)/scale;
+      g.b.style.width=Math.max(60,g.width+x)+'px';
+      const content=g.b.querySelector('.tb-content');if(content)content.style.height=Math.max(30,g.height+y)+'px';
+    }else if(g.kind==='rotate'){
+      const a0=Math.atan2(g.y-g.cy,g.x-g.cx),a1=Math.atan2(e.clientY-g.cy,e.clientX-g.cx);
+      const a=g.angle+(a1-a0)*180/Math.PI;
+      g.b.dataset.rot=String((a+540)%360-180);applyTbRotation(g.b);updateRotationButtons(g.b);
+    }
+    schedule();
+  });
+  function endPointer(e){
+    if(!pointerOp || pointerOp.id!==e.pointerId)return;
+    const g=pointerOp;pointerOp=null;
+    if(g.started){saveHistory();schedule();}
+  }
+  overlay.addEventListener('pointerup',endPointer);
+  overlay.addEventListener('pointercancel',endPointer);
+  by('ttLayersHead').addEventListener('pointerdown',e=>{
+    if(e.target.closest('button')||e.button!==0||!e.isPrimary)return;
+    const r=panel.getBoundingClientRect();
+    pointerOp={id:e.pointerId,node:e.currentTarget,kind:'dialog',x:e.clientX,y:e.clientY,
+      left:r.left,top:r.top,started:true};
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    e.preventDefault();
+  });
+  by('ttLayersHead').addEventListener('pointermove',e=>{
+    const g=pointerOp;if(!g||g.kind!=='dialog'||e.pointerId!==g.id)return;
+    const r=panel.getBoundingClientRect(),pad=6;
+    const nx=Math.min(Math.max(pad,g.left+e.clientX-g.x),Math.max(pad,innerWidth-r.width-pad));
+    const ny=Math.min(Math.max(pad,g.top+e.clientY-g.y),Math.max(pad,innerHeight-r.height-pad));
+    Object.assign(panel.style,{left:nx+'px',top:ny+'px',right:'auto',bottom:'auto'});
+    manualPosition=true;
+  });
+  for(const name of ['pointerup','pointercancel'])by('ttLayersHead').addEventListener(name,e=>{
+    if(pointerOp?.kind==='dialog'&&pointerOp.id===e.pointerId)pointerOp=null;
+  });
+  function insertSidebarButton(){
+    const add=document.querySelector('#pbAddPlate,button[onclick="addTextBox()"]');
+    if(!add||by('ttReopen'))return;
+    const button=document.createElement('button');button.type='button';button.id='ttReopen';
+    button.textContent='▣ Плашки и слои';button.addEventListener('click',()=>window.ttPanelTools());
+    add.after(button);
+  }
+  if(document.readyState==='complete')insertSidebarButton();
+  else window.addEventListener('load',insertSidebarButton,{once:true});
+  schedule();
 })();
 </script>
 </body>
