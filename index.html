@@ -577,7 +577,7 @@ if (snapshot.textBoxes && Array.isArray(snapshot.textBoxes)) {
     const content = document.createElement('div');
     content.className = 'tb-content';
     content.contentEditable = 'true';
-    content.setAttribute('data-ph', 'Твой текст…');
+    content.setAttribute('data-ph', 'Вставьте текст или картинку');
     content.innerHTML = tb.html;
     if (tb.lineHeight) content.style.lineHeight = tb.lineHeight;
     if (tb.fontSize) content.style.fontSize = tb.fontSize + 'px';
@@ -1108,7 +1108,7 @@ function addTextBox() {
   const content = document.createElement('div');
   content.className = 'tb-content';
   content.contentEditable = 'true';
-  content.setAttribute('data-ph', 'Твой текст…');
+  content.setAttribute('data-ph', 'Вставьте текст или картинку');
   box.appendChild(content);
 
   exportNode.appendChild(box);
@@ -1310,7 +1310,7 @@ function duplicateTextBox(box) {
   const content = document.createElement('div');
   content.className = 'tb-content';
   content.contentEditable = 'true';
-  content.setAttribute('data-ph', 'Твой текст…');
+  content.setAttribute('data-ph', 'Вставьте текст или картинку');
   content.innerHTML = srcContent ? srcContent.innerHTML : '';
   if (srcContent && srcContent.style.height) content.style.height = srcContent.style.height;
   clone.appendChild(content);
@@ -3446,6 +3446,11 @@ function rebindTbImages() {
 </script>
 <!-- ТЕКСТТУРА: единый немодальный редактор плашек (пробная версия). -->
 <style id="tt-plate-ui-v2">
+/* Старые текстовые/цветовые инструменты плашки скрыты только в интерфейсе.
+   Узлы оставлены в DOM для сохранения данных, истории и работы общей панели текста.
+   Блок подложки panel-blocks.js выносит за пределы #tbSettings. */
+#tbSettings { display:none !important; }
+
 /* Все плашки остаются доступными для выделения и настройки.
    Прозрачность картинки регулируется отдельно от фона плашки. */
 #export-node { isolation:isolate; }
@@ -3453,7 +3458,7 @@ function rebindTbImages() {
 #export-node > .text-box { z-index:2 !important; }
 
 /* Доступ к списку всех плашек — одна кнопка на холсте. */
-#ttLayerLauncher {position:fixed;right:18px;bottom:93px;z-index:100010;display:block;
+#ttLayerLauncher {position:fixed;right:12px;top:12px;bottom:auto;z-index:100010;display:block;
   min-height:40px;padding:9px 13px;background:#1d2630;color:#f2eee6;
   border:1px solid #10b981;border-radius:11px;font:600 13px system-ui;
   box-shadow:0 3px 12px #0005;}
@@ -3489,7 +3494,7 @@ function rebindTbImages() {
 @media (max-width:820px){
   #ttLayers {top:auto;right:8px;bottom:68px;width:min(340px,calc(100vw - 16px));
     max-height:46dvh;background:rgba(25,29,36,.91);}
-  #ttLayerLauncher {right:9px;bottom:76px}
+  #ttLayerLauncher {right:9px;top:9px;bottom:auto}
 }
 /* Сохранить прежнюю полупрозрачность боковой шторки на телефоне. */
 @media(max-width:820px){.panel{background:rgba(23,26,33,.55)!important}}
@@ -3600,8 +3605,49 @@ function rebindTbImages() {
   }
   function updateLauncher() {
     const plates=allPlates();
+    plates.forEach(b => {
+      const content=b.querySelector('.tb-content');
+      if (content && content.getAttribute('data-ph') !== 'Вставьте текст или картинку')
+        content.setAttribute('data-ph','Вставьте текст или картинку');
+    });
     launcher.hidden = !plates.length || !panel.hidden;
     if (selected && !plates.includes(selected)) {selected=null;photo=null;}
+    positionLauncher();
+  }
+  // Кнопка остаётся отдельным элементом страницы: в экспортируемый PNG она не попадёт.
+  // Позиционирование следует за реальным верхним правым углом белого холста,
+  // даже после изменения масштаба, прокрутки или перемещения холста.
+  function positionLauncher() {
+    if (launcher.hidden) return;
+    const canvas=exportNode.getBoundingClientRect();
+    const stage=stageArea.getBoundingClientRect();
+    const w=launcher.offsetWidth||100, h=launcher.offsetHeight||40, gap=10;
+    const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
+    const x=clamp(canvas.right-w-gap,stage.left+8,stage.right-w-8);
+    const y=clamp(canvas.top+gap,stage.top+8,stage.bottom-h-8);
+    launcher.style.left=Math.round(x)+'px';
+    launcher.style.top=Math.round(y)+'px';
+    launcher.style.right='auto';
+    launcher.style.bottom='auto';
+  }
+  // Следим только за изменением геометрии холста и окна,
+  // а не перехватываем чужие жесты и обработчики плашек.
+  let launcherRaf=0;
+  function scheduleLauncher() {
+    if (launcherRaf) return;
+    launcherRaf=requestAnimationFrame(()=>{ launcherRaf=0; positionLauncher(); });
+  }
+  if (typeof ResizeObserver !== 'undefined') {
+    const ro=new ResizeObserver(scheduleLauncher);
+    ro.observe(exportNode); ro.observe(stageArea);
+  }
+  new MutationObserver(scheduleLauncher).observe(zoomWrapper,{attributes:true,attributeFilter:['style']});
+  window.addEventListener('resize',scheduleLauncher);
+  stageArea.addEventListener('scroll',scheduleLauncher,{passive:true});
+  window.addEventListener('scroll',scheduleLauncher,{passive:true});
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize',scheduleLauncher);
+    window.visualViewport.addEventListener('scroll',scheduleLauncher);
   }
 
   window.ttPanelTools = function () {
@@ -3717,6 +3763,15 @@ function rebindTbImages() {
     button.textContent='▣ Плашки';button.addEventListener('click',()=>window.ttPanelTools());
     add.after(button);
   }
+  function renamePlateSection() {
+    const title=document.querySelector('.pb-plate > .pb-head > .pb-title');
+    if (title) title.textContent='Вставить плашку';
+    const add=by('pbAddPlate');
+    if (add) add.textContent='➕ Вставить плашку';
+  }
+  if (document.readyState==='loading') {
+    document.addEventListener('DOMContentLoaded',renamePlateSection);
+  } else renamePlateSection();
   if(document.readyState==='complete')insertSidebarButton();
   else window.addEventListener('load',insertSidebarButton,{once:true});
   schedule();
