@@ -3450,6 +3450,10 @@ function rebindTbImages() {
    Узлы оставлены в DOM для сохранения данных, истории и работы общей панели текста.
    Блок подложки panel-blocks.js выносит за пределы #tbSettings. */
 #tbSettings { display:none !important; }
+/* Боковая панель — только добавление плашки. Настройки переехали в экранный редактор. */
+.pb-plate > .pb-body > :not(#pbAddPlate) { display:none !important; }
+#ttReopen { display:none !important; }
+
 
 /* Все плашки остаются доступными для выделения и настройки.
    Прозрачность картинки регулируется отдельно от фона плашки. */
@@ -3457,13 +3461,19 @@ function rebindTbImages() {
 #export-node > #editor { position:relative; z-index:1; }
 #export-node > .text-box { z-index:2 !important; }
 
-/* Доступ к списку всех плашек — одна кнопка на холсте. */
-#ttLayerLauncher {position:fixed;right:12px;top:12px;bottom:auto;z-index:100010;display:block;
-  min-height:40px;padding:9px 13px;background:#1d2630;color:#f2eee6;
-  border:1px solid #10b981;border-radius:11px;font:600 13px system-ui;
-  box-shadow:0 3px 12px #0005;}
-#ttLayerLauncher[hidden] {display:none!important}
-
+/* Кнопка рядом с холстом, за его границами при наличии места. Не входит в PNG. */
+#ttLauncherWrap {position:fixed;top:12px;left:12px;right:auto;bottom:auto;z-index:100035;
+  display:flex;align-items:stretch;gap:3px;max-width:calc(100vw - 12px);
+  background:#1d2630;border:1px solid #10b981;border-radius:11px;
+  box-shadow:0 3px 12px #0005;overflow:hidden;}
+#ttLauncherWrap[hidden] {display:none!important}
+#ttLayerLauncher,#ttLauncherClose {border:0;color:#f2eee6;background:transparent;
+  font:600 13px system-ui;min-height:40px;cursor:pointer;}
+#ttLayerLauncher {padding:8px 12px;white-space:nowrap}
+#ttLauncherClose {padding:6px 10px;border-left:1px solid #45665b;font-size:18px;line-height:1}
+#ttLayerLauncher:hover,#ttLauncherClose:hover {background:#30473e}
+#ttLauncherWrap.tt-collapsed #ttLauncherClose {display:none}
+#ttLauncherWrap.tt-collapsed #ttLayerLauncher {padding:7px 11px;min-width:36px}
 /* Настройки появляются только по явной кнопке, не блокируют холст. */
 #ttLayers {position:fixed;top:84px;right:18px;width:min(360px,calc(100vw - 16px));
   max-height:min(76dvh,690px);overflow:auto;overscroll-behavior:contain;z-index:100025;
@@ -3487,14 +3497,26 @@ function rebindTbImages() {
 #ttLayers #ttPanelActions {display:flex;gap:7px;margin-top:12px}
 #ttLayers #ttPanelActions button {flex:1}
 #ttLayers #ttDest button {width:100%;background:#176b55;border-color:#53d6aa}
-#ttLayers #ttControls {margin:9px 0;padding-top:3px;border-top:1px solid #414754}
+#ttLayers #ttControls,#ttLayers #ttTextControls {margin:9px 0;padding-top:9px;border-top:1px solid #414754}
+#ttLayers .tt-context-head {font:700 13px system-ui;margin:4px 0 9px;color:#9ee4cd}
+#ttLayers .tt-context-choose {display:flex;gap:7px;margin:8px 0 12px}
+#ttLayers .tt-context-choose button {flex:1}
+#ttLayers #ttRibbonDock {margin-top:10px}
+#ttLayers #tbRibbonToggle {display:block;width:100%;margin:8px 0}
+#ttLayers #tbRibbonSettings {margin:8px 0 4px;padding:10px;border-radius:9px;border:1px solid #67559b;
+  background:rgba(139,92,246,.1)}
+#ttLayers #tbRibbonSettings input {max-width:100%}
+#ttLayers .tt-insert-photo {display:block;width:100%;margin:12px 0 4px;background:#176b55;border-color:#53d6aa}
+#ttLayers .tt-divider {height:1px;background:#414754;margin:13px 0 10px}
+
 #ttLayers #ttDone {min-width:38px;min-height:38px;margin:0;font-size:18px;cursor:pointer}
 #ttLayers .tt-help {font:12px/1.35 system-ui;color:#b5c4ca;margin:8px 0 0}
-#ttLayers button:focus-visible,#ttLayerLauncher:focus-visible {outline:2px solid #62dfb9;outline-offset:2px}
+#ttLayers button:focus-visible,#ttLayerLauncher:focus-visible,#ttLauncherClose:focus-visible {outline:2px solid #62dfb9;outline-offset:2px}
 @media (max-width:820px){
   #ttLayers {top:auto;right:8px;bottom:68px;width:min(340px,calc(100vw - 16px));
     max-height:46dvh;background:rgba(25,29,36,.91);}
-  #ttLayerLauncher {right:9px;top:9px;bottom:auto}
+  #ttLauncherWrap {max-width:calc(100vw - 16px)}
+  #ttLayerLauncher {min-height:38px;padding:7px 9px}
 }
 /* Сохранить прежнюю полупрозрачность боковой шторки на телефоне. */
 @media(max-width:820px){.panel{background:rgba(23,26,33,.55)!important}}
@@ -3512,13 +3534,24 @@ function rebindTbImages() {
       <label for="ttPlateOpacity">Прозрачность фона плашки: <output id="ttPlateOpacityVal">55%</output></label>
       <input type="range" id="ttPlateOpacity" min="0" max="100" value="55">
     </div>
-    <p id="ttRibbonHint" class="tt-help" hidden>У этой плашки используется ленточная подложка. Её цвет и прозрачность регулируются в разделе «Плашка» основной панели.</p>
+    <button type="button" id="ttInsertPhoto" class="tt-insert-photo">🖼️ Вставить картинку в плашку</button>
+    <div class="tt-divider"></div>
+    <div class="tt-context-choose" id="ttKindSwitch" hidden>
+      <button type="button" id="ttKindText" aria-pressed="false">✍️ Текст</button>
+      <button type="button" id="ttKindImage" aria-pressed="false">🖼️ Картинка</button>
+    </div>
+    <div id="ttTextControls" hidden>
+      <div class="tt-context-head">✍️ Настройки текста</div>
+      <p class="tt-help">Текст меняется прямо на плашке. Шрифт, цвет и выделение — через общие инструменты редактора.</p>
+      <div id="ttRibbonDock"></div>
+    </div>
     <div id="ttPanelActions">
       <button type="button" id="ttCopyPlate">⧉ Копия</button>
       <button type="button" id="ttDeletePlate">🗑 Удалить</button>
     </div>
   </div>
-  <div id="ttControls">
+  <div id="ttControls" hidden>
+    <div class="tt-context-head">🖼️ Настройки картинки</div>
     <label for="ttWhich">Картинка в плашке</label><select id="ttWhich"></select>
     <label for="ttAlpha">Прозрачность картинки: <output id="ttAlphaVal">0%</output></label>
     <input type="range" id="ttAlpha" min="0" max="100" step="1" value="0">
@@ -3532,16 +3565,21 @@ function rebindTbImages() {
     <button type="button" id="ttPlace">Вставить в выбранную плашку</button>
   </div>
 </section>
-<button type="button" id="ttLayerLauncher" aria-haspopup="dialog" aria-controls="ttLayers" aria-expanded="false" hidden>▣ Плашки</button>
+<div id="ttLauncherWrap" hidden>
+  <button type="button" id="ttLayerLauncher" aria-haspopup="dialog" aria-controls="ttLayers" aria-expanded="false">▣ Плашки</button>
+  <button type="button" id="ttLauncherClose" title="Свернуть кнопку плашек" aria-label="Свернуть кнопку плашек">×</button>
+</div>
 <script id="tt-plate-editor-v2">
 /* Инструменты плашек. Не изменяет функцию selectImgBox, фото-жесты и HTML снимков. */
 (function () {
   'use strict';
   const by = id => document.getElementById(id);
   const panel = by('ttLayers'), launcher = by('ttLayerLauncher');
+  const launcherWrap = by('ttLauncherWrap'), launcherClose = by('ttLauncherClose');
   const choices = by('ttWhich'), list = by('ttEditPanel'), destinations = by('ttPanelList');
   const allPlates = () => Array.from(exportNode.querySelectorAll(':scope > .text-box'));
   let selected = null, photo = null, movingImage = null, state = 'plate';
+  let kind = 'text', dismissed = false;
   let pointerOp = null, raf = 0, manualPosition = false;
 
   function titleFor(b, i) {
@@ -3555,32 +3593,59 @@ function rebindTbImages() {
   function setOpen(open) {
     panel.hidden = !open;
     launcher.setAttribute('aria-expanded', String(open));
-    launcher.hidden = open || !allPlates().length;
+    launcherWrap.hidden = !allPlates().length;
     if (!open) return;
     if (!manualPosition) { panel.style.left='';panel.style.top='';panel.style.right='';panel.style.bottom=''; }
   }
-  function setPanel(b, preferredPhoto) {
+  // Режим определяется содержимым и последним явно выбранным объектом.
+  // Смешанный контент: нажатие на текст показывает текст, на фото — фото.
+  // Сначала контекстные инструменты, затем действия копирования/удаления.
+  by('ttPanelActions').before(by('ttControls'));
+  function hasTextContent(box) {
+    const content=box?.querySelector('.tb-content');
+    return !!content && (content.textContent||'').replace(/\u200B/g,'').trim().length>0;
+  }
+  function updateContext() {
+    if (!selected?.isConnected) return;
+    const pics=Array.from(selected.querySelectorAll('.tb-content img.tb-img'));
+    const hasText=hasTextContent(selected), hasPhotos=pics.length>0;
+    if (!hasPhotos) {kind='text';photo=null;}
+    else if (!hasText) kind='image';
+    else if (!['text','image'].includes(kind)) kind='text';
+    if (hasPhotos && !pics.includes(photo)) photo=pics[0];
+    by('ttKindSwitch').hidden = !(hasText && hasPhotos);
+    by('ttKindText').setAttribute('aria-pressed',String(kind==='text'));
+    by('ttKindImage').setAttribute('aria-pressed',String(kind==='image'));
+    by('ttTextControls').hidden = kind!=='text';
+    by('ttControls').hidden = kind!=='image' || !hasPhotos;
+    optionList(choices,pics.map((p,i)=>({value:String(i),title:'Картинка '+(i+1)})));
+    choices.value=photo?String(pics.indexOf(photo)):'';
+    by('ttTitle').textContent=kind==='image'?'Картинка в плашке':'Текст и плашка';
+  }
+  function setPanel(b, preferredPhoto, preferredKind) {
     if (!b || !b.isConnected) return;
-    selected = b;
+    const previously=selected;
+    selected=b;
     selectTextBox(b);
     const plates=allPlates();
     optionList(list,plates.map((p,i)=>({value:String(i),title:titleFor(p,i)})));
     list.value=String(plates.indexOf(b));
     const pics=Array.from(b.querySelectorAll('.tb-content img.tb-img'));
-    photo=pics.includes(preferredPhoto)?preferredPhoto:pics[0]||null;
-    optionList(choices,pics.map((p,i)=>({value:String(i),title:'Картинка '+(i+1)})));
-    choices.value=photo?String(pics.indexOf(photo)):'';
-    by('ttControls').hidden=!pics.length;
-    by('ttTitle').textContent='Настройки плашки';
+    if (pics.includes(preferredPhoto)) photo=preferredPhoto;
+    else if (previously!==b || !pics.includes(photo)) photo=pics[0]||null;
+    if (preferredKind==='image' && pics.length) kind='image';
+    else if (preferredKind==='text') kind='text';
+    else if (previously!==b) kind=pics.length && !hasTextContent(b)?'image':'text';
     by('ttPanelControls').hidden=false;
     by('ttDest').hidden=true;
     state='plate';
-    sync();
+    updateContext();sync();
   }
   function sync() {
     if (!selected?.isConnected) return;
     by('ttPlateAppearance').hidden = selected.dataset.mode === 'ribbon';
-    by('ttRibbonHint').hidden = selected.dataset.mode !== 'ribbon';
+    // Старые настройки подложки подключены к этому же выбранному объекту.
+    if (typeof syncTbSettings==='function') syncTbSettings();
     by('ttPlateBg').value=selected.dataset.bgColor||'#000000';
     const plateOp=Math.max(0,Math.min(100,Number(selected.dataset.bgOpacity??55)));
     by('ttPlateOpacity').value=String(plateOp);
@@ -3596,12 +3661,12 @@ function rebindTbImages() {
     const val = Math.max(0,Math.min(100,Math.round((1-(Number.isFinite(opacity)?opacity:1))*100)));
     by('ttAlpha').value=String(val);by('ttAlphaVal').textContent=val+'%';
   }
-  function openPlates(b,pic) {
+  function openPlates(b,pic,requestedKind) {
     const plates=allPlates();
     if (!plates.length) {imageImportNotice('Сначала добавьте плашку.');return;}
-    setPanel(plates.includes(b)?b:plates.includes(selected)?selected:plates[0],pic);
-    setOpen(true);
-    schedule();
+    const target=plates.includes(b)?b:plates.includes(selected)?selected:plates[0];
+    setPanel(target,pic,requestedKind);
+    setOpen(true);schedule();
   }
   function updateLauncher() {
     const plates=allPlates();
@@ -3610,25 +3675,34 @@ function rebindTbImages() {
       if (content && content.getAttribute('data-ph') !== 'Вставьте текст или картинку')
         content.setAttribute('data-ph','Вставьте текст или картинку');
     });
-    launcher.hidden = !plates.length || !panel.hidden;
+    launcherWrap.hidden = !plates.length;
     if (selected && !plates.includes(selected)) {selected=null;photo=null;}
     positionLauncher();
   }
-  // Кнопка остаётся отдельным элементом страницы: в экспортируемый PNG она не попадёт.
-  // Позиционирование следует за реальным верхним правым углом белого холста,
-  // даже после изменения масштаба, прокрутки или перемещения холста.
+  // Кнопка примыкает СНАРУЖИ: справа, слева, сверху или снизу от холста.
+  // Только когда экран совсем тесный, используется край видимой сцены.
   function positionLauncher() {
-    if (launcher.hidden) return;
-    const canvas=exportNode.getBoundingClientRect();
-    const stage=stageArea.getBoundingClientRect();
-    const w=launcher.offsetWidth||100, h=launcher.offsetHeight||40, gap=10;
-    const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
-    const x=clamp(canvas.right-w-gap,stage.left+8,stage.right-w-8);
-    const y=clamp(canvas.top+gap,stage.top+8,stage.bottom-h-8);
-    launcher.style.left=Math.round(x)+'px';
-    launcher.style.top=Math.round(y)+'px';
-    launcher.style.right='auto';
-    launcher.style.bottom='auto';
+    if (launcherWrap.hidden) return;
+    const canvas=exportNode.getBoundingClientRect(), stage=stageArea.getBoundingClientRect();
+    const w=launcherWrap.offsetWidth||126, h=launcherWrap.offsetHeight||42, gap=9, pad=6;
+    const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
+    let x,y;
+    if (canvas.right+gap+w <= stage.right-pad) {
+      x=canvas.right+gap; y=canvas.top;
+    } else if (canvas.left-gap-w >= stage.left+pad) {
+      x=canvas.left-gap-w; y=canvas.top;
+    } else if (canvas.top-gap-h >= stage.top+pad) {
+      x=canvas.right-w; y=canvas.top-gap-h;
+    } else if (canvas.bottom+gap+h <= stage.bottom-pad) {
+      x=canvas.right-w; y=canvas.bottom+gap;
+    } else {
+      x=stage.right-w-pad; y=stage.top+pad;
+    }
+    x=clamp(x,stage.left+pad,Math.max(stage.left+pad,stage.right-w-pad));
+    y=clamp(y,stage.top+pad,Math.max(stage.top+pad,stage.bottom-h-pad));
+    launcherWrap.style.left=Math.round(x)+'px';
+    launcherWrap.style.top=Math.round(y)+'px';
+    launcherWrap.style.right='auto';launcherWrap.style.bottom='auto';
   }
   // Следим только за изменением геометрии холста и окна,
   // а не перехватываем чужие жесты и обработчики плашек.
@@ -3662,7 +3736,7 @@ function rebindTbImages() {
     if (!plates.length) {imageImportNotice('Сначала добавьте плашку.');return;}
     if (plates.length===1) {if(window.ttMovePhoto(box,plates[0])) {
       const pics=plates[0].querySelectorAll('.tb-content img.tb-img');
-      openPlates(plates[0],pics[pics.length-1]);
+      openPlates(plates[0],pics[pics.length-1],'image');
     } return;}
     movingImage=box;state='destination';
     optionList(destinations,plates.map((p,i)=>({value:String(i),title:titleFor(p,i)})));
@@ -3675,16 +3749,48 @@ function rebindTbImages() {
     if(window.ttMovePhoto(movingImage,b)) {
       movingImage=null;
       const pics=b.querySelectorAll('.tb-content img.tb-img');
-      setPanel(b,pics[pics.length-1]);setOpen(true);
+      setPanel(b,pics[pics.length-1],'image');setOpen(true);
     }
   }
   by('ttPlace').addEventListener('click',()=>transferTo(allPlates()[Number(destinations.value)]));
+  // Защита выбора плашки от общих document.click обработчиков.
+  ['click','mousedown','pointerdown','touchstart'].forEach(type=>{
+    panel.addEventListener(type,e=>e.stopPropagation(),{passive:true});
+  });
+  let pendingPhotoFor=null;
+  const oldPhotoInput=by('tbImageInput');
+  oldPhotoInput?.addEventListener('change',()=>{
+    if(pendingPhotoFor?.isConnected) selectTextBox(pendingPhotoFor);
+    pendingPhotoFor=null;
+  },true);
   by('ttDone').addEventListener('click',()=>{setOpen(false);schedule()});
-  launcher.addEventListener('click',()=>openPlates(typeof getTbTargetBox==='function'?getTbTargetBox():null));
+  launcher.addEventListener('click',()=>{
+    if (dismissed) {
+      dismissed=false;launcherWrap.classList.remove('tt-collapsed');
+      launcher.textContent='▣ Плашки';
+    }
+    if(!panel.hidden && state==='plate'){setOpen(false);schedule();return;}
+    openPlates(typeof getTbTargetBox==='function'?getTbTargetBox():null);
+  });
+  launcherClose.addEventListener('click',()=>{
+    dismissed=true;setOpen(false);
+    launcherWrap.classList.add('tt-collapsed');
+    launcher.textContent='▣';
+    launcher.setAttribute('aria-label','Открыть инструменты плашек');
+    schedule();
+  });
   list.addEventListener('change',()=>setPanel(allPlates()[Number(list.value)]));
+  by('ttKindText').addEventListener('click',()=>{kind='text';updateContext();sync();});
+  by('ttKindImage').addEventListener('click',()=>{kind='image';updateContext();sync();});
   choices.addEventListener('change',()=>{
     const pics=selected?.querySelectorAll('.tb-content img.tb-img')||[];
-    photo=pics[Number(choices.value)]||null;sync();
+    photo=pics[Number(choices.value)]||null;kind='image';updateContext();sync();
+  });
+  by('ttInsertPhoto').addEventListener('click',()=>{
+    if (!selected?.isConnected) return;
+    selectTextBox(selected);
+    pendingPhotoFor=selected;
+    by('tbImageInput')?.click();
   });
   by('ttPlateBg').addEventListener('input',e=>{
     if(!selected?.isConnected)return;
@@ -3722,21 +3828,44 @@ function rebindTbImages() {
     schedule();
   });
   panel.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();setOpen(false);launcher.focus();}});
-  // Нажатие на фото внутри плашки ТОЛЬКО выделяет его. Окно само не открывается.
+  // Нажатие на текст / изображение лишь выбирает нужную группу инструментов.
+  // Панель НИКОГДА не открывается сама и не вмешивается в редактирование текста.
   exportNode.addEventListener('click',e=>{
-    const wrap=e.target.closest?.('.tb-img-wrap');
-    if(!wrap || e.target.closest('.tb-img-grip'))return;
-    const b=wrap.closest('.text-box');if(!b)return;
-    selectTextBox(b);
-    if(!panel.hidden && state==='plate')setPanel(b,wrap.querySelector('img.tb-img'));
-    else {selected=b;photo=wrap.querySelector('img.tb-img');schedule();}
+    const b=e.target.closest?.('.text-box');
+    if (!b) return;
+    if (e.target.closest('.tb-img-grip,.tb-handle,.tb-resize,.tb-rotate,.tb-edge,.tb-drag-frame,.tb-copy,.tb-delete')) return;
+    const wrap=e.target.closest('.tb-img-wrap');
+    const chosen=e.target.closest('img.tb-img')||wrap?.querySelector('img.tb-img')||null;
+    const nextKind=chosen?'image':'text';
+    selected=b;photo=chosen||photo;kind=nextKind;
+    if(!panel.hidden && state==='plate'){
+      // Дожидаемся старого обработчика выбора плашки, не воруем фокус.
+      requestAnimationFrame(()=>{
+        if(panel.hidden || state!=='plate' || !b.isConnected)return;
+        setPanel(b,chosen,nextKind);
+      });
+    }
   },true);
   // При добавлении, удалении и восстановлении плашек обновляем кнопку списка.
   function schedule(){
     if(raf)return;
     raf=requestAnimationFrame(function(){raf=0;updateLauncher();});
   }
-  new MutationObserver(schedule).observe(exportNode,{subtree:true,childList:true});
+  new MutationObserver(mutations=>{
+    schedule();
+    if (panel.hidden || state!=='plate' || !selected?.isConnected) return;
+    const changedPicture=mutations.some(m=>{
+      const nodes=[...m.addedNodes,...m.removedNodes];
+      return nodes.some(node=>node.nodeType===1 &&
+        (node.matches?.('img.tb-img,.tb-img-wrap') || node.querySelector?.('img.tb-img')));
+    });
+    if (changedPicture) requestAnimationFrame(()=>{
+      if(!selected?.isConnected || panel.hidden) return;
+      const pics=Array.from(selected.querySelectorAll('.tb-content img.tb-img'));
+      if(pics.length){photo=pics[pics.length-1];kind='image';}
+      updateContext();sync();
+    });
+  }).observe(exportNode,{subtree:true,childList:true});
   by('ttLayersHead').addEventListener('pointerdown',e=>{
     if(e.target.closest('button')||e.button!==0||!e.isPrimary)return;
     const r=panel.getBoundingClientRect();
@@ -3756,24 +3885,25 @@ function rebindTbImages() {
   for(const name of ['pointerup','pointercancel'])by('ttLayersHead').addEventListener(name,e=>{
     if(pointerOp?.kind==='dialog'&&pointerOp.id===e.pointerId)pointerOp=null;
   });
-  function insertSidebarButton(){
-    const add=document.querySelector('#pbAddPlate,button[onclick="addTextBox()"]');
-    if(!add||by('ttReopen'))return;
-    const button=document.createElement('button');button.type='button';button.id='ttReopen';
-    button.textContent='▣ Плашки';button.addEventListener('click',()=>window.ttPanelTools());
-    add.after(button);
+  function attachRibbonControls() {
+    const dock=by('ttRibbonDock');
+    const toggle=by('tbRibbonToggle'), settings=by('tbRibbonSettings');
+    if (!dock || !toggle || !settings) return;
+    dock.append(toggle,settings);
+    toggle.style.width='100%';
   }
+  // В боковом разделе остаётся только одна кнопка вставки. Старые инструменты
+  // сохранены в DOM ради совместимости, но их интерфейс сюда не дублируем.
   function renamePlateSection() {
     const title=document.querySelector('.pb-plate > .pb-head > .pb-title');
     if (title) title.textContent='Вставить плашку';
     const add=by('pbAddPlate');
     if (add) add.textContent='➕ Вставить плашку';
   }
+  function setupSidebar() {renamePlateSection();attachRibbonControls();}
   if (document.readyState==='loading') {
-    document.addEventListener('DOMContentLoaded',renamePlateSection);
-  } else renamePlateSection();
-  if(document.readyState==='complete')insertSidebarButton();
-  else window.addEventListener('load',insertSidebarButton,{once:true});
+    document.addEventListener('DOMContentLoaded',setupSidebar);
+  } else setupSidebar();
   schedule();
 })();
 </script>
