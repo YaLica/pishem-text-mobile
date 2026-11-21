@@ -238,6 +238,7 @@
     <label>👻 Прозрачность фона: <span id="tbBgOpacityLabel">55</span>%</label>
   <input type="range" id="tbBgOpacity" min="0" max="100" value="55" oninput="setTbBgOpacity(this.value)">
 
+  <button type="button" onclick="ttPanelTools()">Слои и прозрачность картинки</button>
   <button type="button" onclick="document.getElementById('tbImageInput').click()" style="width:100%; margin-top:10px; background:#10b981; color:#fff; padding:10px;">🖼️ Вставить картинку в плашку</button>
   <input type="file" id="tbImageInput" accept="image/*" style="display:none;" onchange="insertImageIntoTextBox(event)">
 
@@ -263,7 +264,7 @@
   <input type="range" id="imgGapRange" min="0" max="60" value="20" oninput="setImgGap(this.value)">
   <label>⬜ Скругление углов: <span id="imgRadiusLabel">12 px</span></label>
   <input type="range" id="imgRadiusRange" min="0" max="50" value="0" oninput="ttRound(this.value)">
-  <button type="button" onclick="ttOpenCrop()">Обрезка</button>
+  <button type="button" onclick="ttOpenCrop()">Обрезка</button> <button type="button" onclick="ttPicTools()">Прозрачность · Вставить в плашку</button>
   <label>🖼️ Рамка: <span id="imgBorderLabel">0</span> px</label>
   <input type="range" id="imgBorderRange" min="0" max="12" value="0" oninput="setImgBorder(this.value)">
   <label>🎨 Цвет рамки</label>
@@ -345,7 +346,7 @@
 </div>
 
 <!-- МИНИ-ПАНЕЛЬ КАРТИНКИ (Компьютер) -->
-<div id="imgMiniBar">
+<div id="imgMiniBar"><button type="button" onmousedown="event.preventDefault()" onclick="ttPicTools()" style="width:auto" title="Прозрачность и вставка в плашку">Слои</button>
   <button type="button" onmousedown="event.preventDefault()" onclick="ttOpenCrop()" title="Обрезать картинку" style="width:auto">Обрезка</button>
   <button onmousedown="event.preventDefault()" onclick="miniDuplicate()" title="Дублировать">⧉</button>
   <div class="mb-div"></div>
@@ -373,7 +374,7 @@
   <input type="range" id="impGapRange" min="0" max="60" value="20" oninput="setImgGap(this.value)">
   <label>⬜ Скругление: <span id="impRadiusLabel">12 px</span></label>
   <input type="range" id="impRadiusRange" min="0" max="50" value="0" oninput="ttRound(this.value)">
-  <button type="button" onclick="ttOpenCrop()">Обрезка</button>
+  <button type="button" onclick="ttOpenCrop()">Обрезка</button> <button type="button" onclick="ttPicTools()">Прозрачность · Вставить в плашку</button>
   <label>🖼️ Рамка: <span id="impBorderLabel">0</span> px</label>
   <input type="range" id="impBorderRange" min="0" max="12" value="0" oninput="setImgBorder(this.value)">
   <label>🎨 Цвет рамки</label>
@@ -1197,7 +1198,7 @@ await writeToClipboard(finalHtml, finalPlain, 'copyTgBtn');
 </style>
 <dialog id="ttCrop" aria-labelledby="ttCropTitle">
 <header><h3 id="ttCropTitle">Обрезка</h3><select id="ttFormat" aria-label="Пропорции кадра"><option>Свободно</option><option>Исходный</option><option>1:1</option><option>3:4</option><option>4:3</option><option>2:3</option><option>3:2</option><option>4:5</option><option>5:4</option><option>9:16</option><option>16:9</option><option>2:1</option><option>1:2</option><option>21:9</option></select></header>
-<div id="ttViewport"><div id="ttStage"><img alt="" id="ttPhoto" draggable="false"><div id="ttFrame"><span id="ttAspect"></span><i data-dir="n"></i><i data-dir="s"></i><i data-dir="e"></i><i data-dir="w"></i><i data-dir="ne"></i><i data-dir="sw"></i><i data-dir="se"></i><i data-dir="nw"></i></div></div></div>
+<div id="ttPresets" aria-label="Пропорции"></div><div id="ttViewport"><div id="ttStage"><img alt="" id="ttPhoto" draggable="false"><div id="ttFrame"><span id="ttAspect"></span><i data-dir="n"></i><i data-dir="s"></i><i data-dir="e"></i><i data-dir="w"></i><i data-dir="ne"></i><i data-dir="sw"></i><i data-dir="se"></i><i data-dir="nw"></i></div></div></div>
 <div role="status" id="ttStatus"></div>
 <footer><output id="ttPx"></output><button type="button" id="ttCancel">Отмена</button><button type="button" class="primary" id="ttApply">Применить</button></footer>
 </dialog>
@@ -1235,11 +1236,9 @@ await writeToClipboard(finalHtml, finalPlain, 'copyTgBtn');
   let target=null,source=null,X=0,Y=0,W=1,H=1,A=1,B=1,drag=null,busy=false;
   const clamp=(x,max)=>Math.max(0,Math.min(x,max));
   function render(){
-    const gcd=(a,b)=>b?gcd(b,a%b):a;
-    const baseW=fmt.selectedIndex===1?A:W,baseH=fmt.selectedIndex===1?B:H,div=gcd(baseW,baseH);
-    const label=fmt.selectedIndex>1?fmt.value:(baseW/div)+':'+(baseH/div);
-    by('ttAspect').textContent=label;
-    by('ttPx').textContent=W+' × '+H+' px · '+label;
+    by('ttAspect').hidden=true;
+    by('ttPx').textContent=W+' × '+H+' px';
+    for(const b of by('ttPresets').children)b.setAttribute('aria-pressed',b.textContent===fmt.value);
     X=clamp(Math.round(X),A-W);Y=clamp(Math.round(Y),B-H);
     Object.assign(frame.style,{left:X/A*100+'%',top:Y/B*100+'%',width:W/A*100+'%',height:H/B*100+'%'});
   }
@@ -1248,11 +1247,20 @@ await writeToClipboard(finalHtml, finalPlain, 'copyTgBtn');
     if(fmt.selectedIndex===1)return A/B;
     const [a,b]=fmt.value.split(':').map(Number);return a/b;
   }
+  function exact(width,mw,mh){
+    const [a,b]=fmt.value.split(':').map(Number);
+    const k=Math.min(Math.floor(mw/a),Math.floor(mh/b),Math.max(1,Math.round(width/a)));
+    return [a*k,b*k];
+  }
+  for(const o of fmt.options){
+    const b=document.createElement('button');b.type='button';b.textContent=o.text;
+    b.onclick=()=>{fmt.value=o.value;fmt.onchange()};by('ttPresets').append(b);
+  }
   fmt.onchange=()=>{
     const t=ratio(); if(!t){render();return}
     const cx=X+W/2,cy=Y+H/2;
     const width=Math.min(A,B*t);
-    W=Math.max(1,Math.round(width));H=Math.max(1,Math.round(width/t));
+    if(fmt.selectedIndex>1)[W,H]=exact(width,A,B);else {W=Math.max(1,Math.round(width));H=Math.max(1,Math.round(width/t))}
     X=cx-W/2;Y=cy-H/2;render();
   };
   window.ttOpenCrop=function(){
@@ -1261,7 +1269,7 @@ await writeToClipboard(finalHtml, finalPlain, 'copyTgBtn');
     if(!img||!img.naturalWidth){imageImportNotice('Картинка ещё не загрузилась.');return}
     target=currentImgBox;source=img;A=W=img.naturalWidth;B=H=img.naturalHeight;X=Y=0;
     busy=false;apply.disabled=false;photo.src=img.src;
-    fmt.selectedIndex=0;
+    fmt.selectedIndex=0;for(const b of by('ttPresets').children){const [w,h]=b.textContent.split(':').map(Number);b.disabled=w>A||h>B}
     by('ttStatus').textContent='';render();d.showModal();
   };
   stage.onpointerdown=e=>{
@@ -1283,7 +1291,7 @@ await writeToClipboard(finalHtml, finalPlain, 'copyTgBtn');
     if(t){
       const want=!u?(g.H+v*dy)*t:!v?g.W+u*dx:g.W+(u*dx+v*dy/t)/(1+1/(t*t));
       const width=Math.min(mw,mh*t,Math.max(1,t,want));
-      W=Math.max(1,Math.round(width));H=Math.max(1,Math.round(width/t));
+      if(fmt.selectedIndex>1)[W,H]=exact(width,mw,mh);else {W=Math.max(1,Math.round(width));H=Math.max(1,Math.round(width/t))}
     }else{
       W=Math.max(1,Math.round(clamp(g.W+u*dx,mw)));H=Math.max(1,Math.round(clamp(g.H+v*dy,mh)));
     }
@@ -1301,9 +1309,19 @@ await writeToClipboard(finalHtml, finalPlain, 'copyTgBtn');
     try {
       const c=document.createElement('canvas'), k=Math.min(1,2400/Math.max(W,H));
       c.width=Math.max(1,Math.round(W*k));c.height=Math.max(1,Math.round(H*k));
-      c.getContext('2d').drawImage(source,X,Y,W,H,0,0,c.width,c.height);
+      if(fmt.selectedIndex>1)[c.width,c.height]=exact(W*k,c.width,c.height);
+      const paint=()=>c.getContext('2d').drawImage(source,X,Y,W,H,0,0,c.width,c.height);
+      paint();
       const blob=await new Promise((ok,no)=>c.toBlob(b=>b?ok(b):no(Error()),'image/png'));
-      const url=await preparePostImage(blob);
+      let file=blob;
+      if(fmt.selectedIndex>1){
+        while(file.size>TEXTTURA_IMAGE_MAX_BYTES){
+          file=await new Promise((ok,no)=>c.toBlob(b=>b?ok(b):no(Error()),'image/webp',.85));
+          if(file.size<=TEXTTURA_IMAGE_MAX_BYTES)break;
+          [c.width,c.height]=exact(c.width*.8,c.width,c.height);paint();
+        }
+      }
+      const url=await preparePostImage(file);
       const probe=new Image();probe.src=url;await probe.decode();
       if(!target.isConnected)throw Error();
       saveHistory();source.src=url;
@@ -1344,6 +1362,7 @@ await writeToClipboard(finalHtml, finalPlain, 'copyTgBtn');
     removeCenterSpacers(box);box.remove();hideMiniBar();closeImgMobilePanel();
     selectTextBox(panel);syncImgSettings();updateImgCounter();updateRatio();saveHistory();return true;
   }
+  window.ttMovePhoto=transfer;
   document.addEventListener('dragover',e=>{
     if(!dragBox||!editor.contains(dragBox))return;
     const panel=at(e.clientX,e.clientY);mark(panel);
@@ -1367,6 +1386,54 @@ await writeToClipboard(finalHtml, finalPlain, 'copyTgBtn');
     if(e.cancelable)e.preventDefault();e.stopImmediatePropagation();
   },{capture:true,passive:false});
   editor.addEventListener('touchcancel',()=>mark(null),true);
+})();
+</script>
+<style>
+#ttFormat{display:none}#ttPresets{display:flex;gap:5px;flex-wrap:wrap;margin:8px 0}#ttPresets button{min-height:30px;padding:4px 8px}#ttPresets [aria-pressed=true],#ttLayers [aria-pressed=true]{background:#2479a8;color:white}
+.text-box .tb-content:has([data-tt-layer]){position:relative;isolation:isolate}
+.text-box .tb-img-wrap[data-tt-layer]{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.text-box .tb-img-wrap[data-tt-layer] img.tb-img{width:100%!important;height:100%!important;object-fit:contain;margin:0}
+.text-box .tb-img-wrap[data-tt-layer] .tb-img-grip{display:none!important}
+.tb-img-wrap[data-tt-layer=back]{z-index:-1}.tb-img-wrap[data-tt-layer=front]{z-index:1}
+#ttLayers{box-sizing:border-box;width:min(390px,94vw);max-height:88dvh;overflow:auto;border:1px solid #465365;border-radius:12px;background:#191d24;color:white;padding:16px;color-scheme:dark}
+#ttLayers::backdrop{background:#0008}#ttLayers h3{margin:0}#ttLayers button,#ttLayers select{margin:3px 0;min-height:36px}#ttLayers header{display:flex;align-items:center;justify-content:space-between}#ttLayers [hidden]{display:none!important}
+</style>
+<dialog id="ttLayers"><header><h3>Картинка</h3><button id="ttDone" aria-label="Закрыть">✕</button></header>
+<select id="ttWhich" aria-label="Картинка в плашке"></select>
+<label for="ttAlpha">Прозрачность: <output id="ttAlphaVal"></output></label><input type="range" id="ttAlpha" min="0" max="100">
+<div id="ttOrder"><button data-mode="inline">В тексте</button> <button data-mode="back">Под текст</button> <button data-mode="front">Над текстом</button></div>
+<div id="ttDest"><select id="ttPanelList" aria-label="Плашка для картинки"></select><button id="ttPlace">Вставить в плашку</button></div></dialog>
+<script>
+(()=>{
+const el=id=>document.getElementById(id),dlg=el('ttLayers'),choices=el('ttWhich'),places=el('ttPanelList');
+let image,box,content,photos,panels;
+function sync(){
+ const wrap=image.closest('.tb-img-wrap'),mode=wrap?.dataset.ttLayer||'inline';
+ const n=Math.round(100*(1-Number(image.style.opacity||1)));
+ el('ttAlpha').value=n;el('ttAlphaVal').textContent=n+'%';
+ for(const b of el('ttOrder').children)b.setAttribute('aria-pressed',b.dataset.mode===mode);
+}
+function show(pic){
+ if(!pic?.isConnected)return;
+ image=pic;box=image.closest('.img-box');content=image.closest('.tb-content');
+ photos=content?Array.from(content.querySelectorAll('img.tb-img')):[image];
+ choices.replaceChildren(...photos.map((_,i)=>new Option('Картинка '+(i+1),i)));choices.selectedIndex=photos.indexOf(image);
+ choices.hidden=photos.length<2;el('ttOrder').hidden=!content;el('ttDest').hidden=!box;
+ panels=Array.from(exportNode.querySelectorAll('.text-box'));
+ places.replaceChildren(...panels.map((p,i)=>new Option('Плашка '+(i+1)+(p.innerText.trim()?' · '+p.innerText.trim().slice(0,28):''),i)));
+ if(!panels.length)places.add(new Option('На холсте нет плашек',''));
+ el('ttPlace').disabled=!panels.length;sync();if(!dlg.open)dlg.showModal();
+}
+window.ttPicTools=()=>show(currentImgBox?.querySelector('img'));
+window.ttPanelTools=()=>{const list=getTbTargetBox()?.querySelectorAll('img.tb-img');if(list?.length)show(list[0]);else imageImportNotice('В плашке пока нет картинки.')};
+document.addEventListener('click',e=>{const wrap=e.target.closest('.tb-img-wrap');if(wrap&&!e.target.closest('.tb-img-grip'))show(wrap.querySelector('img'))},true);
+choices.onchange=()=>{image=photos[choices.selectedIndex];sync()};
+el('ttAlpha').oninput=e=>{image.style.opacity=String(1-e.target.value/100);sync();scheduleHistorySave()};
+el('ttOrder').onclick=e=>{const mode=e.target.dataset.mode,wrap=image.closest('.tb-img-wrap');if(!mode||!wrap)return;
+ saveHistory();if(mode==='inline')delete wrap.dataset.ttLayer;else wrap.dataset.ttLayer=mode;sync();updateRatio();saveHistory()};
+el('ttPlace').onclick=()=>{const panel=panels[places.selectedIndex];if(!panel?.isConnected||!box?.isConnected)return;
+ if(window.ttMovePhoto(box,panel))show(panel.querySelector('.tb-content').querySelectorAll('img.tb-img')[panel.querySelectorAll('img.tb-img').length-1])};
+el('ttDone').onclick=()=>dlg.close();dlg.addEventListener('click',e=>e.stopPropagation());
 })();
 </script>
 </body>
