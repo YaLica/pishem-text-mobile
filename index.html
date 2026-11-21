@@ -21,7 +21,7 @@
 <link rel="stylesheet" href="styles.css">
 <link rel="stylesheet" href="panel-blocks.css">
 <link rel="stylesheet" href="size-align.css">
-<style>#export-node :is(blockquote, [data-post-quote]) { background-color: rgba(151, 213, 244, .35); }</style>
+<style>#export-node :is(blockquote, [data-post-quote]) { background-color: rgba(151, 213, 244, .35); } #export-node [data-post-quote] :is(div,p) { margin-block:0; }</style>
 <link rel="stylesheet" href="font-sheet.css">
 <link rel="stylesheet" href="texttura-gloss.css?v=1">
 <link rel="stylesheet" href="mobile-viewport.css?v=20261005-ios1">
@@ -128,7 +128,7 @@
 <button onclick="format('italic')" title="Курсив"><i>К</i></button>
 <button onclick="format('underline')" title="Подчеркнутый"><u>Ч</u></button>
 <button onclick="format('strikeThrough')" title="Зачеркнутый"><s>S</s></button>
-<button id="quoteBtn" type="button" onclick="togglePostQuote()" aria-pressed="false" title="Оформить абзац как цитату">❝ Цитата</button>
+<button id="quoteBtn" type="button" onclick="togglePostQuote()" aria-pressed="false" title="Оформить выделенный текст как цитату">❝ Цитата</button>
 <button id="exitQuoteBtn" type="button" onclick="exitPostQuote()" hidden style="display:none">Выйти из цитаты</button>
 <button onclick="formatCode()" title="Код"><code>&lt;/&gt;</code></button>
 <div class="toolbar-divider"></div>
@@ -461,6 +461,33 @@
 <script src="format-range.js"></script>
 <script src="images.js?v=20261003-pwa1"></script>
 <script src="export.js?v=20261003-quotes2"></script>
+<script>
+async function copyForTelegram() {
+if (!editor.innerText.trim()) return;
+const lines = getEditorLines();
+
+// type=cite сохраняет семантику цитаты и для HTML-импортёров iOS.
+const finalHtml = lines.join('<br>')
+  .replace(/<br>(?=<blockquote>)/g, '')
+  .replace(/<\/blockquote><br>/g, '</blockquote>')
+  .replace(/<blockquote>/g, '<blockquote type="cite">');
+
+// Plain-text строим напрямую из строк. innerText у элемента вне DOM
+// в Chromium склеивает <br>, из-за чего раньше пропадали все отступы.
+const finalPlain = lines.map(function(line) {
+const row = document.createElement('div');
+row.innerHTML = line;
+row.querySelectorAll('a[href]').forEach(function(a) {
+const href = sanitizeUrl(a.getAttribute('href'));
+const text = a.textContent.trim();
+a.textContent = href && text && text !== href ? text + ' (' + href + ')' : (href || text);
+});
+return row.textContent || '';
+}).join('\n');
+
+await writeToClipboard(finalHtml, finalPlain, 'copyTgBtn');
+}
+</script>
 <script src="editor-events.js"></script>
 <script src="mobile-viewport.js?v=20261005-ios1"></script>
 <script src="ui.js?v=20261005-ios1"></script>
@@ -844,6 +871,56 @@
     }
   }
 
+  // Split at the two selection boundaries, preserving the inline styles on both sides.
+  function quoteSelectedRange(scope, sel, r) {
+    const qsel = 'blockquote,[data-post-quote]';
+    const element = n => n.nodeType === 1 ? n : n.parentElement;
+    const sameQuote = element(r.commonAncestorContainer).closest(qsel);
+    const start = document.createComment('start'), end = document.createComment('end');
+    const meaningful = n => n.nodeType === 8 || n.nodeType === 3 && n.length ||
+      n.nodeType === 1 && (n.matches('br,img,hr,[contenteditable=false]') ||
+      Array.from(n.childNodes).some(meaningful));
+    const place = (marker, atStart) => {
+      const edge = r.cloneRange(); edge.collapse(atStart); edge.insertNode(marker);
+    };
+    place(end, false); place(start, true);
+    function lift(marker) {
+      while (marker.parentNode !== scope) {
+        const left = marker.parentNode, right = left.cloneNode(false);
+        while (marker.nextSibling) right.append(marker.nextSibling);
+        left.after(marker);
+        if (meaningful(right)) {
+          if (meaningful(left)) right.removeAttribute('id');
+          marker.after(right);
+        }
+        if (!meaningful(left)) left.remove();
+      }
+    }
+    lift(end); lift(start);
+    const fragment = document.createDocumentFragment();
+    while (start.nextSibling !== end) fragment.append(start.nextSibling);
+    const selected = Array.from(fragment.childNodes).filter(meaningful);
+    const unquote = sameQuote || selected.length && selected.every(n => n.nodeType === 1 && n.matches(qsel));
+    fragment.querySelectorAll(qsel).forEach(q => q.replaceWith(...q.childNodes));
+    let quote;
+    if (unquote) end.before(fragment);
+    else {
+      quote = document.createElement('blockquote');
+      quote.dataset.postQuote = '1'; quote.dataset.para = '1';
+      quote.style.cssText = 'display:block;margin:0;border-left:.12em solid currentColor;padding:0 0 0 .65em';
+      quote.append(fragment); end.before(quote);
+      // A block already ends its line; reuse the existing separator.
+      let next = end.nextSibling;
+      while (next && next.nodeType === 3 && !next.length) next = next.nextSibling;
+      if (next && next.nodeName === 'BR') next.remove();
+    }
+    const result = document.createRange();
+    if (quote) result.selectNodeContents(quote);
+    else { result.setStartAfter(start); result.setEndBefore(end); }
+    start.remove(); end.remove();
+    sel.removeAllRanges(); sel.addRange(result);
+    return true;
+  }
   window.togglePostQuote = function() {
     if (typeof restoreSelection === 'function') restoreSelection();
     var scope = getEditingScope();
@@ -851,7 +928,10 @@
     if (!scope) return;
     // До операции фиксируем ввод, чтобы отмена снимала именно цитату.
     saveHistory();
-    if (!alignSelection('quote', scope)) return;
+    const sel = window.getSelection(), range = sel.rangeCount && sel.getRangeAt(0);
+    if (!range || !scope.contains(range.commonAncestorContainer)) return;
+    if (range.collapsed) { if (!alignSelection('quote', scope)) return; }
+    else quoteSelectedRange(scope, sel, range);
     releaseSelection();
     saveSelectionBeforeAction();
     updateRatio();
