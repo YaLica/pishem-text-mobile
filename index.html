@@ -261,8 +261,9 @@
   <label style="color:#4ade80; margin-top:0;">🎛️ Настройки выбранной картинки</label>
   <label>↔️ Отступ текста: <span id="imgGapLabel">20</span> px</label>
   <input type="range" id="imgGapRange" min="0" max="60" value="20" oninput="setImgGap(this.value)">
-  <label>⬜ Скругление углов: <span id="imgRadiusLabel">12</span> px</label>
-  <input type="range" id="imgRadiusRange" min="0" max="60" value="12" oninput="setImgRadius(this.value)">
+  <label>⬜ Скругление углов: <span id="imgRadiusLabel">12 px</span></label>
+  <input type="range" id="imgRadiusRange" min="0" max="50" value="0" oninput="ttRound(this.value)">
+  <button type="button" onclick="ttOpenCrop()">Обрезка</button>
   <label>🖼️ Рамка: <span id="imgBorderLabel">0</span> px</label>
   <input type="range" id="imgBorderRange" min="0" max="12" value="0" oninput="setImgBorder(this.value)">
   <label>🎨 Цвет рамки</label>
@@ -345,6 +346,7 @@
 
 <!-- МИНИ-ПАНЕЛЬ КАРТИНКИ (Компьютер) -->
 <div id="imgMiniBar">
+  <button type="button" onmousedown="event.preventDefault()" onclick="ttOpenCrop()" title="Обрезать картинку" style="width:auto">Обрезка</button>
   <button onmousedown="event.preventDefault()" onclick="miniDuplicate()" title="Дублировать">⧉</button>
   <div class="mb-div"></div>
   <button onmousedown="event.preventDefault()" onclick="miniAlign('left')" title="Слева">◀</button>
@@ -369,8 +371,9 @@
   </div>
   <label>↔️ Отступ текста: <span id="impGapLabel">20</span> px</label>
   <input type="range" id="impGapRange" min="0" max="60" value="20" oninput="setImgGap(this.value)">
-  <label>⬜ Скругление: <span id="impRadiusLabel">12</span> px</label>
-  <input type="range" id="impRadiusRange" min="0" max="60" value="12" oninput="setImgRadius(this.value)">
+  <label>⬜ Скругление: <span id="impRadiusLabel">12 px</span></label>
+  <input type="range" id="impRadiusRange" min="0" max="50" value="0" oninput="ttRound(this.value)">
+  <button type="button" onclick="ttOpenCrop()">Обрезка</button>
   <label>🖼️ Рамка: <span id="impBorderLabel">0</span> px</label>
   <input type="range" id="impBorderRange" min="0" max="12" value="0" oninput="setImgBorder(this.value)">
   <label>🎨 Цвет рамки</label>
@@ -1169,5 +1172,114 @@ await writeToClipboard(finalHtml, finalPlain, 'copyTgBtn');
   root.addEventListener('touchcancel', function () { candidate = null; }, {passive:true});
 })();
 </script>
+<style>
+#ttCrop {box-sizing:border-box;width:min(460px,94vw);max-height:90dvh;overflow:auto;background:#171a21;color:white;border:1px solid #50627a;border-radius:14px;padding:16px}
+#ttCrop::backdrop{background:#000a} #ttCrop h3{margin:0 0 8px} #ttCrop p{margin:6px 0 12px}
+#ttStage{position:relative;width:fit-content;margin:auto;overflow:hidden;touch-action:none;user-select:none;cursor:move}
+#ttPhoto{display:block;max-width:100%;max-height:38dvh;pointer-events:none}
+#ttFrame{position:absolute;box-sizing:border-box;border:2px solid white;outline:1px solid #333;box-shadow:0 0 0 999px #0008;pointer-events:none}
+#ttCrop label{display:block;margin-top:8px} #ttCrop input[type=range]{width:100%}
+#ttCrop footer{display:flex;justify-content:flex-end;gap:8px;margin-top:12px} #ttCrop button{min-height:36px}
+</style>
+<dialog id="ttCrop" aria-labelledby="ttCropTitle">
+<h3 id="ttCropTitle">Обрезка картинки</h3>
+<p>Передвинь рамку мышью или пальцем. Ползунками можно изменить её размер.</p>
+<div id="ttStage"><img alt="" id="ttPhoto" draggable="false"><div id="ttFrame"></div></div>
+<label><input id="ttSquare" type="checkbox"> Квадрат 1:1</label>
+<label>Ширина <input id="ttW" type="range" min="1" max="100" value="100"></label>
+<label>Высота <input id="ttH" type="range" min="1" max="100" value="100"></label>
+<div role="status" id="ttStatus"></div>
+<footer><button type="button" id="ttCancel">Отмена</button><button type="button" class="primary" id="ttApply">Применить</button></footer>
+</dialog>
+<script>
+(() => {
+  const by = id => document.getElementById(id);
+  // Older posts keep their original pixel radius until the slider is touched.
+  const applyOld = applyImgStyles, syncOld = syncImgMobilePanel;
+  applyImgStyles = function(box) {
+    applyOld(box);
+    if (!box || box.dataset.roundPct == null) return;
+    const value = box.dataset.roundPct + '%';
+    box.style.setProperty('--img-radius',value);
+    box.querySelector('img').style.borderRadius=value;
+  };
+  function showRadius() {
+    const b=currentImgBox;
+    if (!b) return;
+    const img=b.querySelector('img');
+    const n=b.dataset.roundPct;
+    const px=parseInt(b.dataset.radius || '12',10);
+    for(const key of ['imp','img']) {
+      by(key+'RadiusRange').value=n == null ? Math.min(50,100*px/Math.max(1,Math.min(img.offsetWidth,img.offsetHeight))) : n;
+      by(key+'RadiusLabel').textContent=n == null ? px+' px' : n+'%';
+    }
+  }
+  syncImgMobilePanel=function(){syncOld();showRadius()};
+  window.ttRound=function(v){
+    if(!currentImgBox)return;
+    currentImgBox.dataset.roundPct=v;
+    applyImgStyles(currentImgBox);showRadius();scheduleHistorySave();
+  };
+  const d=by('ttCrop'),stage=by('ttStage'),photo=by('ttPhoto'),frame=by('ttFrame'),
+    w=by('ttW'),h=by('ttH'),square=by('ttSquare'),apply=by('ttApply');
+  let target=null,source=null,X=0,Y=0,W=1,H=1,A=1,B=1,drag=null,busy=false;
+  const clamp=(x,max)=>Math.max(0,Math.min(x,max));
+  function render(){
+    X=clamp(Math.round(X),A-W);Y=clamp(Math.round(Y),B-H);
+    Object.assign(frame.style,{left:X/A*100+'%',top:Y/B*100+'%',width:W/A*100+'%',height:H/B*100+'%'});
+  }
+  function resize(){
+    const cx=X+W/2,cy=Y+H/2;
+    W=Math.max(1,Math.round((square.checked?Math.min(A,B):A)*w.value/100));
+    H=square.checked?W:Math.max(1,Math.round(B*h.value/100));
+    X=cx-W/2;Y=cy-H/2;render();
+  }
+  window.ttOpenCrop=function(){
+    if(d.open||!currentImgBox)return;
+    const img=currentImgBox.querySelector('img');
+    if(!img||!img.naturalWidth){imageImportNotice('Картинка ещё не загрузилась.');return}
+    target=currentImgBox;source=img;A=W=img.naturalWidth;B=H=img.naturalHeight;X=Y=0;
+    busy=false;apply.disabled=false;photo.src=img.src;
+    square.checked=false;w.value=h.value=100;h.disabled=false;
+    by('ttStatus').textContent='';render();d.showModal();
+  };
+  square.onchange=()=>{h.disabled=square.checked;resize()};
+  w.oninput=h.oninput=resize;
+  stage.onpointerdown=e=>{
+    if(!e.isPrimary||e.button!==0)return;
+    const r=stage.getBoundingClientRect();
+    const x=(e.clientX-r.left)/r.width*A,y=(e.clientY-r.top)/r.height*B;
+    if(x<X||x>X+W||y<Y||y>Y+H){X=x-W/2;Y=y-H/2;render()}
+    drag={id:e.pointerId,x:e.clientX,y:e.clientY,X,Y,r};stage.setPointerCapture(e.pointerId);
+  };
+  stage.onpointermove=e=>{
+    if(!drag||drag.id!==e.pointerId)return;
+    X=drag.X+(e.clientX-drag.x)*A/drag.r.width;Y=drag.Y+(e.clientY-drag.y)*B/drag.r.height;render();
+  };
+  stage.onlostpointercapture=()=>drag=null;
+  d.addEventListener('click',e=>e.stopPropagation());
+  by('ttCancel').onclick=()=>{if(!busy)d.close()};
+  d.oncancel=e=>{if(busy)e.preventDefault()};
+  d.onclose=()=>{drag=null;target=source=null;photo.removeAttribute('src')};
+  apply.onclick=async()=>{
+    if(busy||!target?.isConnected)return;
+    if(W===A&&H===B){d.close();return}
+    busy=true;apply.disabled=true;by('ttStatus').textContent='Обрезаю…';
+    try {
+      const c=document.createElement('canvas'), k=Math.min(1,2400/Math.max(W,H));
+      c.width=Math.max(1,Math.round(W*k));c.height=Math.max(1,Math.round(H*k));
+      c.getContext('2d').drawImage(source,X,Y,W,H,0,0,c.width,c.height);
+      const blob=await new Promise((ok,no)=>c.toBlob(b=>b?ok(b):no(Error()),'image/png'));
+      const url=await preparePostImage(blob);
+      const probe=new Image();probe.src=url;await probe.decode();
+      if(!target.isConnected)throw Error();
+      saveHistory();source.src=url;
+      d.close();saveHistory();updateRatio();requestAnimationFrame(()=>{positionMiniBar();showRadius()});
+    }catch{by('ttStatus').textContent='Не удалось обрезать картинку. Оригинал сохранён.'}
+    finally{busy=false;apply.disabled=false}
+  };
+})();
+</script>
+
 </body>
 </html>
