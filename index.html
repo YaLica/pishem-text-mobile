@@ -3528,5 +3528,90 @@ el('ttPlace').onclick=()=>moveTo(panels[places.selectedIndex]);
 el('ttDone').onclick=()=>dlg.close();dlg.addEventListener('click',e=>e.stopPropagation());
 })();
 </script>
+<style>
+#ttPlateOutline{position:absolute;box-sizing:border-box;outline:2px solid #10b981;pointer-events:none;z-index:60;transform-origin:center;display:block}
+#ttPlateOutline[hidden]{display:none}
+#ttPlateOutline .ttSide{position:absolute;pointer-events:auto;touch-action:none;cursor:move}
+#ttPlateOutline .ttSide:nth-child(1),#ttPlateOutline .ttSide:nth-child(2){left:0;right:0;height:16px}
+#ttPlateOutline .ttSide:nth-child(1){top:-8px}#ttPlateOutline .ttSide:nth-child(2){bottom:-8px}
+#ttPlateOutline .ttSide:nth-child(3),#ttPlateOutline .ttSide:nth-child(4){top:0;bottom:0;width:16px}
+#ttPlateOutline .ttSide:nth-child(3){left:-8px}#ttPlateOutline .ttSide:nth-child(4){right:-8px}
+#ttPlateOutline button{position:absolute;left:50%;top:0;transform:translate(-50%,-50%);pointer-events:auto;touch-action:none;cursor:move;background:#075e4b;color:white;border:1px solid #51e4bd;padding:4px 10px;min-height:32px;white-space:nowrap;font:600 13px system-ui}
+</style>
+<script>
+(()=>{
+ const root=exportNode,ui=document.createElement('div');ui.id='ttPlateOutline';
+ ui.className='tb-drag-frame';ui.contentEditable='false';ui.hidden=true;
+ ui.innerHTML='<i class="ttSide"></i>'.repeat(4)+'<button type="button" aria-label="Переместить плашку">✥ Переместить</button>';
+ root.append(ui);
+ let active=null,drag=null,suppress=null,raf=0;
+ const ro=new ResizeObserver(()=>schedule());
+ function render(){
+   raf=0;
+   const b=root.querySelector('.text-box.selected[data-panel-layer="back"]');
+   if(b!==active){ro.disconnect();active=b;if(b)ro.observe(b)}
+   ui.hidden=!b;if(!b)return;
+   Object.assign(ui.style,{left:b.offsetLeft+'px',top:b.offsetTop+'px',width:b.offsetWidth+'px',height:b.offsetHeight+'px',transform:getComputedStyle(b).transform});
+ }
+ function schedule(){if(!raf)raf=requestAnimationFrame(render)}
+ new MutationObserver(ms=>{if(ms.some(m=>!ui.contains(m.target)))schedule()}).observe(root,{subtree:true,childList:true,attributes:true,attributeFilter:['style','class','data-panel-layer']});
+ // Leave the foreground text selectable. A caret hit alone is insufficient:
+ // the browser returns the nearest caret even over empty areas of a line.
+ function onLetter(x,y){
+   let n,o;
+   if(document.caretPositionFromPoint){const c=document.caretPositionFromPoint(x,y);if(c){n=c.offsetNode;o=c.offset}}
+   else if(document.caretRangeFromPoint){const c=document.caretRangeFromPoint(x,y);if(c){n=c.startContainer;o=c.startOffset}}
+   if(n?.nodeType!==3||!editor.contains(n))return false;
+   const r=document.createRange();
+   for(const i of [o-1,o]){
+     if(i<0||i>=n.length||!n.data[i].trim())continue;
+     r.setStart(n,i);r.setEnd(n,i+1);
+     for(const b of r.getClientRects())if(x>=b.left&&x<=b.right&&y>=b.top&&y<=b.bottom)return true;
+   }
+   return false;
+ }
+ function target(e,x,y){
+   if(ui.contains(e.target))return active;
+   const direct=e.target.closest('.text-box');
+   if(direct)return direct.dataset.panelLayer==='back'&&!e.target.closest('.tb-handle,.tb-edge,.tb-delete,.tb-resize,.tb-rotate,.tb-copy,.tb-img-grip,.tb-90-rot,.tb-reset-rot')&&!direct.classList.contains('selected')?direct:null;
+   if(e.target.closest('.img-box,button,a,input')||!root.contains(e.target))return null;
+   const hit=document.elementsFromPoint(x,y).map(n=>n.closest('.text-box')).find(b=>b&&root.contains(b));
+   return hit?.dataset.panelLayer==='back'&&!onLetter(x,y)?hit:null;
+ }
+ function start(e){
+   if(drag||e.button>0||(e.touches&&e.touches.length!==1))return;
+   const p=e.touches?e.touches[0]:e;
+   const b=target(e,p.clientX,p.clientY);if(!b)return;
+   e.preventDefault();e.stopImmediatePropagation();selectTextBox(b);render();
+   const scale=root.getBoundingClientRect().width/root.offsetWidth||1;
+   drag={b,x:p.clientX,y:p.clientY,left:b.offsetLeft,top:b.offsetTop,scale,id:p.identifier,touch:!!e.touches,moved:false};
+ }
+ function move(e){
+   if(!drag||drag.touch!==!!e.touches)return;
+   const p=e.touches?Array.from(e.touches).find(t=>t.identifier===drag.id):e;if(!p)return;
+   const dx=p.clientX-drag.x,dy=p.clientY-drag.y;
+   if(!drag.moved&&Math.hypot(dx,dy)<3)return;
+   if(!drag.moved)saveHistory();
+   drag.moved=true;if(e.cancelable)e.preventDefault();
+   drag.b.style.left=drag.left+dx/drag.scale+'px';drag.b.style.top=drag.top+dy/drag.scale+'px';render();
+ }
+ function end(e){
+   if(!drag||drag.touch!==!!e.changedTouches)return;
+   const p=e.changedTouches?Array.from(e.changedTouches).find(t=>t.identifier===drag.id):e;if(!p)return;
+   if(drag.moved)saveHistory();
+   suppress={x:p.clientX,y:p.clientY,until:performance.now()+450};
+   drag=null;
+ }
+ root.addEventListener('mousedown',start,true);root.addEventListener('touchstart',start,{capture:true,passive:false});
+ document.addEventListener('mousemove',move,true);document.addEventListener('touchmove',move,{capture:true,passive:false});
+ for(const t of ['mouseup','touchend','touchcancel'])document.addEventListener(t,end,true);
+ root.addEventListener('click',e=>{
+  if(ui.contains(e.target)||(suppress&&performance.now()<suppress.until&&Math.hypot(e.clientX-suppress.x,e.clientY-suppress.y)<8)){
+    suppress=null;e.stopImmediatePropagation();e.preventDefault();
+  }
+ },true);
+ schedule();
+})();
+</script>
 </body>
 </html>
