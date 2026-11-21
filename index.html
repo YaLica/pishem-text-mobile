@@ -265,7 +265,6 @@
   <label>⬜ Скругление углов: <span id="imgRadiusLabel">12 px</span></label>
   <input type="range" id="imgRadiusRange" min="0" max="50" value="0" oninput="ttRound(this.value)">
   <button type="button" onclick="ttOpenCrop()">Обрезка</button> <button type="button" onclick="ttPicTools()">Вставить в плашку</button>
-  <button type="button" class="tt-remove-bg-main" onclick="ttRemoveMainBackground()" title="Удалить фон выбранной картинки">✨ Удалить фон</button>
   <label>🖼️ Рамка: <span id="imgBorderLabel">0</span> px</label>
   <input type="range" id="imgBorderRange" min="0" max="12" value="0" oninput="setImgBorder(this.value)">
   <label>🎨 Цвет рамки</label>
@@ -349,7 +348,6 @@
 <!-- МИНИ-ПАНЕЛЬ КАРТИНКИ (Компьютер) -->
 <div id="imgMiniBar"><button type="button" onmousedown="event.preventDefault()" onclick="ttPicTools()" style="width:auto" title="Вставить в плашку">Вставить в плашку</button>
   <button type="button" onmousedown="event.preventDefault()" onclick="ttOpenCrop()" title="Обрезать картинку" style="width:auto">Обрезка</button>
-  <button type="button" class="tt-remove-bg-main" onmousedown="event.preventDefault()" onclick="ttRemoveMainBackground()" title="Удалить фон выбранной картинки" style="width:auto">✨ Удалить фон</button>
   <button onmousedown="event.preventDefault()" onclick="miniDuplicate()" title="Дублировать">⧉</button>
   <div class="mb-div"></div>
   <button onmousedown="event.preventDefault()" onclick="miniAlign('left')" title="Слева">◀</button>
@@ -377,7 +375,6 @@
   <label>⬜ Скругление: <span id="impRadiusLabel">12 px</span></label>
   <input type="range" id="impRadiusRange" min="0" max="50" value="0" oninput="ttRound(this.value)">
   <button type="button" onclick="ttOpenCrop()">Обрезка</button> <button type="button" onclick="ttPicTools()">Вставить в плашку</button>
-  <button type="button" class="tt-remove-bg-main" onclick="ttRemoveMainBackground()" title="Удалить фон выбранной картинки">✨ Удалить фон</button>
   <label>🖼️ Рамка: <span id="impBorderLabel">0</span> px</label>
   <input type="range" id="impBorderRange" min="0" max="12" value="0" oninput="setImgBorder(this.value)">
   <label>🎨 Цвет рамки</label>
@@ -3980,166 +3977,6 @@ function rebindTbImages() {
     document.addEventListener('DOMContentLoaded',setupSidebar);
   } else setupSidebar();
   schedule();
-})();
-</script>
-<!-- Удаление фона только у обычной фотографии; элементы плашек не затрагиваются. -->
-<style id="tt-main-image-background-removal-style">
-  #imgSettings .tt-remove-bg-main, #imgMobilePanel .tt-remove-bg-main {
-    display:block;width:100%;margin:10px 0 7px;padding:10px 8px;
-    background:#205b48;color:#f3fff9;border:1px solid #4cba91;
-    border-radius:8px;font-weight:600;touch-action:manipulation;
-  }
-  #imgMiniBar .tt-remove-bg-main {background:#205b48;color:#f3fff9;font-size:12px;padding:0 8px;white-space:nowrap}
-  .tt-remove-bg-main:disabled {opacity:.55;cursor:wait}
-  #ttBgRemovalStatus {
-    position:fixed;z-index:100025;bottom:calc(85px + env(safe-area-inset-bottom,0px));
-    left:50%;transform:translateX(-50%);pointer-events:none;
-    max-width:min(440px,calc(100vw - 30px));width:max-content;
-    padding:11px 15px;border-radius:12px;
-    background:rgba(23,26,33,.96);color:#f3fff9;border:1px solid #4cba91;
-    box-shadow:0 4px 18px rgba(0,0,0,.38);font:600 13px/1.4 system-ui,sans-serif;
-    text-align:center;
-  }
-  #ttBgRemovalStatus[hidden] {display:none!important}
-</style>
-<script id="tt-main-image-background-removal">
-/*
- * Только .img-box внутри #editor. НЕ работает с .tb-img и не меняет
- * алгоритмы касаний, положения, вращения, выделения и обработки плашек.
- * Модель Apache-2.0: Orangebot/ormbg-ONNX (на устройстве через WASM).
- * JS-библиотека Apache-2.0: @huggingface/transformers@3.8.1.
- * Первый запуск загружает ~42 МБ; изображение не отправляется на сервер.
- */
-(function () {
-  'use strict';
-  const MAX_IMAGE_BYTES = 500000; // прежний лимит на каждую картинку
-  const status = document.createElement('div');
-  status.id = 'ttBgRemovalStatus';
-  status.setAttribute('role','status');
-  status.setAttribute('aria-live','polite');
-  status.hidden = true;
-  document.body.appendChild(status);
-  let busy = false;
-  let removerPromise = null;
-  let noticeTimer = null;
-
-  function message(s, delay) {
-    clearTimeout(noticeTimer);
-    status.textContent = s;
-    status.hidden = !s;
-    if (delay) noticeTimer = setTimeout(() => { status.hidden = true; }, delay);
-  }
-
-  function selectedMainImage() {
-    const box = typeof currentImgBox !== 'undefined' ? currentImgBox : null;
-    const root = document.getElementById('editor');
-    if (!box || !box.isConnected || !root || !root.contains(box) ||
-        !box.classList.contains('img-box')) return null;
-    const img = box.querySelector('.img-rotor img') || box.querySelector('img');
-    return img ? {box,img} : null;
-  }
-
-  function setBusy(value) {
-    busy=value;
-    document.querySelectorAll('.tt-remove-bg-main').forEach(btn => {
-      btn.disabled=value;
-      btn.textContent=value ? '⏳ Удаляю фон…' : '✨ Удалить фон';
-    });
-  }
-
-  function getRemover() {
-    if (!removerPromise) {
-      // Импорт только после нажатия кнопки — остальная «Тексттура» не ждёт модель.
-      removerPromise = (async () => {
-        message('Первый запуск: загружаю модель удаления фона (~42 МБ)…');
-        const {pipeline} = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1');
-        const remover = await pipeline('background-removal','Orangebot/ormbg-ONNX',{
-          device:'wasm',dtype:'uint8',
-          progress_callback: info => {
-            if (info && info.status === 'progress' && /\.onnx/i.test(info.file || '') &&
-                typeof info.progress === 'number') {
-              message('Загружаю модель: ' + Math.round(info.progress) + '%…');
-            }
-          }
-        });
-        return remover;
-      })().catch(error => { removerPromise=null; throw error; });
-    }
-    return removerPromise;
-  }
-
-  function encodeCanvas(canvas, mime, quality) {
-    return new Promise(resolve => canvas.toBlob(blob => resolve(blob), mime, quality));
-  }
-
-  async function makeSmallTransparentImage(original) {
-    // Сохраняем прозрачность. Вариант JPEG запрещён: он уничтожил бы альфа-канал.
-    let canvas=original;
-    for (let step=0;step<12;step++) {
-      const png = await encodeCanvas(canvas,'image/png');
-      if (png && png.size<=MAX_IMAGE_BYTES) return png;
-      for (const q of [.94,.88,.80,.72]) {
-        const webp = await encodeCanvas(canvas,'image/webp',q);
-        if (webp && webp.type === 'image/webp' && webp.size<=MAX_IMAGE_BYTES) return webp;
-      }
-      const next=document.createElement('canvas');
-      next.width=Math.max(1,Math.round(canvas.width*.86));
-      next.height=Math.max(1,Math.round(canvas.height*.86));
-      if(next.width===canvas.width && next.height===canvas.height) break;
-      const ctx=next.getContext('2d');
-      if(!ctx) throw new Error('Не удалось обработать изображение.');
-      ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
-      ctx.drawImage(canvas,0,0,next.width,next.height);
-      canvas=next;
-    }
-    throw new Error('Не удалось сохранить прозрачную картинку в пределах 500 КБ.');
-  }
-
-  function blobToDataURL(blob) {
-    return new Promise((resolve,reject) => {
-      const reader=new FileReader();
-      reader.onload=() => resolve(reader.result);
-      reader.onerror=() => reject(new Error('Ошибка чтения изображения.'));
-      reader.readAsDataURL(blob);
-    });
-  }
-
-  window.ttRemoveMainBackground = async function () {
-    if (busy) return;
-    const target=selectedMainImage();
-    if (!target) {message('Сначала выбери обычную картинку на холсте.',3500);return;}
-    const {box,img}=target;
-    const before=img.src;
-    setBusy(true);
-    try {
-      const remover=await getRemover();
-      if (!box.isConnected || img.src!==before) {
-        message('Картинка изменилась — удаление фона отменено.',4500);return;
-      }
-      message('Выделяю объект и удаляю фон. Это может занять время…');
-      const cutouts=await remover(before);
-      const result=Array.isArray(cutouts)?cutouts[0]:cutouts;
-      if (!result || typeof result.toCanvas!=='function')
-        throw new Error('Модель не вернула прозрачное изображение.');
-      const resultCanvas=result.toCanvas();
-      if (!resultCanvas || !resultCanvas.width || !resultCanvas.height)
-        throw new Error('Не удалось подготовить результат.');
-      const blob=await makeSmallTransparentImage(resultCanvas);
-      const replacement=await blobToDataURL(blob);
-      if (!box.isConnected || img.src!==before) {
-        message('Картинка изменилась — результат не применён.',4500);return;
-      }
-      // Меняем только пиксели. Размеры, расположение, поворот, рамка,
-      // радиус, классы и параметры самой фотографии остаются прежними.
-      img.src=replacement;
-      if (typeof updateRatio==='function') updateRatio();
-      if (typeof saveHistory==='function') saveHistory();
-      message('Фон удалён! ↩️ отменит действие, если нужно.',4200);
-    } catch(error) {
-      console.error('Texttura background removal:',error);
-      message('Не получилось удалить фон. Проверь интернет и повтори.',7000);
-    } finally {setBusy(false);}
-  };
 })();
 </script>
 </body>
